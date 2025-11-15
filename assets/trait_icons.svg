@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+  <!-- ====================== POSITIVE TRAITS ====================== -->
+  <symbol id="accessible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-2-9h4v2h-4v-2z"/></symbol>
+  <symbol id="active" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
+  <symbol id="adaptable" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></symbol>
+  <symbol id="admirable" viewBox="0 0 24 24"><path d="M12 2l2 7h7l-5.5 4 2 7-5.5-4-5.5 4 2-7L2 9h7z"/></symbol>
+  <symbol id="adventurous" viewBox="0 0 24 24"><path d="M12 2v4m0 4v4m0 4v4m-6-10h12"/></symbol>
+  <symbol id="agreeable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3-9l2 2 4-4"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4v8m0 4v2"/></symbol>
+  <symbol id="allocentric" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10l2 2 6-6"/></symbol>
+  <symbol id="amiable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="anticipative" viewBox="0 0 24 24"><path d="M12 2v4m-4 4l4-4 4 4m-8 6h12"/></symbol>
+  <symbol id="appreciative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 16l-3-3 1.5-1.5L12 15l3.5-3.5L17 13l-5 5z"/></symbol>
+  <symbol id="articulate" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="aspiring" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="athletic" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="attractive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 16c-1.5 0-3-2-3-4s1.5-4 3-4 3 2 3 4-1.5 4-3 4z"/></symbol>
+  <symbol id="balanced" viewBox="0 0 24 24"><path d="M12 2v20m-8-8h16"/></symbol>
+  <symbol id="benevolent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 14l2-2 2 2v2h-4v-2z"/></symbol>
+  <symbol id="brilliant" viewBox="0 0 24 24"><path d="M12 2l2 6h6l-5 4 2 6-5-3-5 3 2-6-5-4h6z"/></symbol>
+  <symbol id="calm" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="capable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="captivating" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="caring" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="challenging" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="charismatic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="charming" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="cheerful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="clean" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="clear-headed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="clever" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="colorful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 8h2v4h-2zm4 0h2v4h-2zm4 0h2v4h-2z"/></symbol>
+  <symbol id="companionly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="compassionate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="conciliatory" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="confident" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="conscientious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="considerate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="constant" viewBox="0 0 24 24"><path d="M12 2v20m-8-8h16"/></symbol>
+  <symbol id="contemplative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="cooperative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="courageous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="courteous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="creative" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="cultured" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="curious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="daring" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="debonair" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="decent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="decisive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="dedicated" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="deep" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="dignified" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="directed" viewBox="0 0 24 24"><path d="M12 2v4m0 4v4m0 4v4m-6-10h12"/></symbol>
+  <symbol id="disciplined" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="discreet" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="dramatic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="dutiful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="dynamic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="earnest" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="ebullient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="educated" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="efficient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="elegant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="eloquent" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="empathetic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="energetic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="enthusiastic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="esthetic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="exciting" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="extraordinary" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="fair" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="faithful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="farsighted" viewBox="0 0 24 24"><path d="M12 2v4m-4 4l4-4 4 4m-8 6h12"/></symbol>
+  <symbol id="felicific" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="firm" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="flexible" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></symbol>
+  <symbol id="focused" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="forceful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="forgiving" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="forthright" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="freethinking" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="friendly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="fun-loving" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="gallant" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="generous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="gentle" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="genuine" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="good-natured" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="gracious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="hardworking" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="healthy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="hearty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="helpful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="heroic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="high-minded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="honest" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="honorable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="humble" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="humorous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="idealistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="imaginative" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="impressive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="incisive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="incorruptible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="independent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="individualistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="innovative" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="inoffensive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="insightful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="insouciant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="intelligent" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="intuitive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="invulnerable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="kind" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="knowledgeable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="leaderly" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="leisurely" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="liberal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="logical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="lovable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="loyal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="lyrical" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="magnanimous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="many-sided" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 8h2v4h-2zm4 0h2v4h-2zm4 0h2v4h-2z"/></symbol>
+  <symbol id="masculine-(manly)" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="mature" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="methodical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="meticulous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="moderate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="modest" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="multi-leveled" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 8h2v4h-2zm4 0h2v4h-2zm4 0h2v4h-2z"/></symbol>
+  <symbol id="neat" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="nonauthoritarian" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="objective" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="observant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="open" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="optimistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="orderly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="organized" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="original" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="painstaking" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="passionate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="patient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="patriotic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="peaceful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="perceptive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="perfectionist" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="personable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="persuasive" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="planful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="playful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="polished" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="popular" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="practical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="precise" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="principled" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="profound" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="protean" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></symbol>
+  <symbol id="protective" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="providential" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="prudent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="punctual" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="purposeful" viewBox="0 0 24 24"><path d="M12 2v4m0 4v4m0 4v4m-6-10h12"/></symbol>
+  <symbol id="rational" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="realistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="reflective" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="relaxed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="reliable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="resourceful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="respectful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="responsible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="responsive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="reverential" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="romantic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="rustic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sage" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sane" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="scholarly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="scrupulous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="secure" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="selfless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="self-critical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="self-defacing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="self-denying" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="self-reliant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="self-sufficient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sensitive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="sentimental" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="seraphic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="serious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sexy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="sharing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="shrewd" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="simple" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="skillful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="sober" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sociable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="solid" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="sophisticated" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="spontaneous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="sporting" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="stable" viewBox="0 0 24 24"><path d="M12 2v20m-8-8h16"/></symbol>
+  <symbol id="steadfast" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="steady" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="stoic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="strong" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="studious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="suave" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="subtle" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sweet" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="sympathetic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="systematic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="tasteful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="teacherly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="thorough" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="tidy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="tolerant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="tractable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="trusting" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="uncomplaining" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="understanding" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="undogmatic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unfoolable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="upright" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="urbane" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="venturesome" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="vivacious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="warm" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="well-bred" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="well-read" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="well-rounded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="winning" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol><symbol id="wise" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="witty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="youthful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+
+  <!-- ====================== NEUTRAL TRAITS ====================== -->
+  <symbol id="absentminded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="aggressive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="ambitious" viewBox="0 0 24 24"><path d="M12 2v4m0 4v4m0 4v4m-6-10h12"/></symbol>
+  <symbol id="amusing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="artful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="ascetic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="authoritarian" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="big-thinking" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="boyish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="breezy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="businesslike" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="busy" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="casual" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cerebral" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="chummy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="circumspect" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="competitive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="complex" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 8h2v4h-2zm4 0h2v4h-2zm4 0h2v4h-2z"/></symbol>
+  <symbol id="confidential" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="conservative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="contradictory" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></symbol>
+  <symbol id="crisp" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="cute" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="deceptive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="determined" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="dominating" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="dreamy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="driving" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="droll" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="dry" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="earthy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="effeminate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="emotional" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="enigmatic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="experimental" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="familial" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="folksy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="formal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="freewheeling" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="frugal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="glamorous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="guileless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="high-spirited" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="hurried" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="hypnotic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="iconoclastic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="idiosyncratic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-5 8h2v4h-2zm4 0h2v4h-2zm4 0h2v4h-2z"/></symbol>
+  <symbol id="impassive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="impersonal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="impressionable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="intense" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="invisible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="irreligious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="irreverent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="maternal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="mellow" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="modern" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="moralistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="mystical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="neutral" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="noncommittal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="noncompetitive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="obedient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="old-fashioned" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="ordinary" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="outspoken" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="paternalistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="physical" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="placid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="political" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="predictable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="preoccupied" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="private" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="progressive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="proud" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="pure" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="questioning" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="quiet" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="religious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="reserved" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="restrained" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="retiring" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sarcastic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="self-conscious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="sensual" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="skeptical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="smooth" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="soft" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="solemn" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="solitary" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="stern" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="stoic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="strict" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="stubborn" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="stylish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="subjective" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="surprising" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="tough" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="unaggressive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unambitious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unceremonious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unchanging" viewBox="0 0 24 24"><path d="M12 2v20m-8-8h16"/></symbol>
+  <symbol id="undemanding" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unfathomable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="unhurried" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uninhibited" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="unpatriotic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unpredictable" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="unreligious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unsentimental" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="whimsical" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+
+  <!-- ====================== NEGATIVE TRAITS ====================== -->
+  <symbol id="abrasive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="abrupt" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="agonizing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="aimless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="airy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="aloof" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="amoral" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="angry" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="anxious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="apathetic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="arbitrary" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="argumentative" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="arrogant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="artificial" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="asocial" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="assertive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="astigmatic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="barbaric" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="bewildered" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="bizarre" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="bland" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="blunt" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="boisterous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="brittle" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="brutal" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="calculating" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="callous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cantankerous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="careless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cautious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="charmless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="childish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="clumsy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="coarse" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cold" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="colorless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="complacent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="complaintive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="compulsive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="conceited" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="condemnatory" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="conformist" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="confused" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="contemptible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="conventional" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cowardly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="crafty" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="crass" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="crazy" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="criminal" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="critical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="crude" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="cruel" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="cynical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="decadent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="deceitful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="delicate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="demanding" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="dependent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="desperate" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="destructive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="devious" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="difficult" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="dirty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disconcerting" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="discontented" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="discouraging" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="discourteous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="dishonest" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="disloyal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disobedient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disorderly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disorganized" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disputatious" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="disrespectful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disruptive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="dissolute" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="dissonant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="distractible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="disturbing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="dogmatic" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="domineering" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="dull" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="easily-discouraged" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="egocentric" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="enervated" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="envious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="erratic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="escapist" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="excitable" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="expedient" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="extravagant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="extreme" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="faithless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="false" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="fanatical" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="fanciful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="fatalistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="fawning" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="fearful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="fickle" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="fiery" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="fixed" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="flamboyant" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="foolish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="forgetful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="fraudulent" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="frightening" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="frivolous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="gloomy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="graceless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="grand" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="greedy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="grim" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="gullible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="hateful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="haughty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="hedonistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="hesitant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="hidebound" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="high-handed" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="hostile" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="ignorant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="imitative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="impatient" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="impractical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="imprudent" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="impulsive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="inconsiderate" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="incurious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="indecisive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="indulgent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol><symbol id="inert" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="inflexible" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="inhibited" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="insincere" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="insipid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="insulting" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="intolerant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="irascible" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="irrational" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="irresponsible" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="irritable" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="lazy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="libidinous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="loquacious" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="malicious" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="mannered" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="mawkish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="mealymouthed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="mechanical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="meddlesome" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="melancholic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="messy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="miserable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="miserly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="misguided" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="mistaken" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="money-minded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="monstrous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="moody" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="morbid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="muddle-headed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="naive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="narcissistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="narrow" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="narrow-minded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="natty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="negativistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="neglectful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="neurotic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="nihilistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="obnoxious" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="obsessive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="obvious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="odd" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="offhand" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="one-dimensional" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="one-sided" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="opinionated" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="opportunistic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="oppressive" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="outrageous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="overimaginative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="paranoid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="passive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="pedantic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="perverse" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="petty" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="phlegmatic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="plodding" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="pompous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="possessive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="power-hungry" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="predatory" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="prejudiced" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="presumptuous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="pretentious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="prim" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="procrastinating" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="provocative" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="pugnacious" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="puritanical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="quirky" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="reactionary" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="reactive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="regimental" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="regretful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="repentant" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 13l2-2 2 2"/></symbol>
+  <symbol id="repressed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="resentful" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="ridiculous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="rigorous" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="ritualistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="rowdy" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="ruined" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="sadistic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="sanctimonious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="scheming" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="scornful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="secretive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sedentary" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="selfish" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="self-indulgent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="shallow" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="shortsighted" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14c-2 0-4-3-4-6h8c0 3-2 6-4 6z"/></symbol>
+  <symbol id="shy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="silly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="single-minded" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="sloppy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="slow" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sly" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="small-thinking" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sociopathic" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="softheaded" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="sordid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="steely" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="stiff" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="strong-willed" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="stupid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="submissive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 12l2-2 4 4"/></symbol>
+  <symbol id="suspicious" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 14l-4-4 1.5-1.5L12 13l4.5-4.5L18 10l-6 6z"/></symbol>
+  <symbol id="tactless" viewBox="0 0 24 24"><path d="M3 9h18v2H3zm0 4h12v2H3z"/></symbol>
+  <symbol id="tasteless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="tense" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="thieving" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="thoughtless" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="timid" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="transparent" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="treacherous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="trend" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="troublesome" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="unappreciative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uncaring" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uncharitable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unconvincing" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uncooperative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uncreative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="uncritical" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unctuous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3 12c1 1 2 1 3 1s2 0 3-1"/></symbol>
+  <symbol id="undisciplined" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unfriendly" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="ungrateful" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unhealthy" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unimaginative" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unimpressive" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unlovable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unpolished" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unprincipled" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unrealistic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unreflective" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="unreliable" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="unstable" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="vacuous" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="vague" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="venal" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="venomous" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="vindictive" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+  <symbol id="vulnerable" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="weak" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 10h8"/></symbol>
+  <symbol id="willful" viewBox="0 0 24 24"><path d="M12 2v20m-6-10h12"/></symbol>
+  <symbol id="zany" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 5 2 7-6-4-6 4 2-7-5-5h6z"/></symbol>
+</svg>

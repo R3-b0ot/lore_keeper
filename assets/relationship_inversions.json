@@ -1,0 +1,40 @@
+{
+"Character": {
+    "symmetrical": [
+      "Friend of",
+      "Ally of",
+      "Rival of",
+      "Spouse of",
+      "Sibling of",
+      "Colleague of"
+    ],
+    "asymmetrical": {
+      "Parent of": "Child of",
+      "Child of": "Parent of",
+      "Mentor of": "Mentee of",
+      "Mentee of": "Mentor of"
+    }
+  },
+  "Location": {
+    "asymmetrical": {
+      "Resides in": "Residence of",
+      "Born in": "Birthplace of",
+      "Died in": "Deathplace of",
+      "Rules over": "Ruled by"
+    }
+  },
+  "Item": {
+    "asymmetrical": {
+      "Creator of": "Created by",
+      "Owner of": "Owned by",
+      "Wielder of": "Wielded by"
+    }
+  },
+  "Organization": {
+    "asymmetrical": {
+      "Leader of": "Led by",
+      "Member of": "Has member",
+      "Founder of": "Founded by"
+    }
+  }
+}
