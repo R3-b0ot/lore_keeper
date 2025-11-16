@@ -488,27 +488,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
     // Gender Breakdown
     final genderCounts = <String, int>{};
     for (final char in characters) {
-      final gender = char.gender ?? 'Unknown';
-      genderCounts[gender] = (genderCounts[gender] ?? 0) + 1;
+      // Use the gender from the first iteration as a representative value
+      if (char.iterations.isNotEmpty) {
+        final gender = char.iterations.first.gender ?? 'Unknown';
+        genderCounts[gender] = (genderCounts[gender] ?? 0) + 1;
+      }
     }
 
     // Characters without Bio
     final noBioCount = characters
-        .where((c) => c.bio == null || c.bio!.trim().isEmpty)
+        .where(
+          (c) =>
+              c.iterations.isEmpty ||
+              (c.iterations.first.bio ?? '').trim().isEmpty,
+        )
         .length;
-
-    // Most Common Traits
-    final traitCounts = <String, int>{};
-    for (final char in characters) {
-      for (final iteration in char.iterations) {
-        for (final trait in iteration.personalityTraits ?? []) {
-          traitCounts[trait] = (traitCounts[trait] ?? 0) + 1;
-        }
-      }
-    }
-    final sortedTraits = traitCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final topTraits = sortedTraits.take(5).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -523,19 +517,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
           _buildInfoCategory(
             'Gender Breakdown',
             genderCounts.map((key, value) => MapEntry(key, value.toString())),
-          ),
-          const Divider(height: 32),
-          _buildInfoCategory(
-            'Most Common Traits',
-            Map.fromEntries(
-              topTraits.map(
-                (entry) => MapEntry(entry.key, '${entry.value} characters'),
-              ),
-            ),
-            descriptions: {
-              'Most Common Traits':
-                  'The top 5 most frequently used personality traits across your cast.',
-            },
           ),
         ],
       ),
@@ -585,6 +566,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       fleschScore =
           206.835 -
           (1.015 * avgSentenceLength) -
+          // Syllables are hard, using avg word length as proxy
           (84.6 *
               (totalCharacters /
                   totalWords)); // Syllables are hard, using avg word length as proxy
@@ -745,6 +727,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return AlertDialog(
       title: Text(
         widget.project != null
@@ -753,14 +737,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
       ),
       contentPadding: const EdgeInsets.all(0),
       content: SizedBox(
-        width: 700,
-        height: 500,
+        width: screenWidth * 0.8,
+        height: screenHeight * 0.7,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Left column: Category List
             SizedBox(
-              width: 200,
+              width: screenWidth > 600 ? 200 : 150,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 itemCount: _categories.length,

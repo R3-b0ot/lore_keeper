@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
-import 'package:lore_keeper/modules/manuscript_module.dart';
+import 'package:lore_keeper/modules/manuscript_module.dart'; // Import the new module
 import 'package:lore_keeper/modules/character_module.dart'; // Import the new module
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/widgets/character_list_pane.dart';
+import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
@@ -193,10 +194,154 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _characterModuleKey.currentState?.reload();
   }
 
-  void _onCharacterCreated(String newKey) {
-    setState(() {
-      _selectedCharacterKey = newKey;
-    });
+  Future<void> _onCharacterCreated() async {
+    final newName = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final nameController = TextEditingController();
+        final formKey = GlobalKey<FormState>();
+        return AlertDialog(
+          title: const Text('Create New Character'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Character Name'),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(nameController.text.trim());
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newName != null && mounted) {
+      final newKey = await _characterListProvider!.createNewCharacter(newName);
+      _onCharacterSelected(newKey.toString());
+    }
+  }
+
+  Future<void> _showEditNameDialog(String characterKey) async {
+    final character = _characterListProvider!.characters.firstWhere(
+      (c) => c.key.toString() == characterKey,
+      orElse: () => Character(name: '', parentProjectId: -1),
+    );
+    // If the character's project ID is -1, it means it's the placeholder and wasn't found.
+    if (character.parentProjectId == -1) return;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final nameDialogController = TextEditingController(
+          text: character.name,
+        );
+        final formKey = GlobalKey<FormState>();
+
+        return AlertDialog(
+          title: const Text('Edit Character'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: nameDialogController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Character Name'),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop({'action': 'delete'}),
+              child: const Text(
+                'Delete Character',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop({
+                    'action': 'confirm',
+                    'name': nameDialogController.text.trim(),
+                  });
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+
+    if (result['action'] == 'confirm') {
+      final newName = result['name'] as String;
+      await _characterListProvider!.updateCharacterName(characterKey, newName);
+    } else if (result['action'] == 'delete') {
+      await _characterListProvider!.deleteCharacter(characterKey);
+      if (mounted) {
+        // After deletion, the provider reloads its list. We can now select the new first character.
+        if (_characterListProvider!.characters.isNotEmpty) {
+          _onCharacterSelected(
+            _characterListProvider!.characters.first.key.toString(),
+          );
+        } else {
+          _onCharacterSelected(''); // Clear selection if no characters are left
+        }
+      }
+    }
+  }
+
+  // Helper method to build the second column based on the selected module
+  Widget _buildSecondColumn() {
+    if (_moduleIndex == 0) {
+      return SizedBox(
+        width: 280,
+        child: ChapterPane(
+          chapterProvider: _chapterListProvider!,
+          selectedChapterKey: _selectedChapterKey,
+          onChapterSelected: _onChapterSelected,
+          onChapterCreated: _onChapterCreated,
+        ),
+      );
+    } else if (_moduleIndex == 1) {
+      return SizedBox(
+        width: 280,
+        child: CharacterListPane(
+          characterProvider: _characterListProvider!,
+          selectedCharacterKey: _selectedCharacterKey,
+          onCharacterSelected: _onCharacterSelected,
+          onCharacterCreated: _onCharacterCreated,
+          onCharacterEdit: _showEditNameDialog,
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildModuleContent() {
@@ -329,32 +474,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         ],
       ),
     );
-  }
-
-  // Helper method to build the second column based on the selected module
-  Widget _buildSecondColumn() {
-    if (_moduleIndex == 0) {
-      return SizedBox(
-        width: 280,
-        child: ChapterPane(
-          chapterProvider: _chapterListProvider!,
-          selectedChapterKey: _selectedChapterKey,
-          onChapterSelected: _onChapterSelected,
-          onChapterCreated: _onChapterCreated,
-        ),
-      );
-    } else if (_moduleIndex == 1) {
-      return SizedBox(
-        width: 280,
-        child: CharacterListPane(
-          characterProvider: _characterListProvider!,
-          selectedCharacterKey: _selectedCharacterKey,
-          onCharacterSelected: _onCharacterSelected,
-          onCharacterCreated: _onCharacterCreated,
-        ),
-      );
-    }
-    return const SizedBox.shrink();
   }
 }
 
@@ -741,14 +860,14 @@ class _ChapterPaneState extends State<ChapterPane> {
                                 padding: EdgeInsets.only(right: 8.0),
                                 child: Icon(
                                   Icons.drag_indicator,
-                                  color: Colors.grey,
+                                  color: Color(0x00808080),
                                 ),
                               ),
                             ),
                             Expanded(
                               child: _buildButton(
                                 context,
-                                Icons.menu_book,
+                                Icons.person_outline,
                                 '${chapter.orderIndex + 1}. ${chapter.title}',
                                 isSelected,
                                 onPressed: () => widget.onChapterSelected(
@@ -962,6 +1081,7 @@ class _ChapterPaneState extends State<ChapterPane> {
     bool isSelected, {
     required VoidCallback onPressed,
     VoidCallback? onRename,
+    VoidCallback? onEdit,
     VoidCallback? onDelete,
   }) {
     final theme = Theme.of(context); // Now context is available
@@ -987,6 +1107,7 @@ class _ChapterPaneState extends State<ChapterPane> {
                   ? colorScheme.primary
                   : colorScheme.onSurface,
               side: BorderSide(
+                // This was correct
                 color: isSelected ? colorScheme.primary : colorScheme.outline,
               ),
               shape: onRename != null
@@ -1005,6 +1126,7 @@ class _ChapterPaneState extends State<ChapterPane> {
             context: context,
             isSelected: isSelected,
             onRename: onRename,
+            onEdit: onEdit,
             onDelete: onDelete, // Pass the onDelete callback
           ),
       ],
@@ -1015,6 +1137,7 @@ class _ChapterPaneState extends State<ChapterPane> {
     required BuildContext context,
     required bool isSelected,
     required VoidCallback onRename,
+    required VoidCallback? onEdit,
     required VoidCallback? onDelete,
   }) {
     final theme = Theme.of(context); // Now context is available
@@ -1037,13 +1160,18 @@ class _ChapterPaneState extends State<ChapterPane> {
         onSelected: (value) {
           if (value == 'rename') {
             onRename();
+          } else if (value == 'edit' && onEdit != null) {
+            // This was correct
+            onEdit.call();
           } else if (value == 'delete') {
             onDelete?.call();
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
           const PopupMenuItem<String>(value: 'rename', child: Text('Rename')),
-          if (onDelete != null)
+          if (onEdit != null) // This was correct
+            const PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
+          if (onDelete != null) // This was correct
             const PopupMenuItem<String>(
               value: 'delete',
               child: Text('Delete', style: TextStyle(color: Colors.red)),

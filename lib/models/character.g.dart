@@ -24,21 +24,18 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       gender: fields[4] as String?,
       customGender: fields[5] as String?,
       bio: fields[6] as String?,
-      personalityTraits: (fields[7] as List?)?.cast<String>(),
-      statistics: (fields[8] as List?)
-          ?.map((dynamic e) => (e as Map).cast<String, String>())
-          ?.toList(),
-      physicalTraits: (fields[9] as List?)
-          ?.map((dynamic e) => (e as Map).cast<String, String>())
-          ?.toList(),
-      originCountry: fields[10] as String?,
+      originCountry: fields[7] as String?,
+      traits: (fields[8] as List?)?.cast<String>(),
+      congenitalTraits: (fields[9] as List?)?.cast<String>().toSet(),
+      leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
+      personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, CharacterIteration obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.iterationName)
       ..writeByte(1)
@@ -54,13 +51,15 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       ..writeByte(6)
       ..write(obj.bio)
       ..writeByte(7)
-      ..write(obj.personalityTraits)
+      ..write(obj.originCountry)
       ..writeByte(8)
-      ..write(obj.statistics)
+      ..write(obj.traits)
       ..writeByte(9)
-      ..write(obj.physicalTraits)
+      ..write(obj.congenitalTraits.toList())
       ..writeByte(10)
-      ..write(obj.originCountry);
+      ..write(obj.leveledTraits)
+      ..writeByte(11)
+      ..write(obj.personalityTraits);
   }
 
   @override
@@ -85,14 +84,16 @@ class CharacterAdapter extends TypeAdapter<Character> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Character(
-      name: fields[0] as String,
-      parentProjectId: fields[1] as int,
-      aliases: (fields[2] as List?)?.cast<String>(),
-      species: fields[3] as String?,
-      relationWebLayout: (fields[15] as Map?)?.map((dynamic k, dynamic v) =>
-          MapEntry(k as dynamic, (v as Map).cast<String, double>())),
-      createdAt: fields[17] as DateTime?,
-    )
+        name: fields[0] as String,
+        parentProjectId: fields[1] as int,
+        aliases: (fields[2] as List?)?.cast<String>(),
+        species: fields[3] as String?,
+        relationWebLayout: (fields[15] as Map?)?.map(
+          (dynamic k, dynamic v) =>
+              MapEntry(k as dynamic, (v as Map).cast<String, double>()),
+        ),
+        createdAt: fields[17] as DateTime?,
+      )
       ..gender = fields[4] as String?
       ..customGender = fields[5] as String?
       ..residence = fields[7] as String?

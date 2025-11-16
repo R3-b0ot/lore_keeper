@@ -5,8 +5,9 @@ import 'package:lore_keeper/providers/character_list_provider.dart';
 class CharacterListPane extends StatelessWidget {
   final CharacterListProvider characterProvider;
   final String? selectedCharacterKey;
-  final ValueChanged<String> onCharacterSelected;
-  final ValueChanged<String> onCharacterCreated;
+  final ValueChanged<String> onCharacterSelected; // This is correct
+  final VoidCallback onCharacterCreated;
+  final ValueChanged<String>? onCharacterEdit;
 
   const CharacterListPane({
     super.key,
@@ -14,6 +15,7 @@ class CharacterListPane extends StatelessWidget {
     required this.selectedCharacterKey,
     required this.onCharacterSelected,
     required this.onCharacterCreated,
+    this.onCharacterEdit,
   });
 
   @override
@@ -48,13 +50,7 @@ class CharacterListPane extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextButton.icon(
-                onPressed: () async {
-                  // For simplicity, we'll just create a new character directly
-                  final newKey = await characterProvider.createNewCharacter(
-                    'New Character',
-                  );
-                  onCharacterCreated(newKey.toString());
-                },
+                onPressed: onCharacterCreated, // Directly call the VoidCallback
                 icon: Icon(
                   Icons.add,
                   size: 16,
@@ -96,27 +92,38 @@ class CharacterListPane extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
-      child: OutlinedButton.icon(
-        onPressed: () => onCharacterSelected(character.key.toString()),
-        icon: Icon(
-          Icons.person_outline,
-          size: 16,
-          color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-        ),
-        label: Text(character.name),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          backgroundColor: isSelected
-              ? colorScheme.primaryContainer
-              : colorScheme.surface,
-          foregroundColor: isSelected
-              ? colorScheme.primary
-              : colorScheme.onSurface,
-          side: BorderSide(
-            color: isSelected ? colorScheme.primary : colorScheme.outline,
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => onCharacterSelected(character.key.toString()),
+              icon: Icon(
+                Icons.person_outline,
+                size: 16,
+                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+              ),
+              label: Text(character.name),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,
+                backgroundColor: isSelected
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surface,
+                foregroundColor: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.onSurface,
+                side: BorderSide(
+                  color: isSelected ? colorScheme.primary : colorScheme.outline,
+                ),
+              ),
+            ),
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            onPressed: () => onCharacterEdit?.call(character.key.toString()),
+            tooltip: 'Edit Character',
+          ),
+        ],
       ),
     );
   }

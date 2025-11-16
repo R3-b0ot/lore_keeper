@@ -42,8 +42,8 @@ class DiffViewDialog extends StatelessWidget {
         'Compare and Revert: ${DateFormat.yMMMd().add_jm().format(historyEntry.timestamp)}',
       ),
       content: SizedBox(
-        width: 800,
-        height: 600,
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.7,
         child: SingleChildScrollView(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

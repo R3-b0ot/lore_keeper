@@ -42,7 +42,7 @@ dependencies:
   flutter_quill_extensions: ^11.0.0 # Companion package for extra features
 
   language_tool: ^2.2.0 # For grammar and style checking
-  file_picker: ^6.2.1 # For picking files from the local system (e.g., images)
+  file_picker: ^10.3.6 # For picking files from the local system (e.g., images)
 
   # If you encounter dependency conflicts after adding flutter_quill,
   # you might need to add specific dependency_overrides here.
@@ -67,13 +67,13 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
   mockito: ^5.4.4
-  analyzer: ^5.13.0 # This version range should be compatible with recent SDKs
+  analyzer: ^6.4.1 # This version range should be compatible with recent SDKs
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

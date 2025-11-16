@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/models/character.dart';
 
 class CharacterListProvider with ChangeNotifier {
@@ -21,11 +22,6 @@ class CharacterListProvider with ChangeNotifier {
         .where((char) => char.parentProjectId == _projectId)
         .toList();
 
-    if (_characters.isEmpty && !_isInitialized) {
-      createNewCharacter('Hero');
-      return; // createNewCharacter will call _loadCharacters again
-    }
-
     _isInitialized = true;
     notifyListeners();
   }
@@ -41,15 +37,58 @@ class CharacterListProvider with ChangeNotifier {
   }
 
   Future<void> deleteCharacter(dynamic characterKey) async {
-    await _characterBox.delete(characterKey);
+    debugPrint(
+      '[PROVIDER] 1. Starting deletion for character key: $characterKey',
+    );
+
+    // Parse the key to handle both string and int types
+    dynamic parsedKey = characterKey;
+    if (characterKey is String) {
+      final intKey = int.tryParse(characterKey);
+      if (intKey != null) {
+        parsedKey = intKey;
+      }
+    }
+
+    // --- 1. Delete all associated links ---
+    final linkBox = Hive.box<Link>('links');
+    final linksToDelete = linkBox.values.where(
+      (link) => link.entity1Key == parsedKey || link.entity2Key == parsedKey,
+    );
+
+    if (linksToDelete.isNotEmpty) {
+      debugPrint('[DB] 1a. Deleting ${linksToDelete.length} associated links.');
+      await linkBox.deleteAll(linksToDelete.map((l) => l.key));
+      debugPrint('[DB] 1b. Associated links deleted.');
+    }
+
+    // --- 3. Delete the character itself from the database ---
+    await _characterBox.delete(parsedKey);
+    debugPrint('[DB] 3. Delete command issued for character key: $parsedKey');
+
+    // --- 4. Reload the in-memory list from the database and notify the UI ---
+    debugPrint('[PROVIDER] 4. Reloading all characters from DB to update UI.');
     _loadCharacters();
   }
 
   Future<void> updateCharacterName(dynamic characterKey, String newName) async {
     final character = _characterBox.get(characterKey);
+
     if (character != null) {
+      debugPrint(
+        '[PROVIDER] 1. Starting name update for character key: $characterKey',
+      );
+      debugPrint(
+        '[DB] 2. Updating character "${character.name}" to "$newName" and saving.',
+      );
       character.name = newName;
       await character.save();
+      debugPrint('[DB] 3. Save complete.');
+
+      // --- 4. Reload the in-memory list from the database and notify the UI ---
+      debugPrint(
+        '[PROVIDER] 4. Reloading all characters from DB to update UI.',
+      );
       _loadCharacters();
     }
   }

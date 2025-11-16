@@ -26,16 +26,19 @@ class CharacterIteration extends HiveObject {
   String? bio;
 
   @HiveField(7)
-  List<String>? personalityTraits;
+  String? originCountry;
 
   @HiveField(8)
-  List<Map<String, String>>? statistics;
+  List<String>? traits;
 
   @HiveField(9)
-  List<Map<String, String>>? physicalTraits;
+  Set<String> congenitalTraits;
 
   @HiveField(10)
-  String? originCountry;
+  Map<String, int> leveledTraits;
+
+  @HiveField(11)
+  Map<String, int> personalityTraits;
 
   CharacterIteration({
     required this.iterationName,
@@ -45,11 +48,14 @@ class CharacterIteration extends HiveObject {
     this.gender,
     this.customGender,
     this.bio,
-    this.personalityTraits,
-    this.statistics,
-    this.physicalTraits,
     this.originCountry,
-  });
+    this.traits,
+    Set<String>? congenitalTraits,
+    Map<String, int>? leveledTraits,
+    Map<String, int>? personalityTraits,
+  }) : congenitalTraits = congenitalTraits ?? {},
+       leveledTraits = leveledTraits ?? {},
+       personalityTraits = personalityTraits ?? {};
 
   Map<String, dynamic> toJson() {
     return {
@@ -60,10 +66,11 @@ class CharacterIteration extends HiveObject {
       'occupation': occupation,
       'gender': gender,
       'customGender': customGender,
-      'personalityTraits': personalityTraits,
-      'statistics': statistics,
-      'physicalTraits': physicalTraits,
       'originCountry': originCountry,
+      'traits': traits,
+      'congenitalTraits': congenitalTraits.toList(),
+      'leveledTraits': leveledTraits,
+      'personalityTraits': personalityTraits,
     };
   }
 
@@ -76,15 +83,17 @@ class CharacterIteration extends HiveObject {
       occupation: json['occupation'],
       gender: json['gender'],
       customGender: json['customGender'],
-      personalityTraits: (json['personalityTraits'] as List<dynamic>?)
-          ?.cast<String>(),
-      statistics: (json['statistics'] as List<dynamic>?)
-          ?.map((s) => (s as Map).cast<String, String>())
-          .toList(),
-      physicalTraits: (json['physicalTraits'] as List<dynamic>?)
-          ?.map((p) => (p as Map).cast<String, String>())
-          .toList(),
       originCountry: json['originCountry'],
+      traits: (json['traits'] as List<dynamic>?)?.cast<String>(),
+      congenitalTraits: Set<String>.from(
+        json['congenitalTraits'] as List<dynamic>? ?? [],
+      ),
+      leveledTraits: Map<String, int>.from(
+        json['leveledTraits'] as Map<dynamic, dynamic>? ?? {},
+      ),
+      personalityTraits: Map<String, int>.from(
+        json['personalityTraits'] as Map<dynamic, dynamic>? ?? {},
+      ),
     );
   }
 }
