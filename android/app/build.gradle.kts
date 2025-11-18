@@ -6,28 +6,28 @@ plugins {
 }
 
 android {
-    namespace = "com.example.lore_keeper"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    namespace = "com.lorekeeper.app"
+    compileSdk = (findProperty("android.compileSdk") as String?)?.toInt()
+    ndkVersion = findProperty("android.ndkVersion") as String
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.lore_keeper"
+        // A unique Application ID is required for the Google Play Store.
+        applicationId = "com.lorekeeper.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = (findProperty("android.minSdk") as String?)?.toInt()
+        targetSdk = (findProperty("android.targetSdk") as String?)?.toInt()
+        versionCode = (findProperty("android.versionCode") as String?)?.toInt()
+        versionName = findProperty("android.versionName") as String
     }
 
     buildTypes {

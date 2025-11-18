@@ -11,6 +11,7 @@ import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/section.dart'; // ⭐️ NEW IMPORT ⭐️
 import 'package:lore_keeper/models/link.dart'; // 1. Import the new Link model
 import 'package:lore_keeper/models/history_entry.dart';
+import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,8 @@ import 'package:lore_keeper/widgets/project_details_dialog.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
 import 'package:lore_keeper/widgets/create_project_dialog.dart';
 import 'dart:io';
+
+import 'screens/trait_editor_screen.dart';
 
 // Global access point for the Project data store (Hive Box)
 late Box<Project> projectBox;
@@ -52,6 +55,7 @@ Future<void> initializeHive() async {
   Hive.registerAdapter(SectionAdapter()); // ⭐️ REGISTER NEW ADAPTER ⭐️
   Hive.registerAdapter(LinkAdapter()); // 2. Register the LinkAdapter
   Hive.registerAdapter(CharacterIterationAdapter()); // Add this line
+  Hive.registerAdapter(CustomTraitAdapter());
   Hive.registerAdapter(HistoryEntryAdapter()); // Register the History adapter
 
   projectBox = await Hive.openBox<Project>('projects');
@@ -60,6 +64,7 @@ Future<void> initializeHive() async {
   characterBox = await Hive.openBox<Character>('characters');
   await Hive.openBox<Link>('links'); // 3. Open the 'links' box
   await Hive.openBox<HistoryEntry>('history');
+  await Hive.openBox<SimpleTrait>('custom_traits');
 }
 
 // ... (Rest of the file is unchanged) ...

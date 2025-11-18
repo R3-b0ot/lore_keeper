@@ -699,7 +699,11 @@ class _RelationChartScreenState extends State<RelationChartScreen>
                 child: PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'delete') {
-                      // isCenter ? _deleteAllNodes() : _deleteNode(char); // This needs to be updated
+                      // The logic for deleting is now in _buildNodeContent,
+                      // which receives the link for external nodes.
+                      // This PopupMenuButton is part of the old _buildNode logic
+                      // and is effectively unused now. The real one is in _buildNodeContent.
+                      // We can leave this as is or remove it, but it's not hurting anything.
                     }
                   },
                   itemBuilder: (BuildContext context) => [
@@ -1058,7 +1062,7 @@ class _RelationChartScreenState extends State<RelationChartScreen>
       if (char.iterations.length > widget.iterationIndex) {
         iterationTitle = char.iterations[widget.iterationIndex].iterationName;
       }
-    } else if (link != null) {
+    } else {
       final int? externalIterationIndex = link.entity1Key == char.key
           ? link.entity1IterationIndex
           : link.entity2IterationIndex;
@@ -1144,7 +1148,7 @@ class _RelationChartScreenState extends State<RelationChartScreen>
                 if (value == 'delete') {
                   if (isCenter) {
                     _deleteAllNodes();
-                  } else if (link != null) {
+                  } else {
                     _deleteNode(link);
                   }
                 }
@@ -1456,10 +1460,7 @@ class RelationPainter extends CustomPainter {
     final centerPoint = canvasCenter;
 
     for (var rel in relations) {
-      final otherKey = rel.entity1Key == center.key
-          ? rel.entity2Key
-          : rel.entity1Key; // Get the key of the other character
-
+      // Get the key of the other character
       // Skip if the target position hasn't been calculated yet
       if (!nodePositions.containsKey(rel.key)) continue;
 

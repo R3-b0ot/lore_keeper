@@ -1,0 +1,3 @@
+- [x] Update _buildDichotomousButton to filled style: remove borders, change unselected bg to secondaryContainer
+- [x] Update _buildHorizontalTraitButton to filled style: remove borders, change unselected bg to secondaryContainer
+- [x] Test the UI changes in the app

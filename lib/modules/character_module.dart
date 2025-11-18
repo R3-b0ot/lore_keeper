@@ -560,14 +560,17 @@ class CharacterModuleState extends State<CharacterModule>
             children: [
               _PanelCard(
                 title: 'Basic Information',
-                content: _BasicInfoForm(
-                  nameController: _nameController,
-                  aliasesController: _aliasesController,
-                  occupationController: _occupationController,
-                  customGenderController: _customGenderController,
-                  character: _currentIteration,
-                  onChanged: _onFieldChanged,
-                  onStateChanged: () => setState(() {}),
+                content: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _BasicInfoForm(
+                    nameController: _nameController,
+                    aliasesController: _aliasesController,
+                    occupationController: _occupationController,
+                    customGenderController: _customGenderController,
+                    character: _currentIteration,
+                    onChanged: _onFieldChanged,
+                    onStateChanged: () => setState(() {}),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -625,14 +628,17 @@ class CharacterModuleState extends State<CharacterModule>
         // Basic Information
         _PanelCard(
           title: 'Basic Information',
-          content: _BasicInfoForm(
-            nameController: _nameController,
-            aliasesController: _aliasesController,
-            occupationController: _occupationController,
-            customGenderController: _customGenderController,
-            character: _currentIteration,
-            onChanged: _onFieldChanged,
-            onStateChanged: () => setState(() {}),
+          content: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _BasicInfoForm(
+              nameController: _nameController,
+              aliasesController: _aliasesController,
+              occupationController: _occupationController,
+              customGenderController: _customGenderController,
+              character: _currentIteration,
+              onChanged: _onFieldChanged,
+              onStateChanged: () => setState(() {}),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -1288,12 +1294,29 @@ class _TraitsPanel extends StatelessWidget {
   final CharacterIteration iteration;
 
   const _TraitsPanel({required this.iteration});
+  // Note: In a larger application, it would be more efficient to pass the
+  // fully loaded trait data (including custom traits) down to this widget
+  // rather than looking it up here. For now, this approach is straightforward
+  // and works correctly.
 
   @override
   Widget build(BuildContext context) {
     final hasCongenital = iteration.congenitalTraits.isNotEmpty;
     final hasLeveled = iteration.leveledTraits.isNotEmpty;
-    final hasPersonality = iteration.personalityTraits.isNotEmpty;
+
+    // Get the list of valid personality trait group names from the source.
+    final validPersonalityTraitNames =
+        (traitData['personality'] as List<dynamic>)
+            .cast<PersonalityTrait>()
+            .map((t) => t.groupName)
+            .toSet();
+
+    // Filter the character's traits to only include valid ones.
+    final validPersonalityTraits = iteration.personalityTraits.entries.where(
+      (entry) => validPersonalityTraitNames.contains(entry.key),
+    );
+
+    final hasPersonality = validPersonalityTraits.isNotEmpty;
 
     if (!hasCongenital && !hasLeveled && !hasPersonality) {
       return const Padding(
@@ -1318,9 +1341,17 @@ class _TraitsPanel extends StatelessWidget {
             Wrap(
               spacing: 8.0,
               runSpacing: 4.0,
-              children: iteration.congenitalTraits
-                  .map((trait) => Chip(label: Text(trait)))
-                  .toList(),
+              children: iteration.congenitalTraits.map((traitName) {
+                final icon = _getCongenitalTraitIcon(traitName);
+                return Chip(
+                  avatar: icon.isNotEmpty ? Text(icon) : null,
+                  label: Text(traitName),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 4.0,
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
           ],
@@ -1336,10 +1367,16 @@ class _TraitsPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(entry.key),
-                    Text(
-                      _getLeveledTraitLabel(entry.key, entry.value),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    Expanded(child: Text(entry.key)),
+                    Row(
+                      children: [
+                        Text(_getLeveledTraitIcon(entry.key, entry.value)),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getLeveledTraitLabel(entry.key, entry.value),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1350,16 +1387,22 @@ class _TraitsPanel extends StatelessWidget {
           if (hasPersonality) ...[
             Text('Personality', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            ...iteration.personalityTraits.entries.map(
+            ...validPersonalityTraits.map(
               (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 4.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(entry.key),
-                    Text(
-                      _getPersonalityTraitLabel(entry.key, entry.value),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    Expanded(child: Text(entry.key)),
+                    Row(
+                      children: [
+                        Text(_getPersonalityTraitIcon(entry.key, entry.value)),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getPersonalityTraitLabel(entry.key, entry.value),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1369,6 +1412,39 @@ class _TraitsPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getCongenitalTraitIcon(String traitName) {
+    // Combine all simple traits (default and custom) to find the icon.
+    final allSimpleTraits = [
+      ...(traitData['congenital'] as List<dynamic>).cast<SimpleTrait>(),
+      ...(traitData['physical'] as List<dynamic>).cast<SimpleTrait>(),
+    ];
+
+    // This is a simplified lookup. For custom traits, we would need to
+    // load them from TraitService here as well.
+    try {
+      final trait = allSimpleTraits.firstWhere((t) => t.name == traitName);
+      return trait.icon;
+    } catch (e) {
+      return ''; // Return empty string if not found
+    }
+  }
+
+  String _getLeveledTraitIcon(String traitName, int value) {
+    final leveledTraitGroups =
+        traitData['leveled'] as Map<String, List<dynamic>>?;
+    if (leveledTraitGroups == null ||
+        !leveledTraitGroups.containsKey(traitName)) {
+      return '';
+    }
+
+    final traitsInGroup = leveledTraitGroups[traitName]!.cast<SimpleTrait>();
+    if (value >= 0 && value < traitsInGroup.length) {
+      return traitsInGroup[value].icon;
+    }
+
+    return '';
   }
 
   String _getLeveledTraitLabel(String traitName, int value) {
@@ -1382,35 +1458,77 @@ class _TraitsPanel extends StatelessWidget {
         'Pretty/Handsome',
         'Beautiful',
         'Magnificent',
+        'Celestial',
       ],
       'Intelligence': [
         'Incapable',
         'Imbecile',
-        'Stupid',
+        'Dull',
         'Slow',
-        'Quick',
-        'Intelligent',
-        'Genius',
-        'Omniscient',
+        'Normal',
+        'Clever',
+        'Wise',
+        'Brilliant',
+        'Transcendent',
       ],
       'Physique': [
+        'Dead Man/Woman',
         'Feeble',
         'Frail',
-        'Delicate',
-        'Hale',
+        'Weak',
+        'Average',
+        'Strong',
         'Robust',
-        'Amazonian/Herculean',
-        'Demigod',
+        'Mighty',
         'Living God',
       ],
     };
     return levels[traitName]?[value] ?? 'Unknown';
   }
 
+  String _getPersonalityTraitIcon(String traitName, int value) {
+    final personalityTraitGroups =
+        traitData['personality'] as List<PersonalityTrait>?;
+    if (personalityTraitGroups == null) return '';
+
+    try {
+      final group = personalityTraitGroups.firstWhere(
+        (g) => g.groupName == traitName,
+      );
+      final option = group.options.firstWhere(
+        (o) => o.value == value,
+        orElse: () =>
+            TraitOption(name: 'Neutral', value: 0, icon: '', explanation: ''),
+      );
+      return option.icon;
+    } catch (e) {
+      return '';
+    }
+  }
+
   String _getPersonalityTraitLabel(String traitName, int value) {
-    if (value < 0) return 'Negative'; // Simplified for now
-    if (value > 0) return 'Positive';
-    return 'Neutral';
+    // Find the corresponding personality trait group from the main data source.
+    final personalityTraitGroups =
+        traitData['personality'] as List<PersonalityTrait>?;
+    if (personalityTraitGroups == null) return 'Unknown';
+
+    try {
+      // Find the group that matches the traitName (e.g., "Temper").
+      final group = personalityTraitGroups.firstWhere(
+        (g) => g.groupName == traitName,
+      );
+
+      // Within that group, find the option that matches the selected value.
+      final option = group.options.firstWhere(
+        (o) => o.value == value,
+        orElse: () =>
+            TraitOption(name: 'Neutral', value: 0, icon: '', explanation: ''),
+      );
+      return option.name;
+    } catch (e) {
+      // If the trait group or option isn't found, return a fallback.
+      return 'Unknown';
+    }
   }
 }
 
@@ -1492,80 +1610,80 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        // Using a list view inside the constrained box to make the content scrollable
-        children: [
-          // Full Name
-          _FormItem(
-            label: 'Full Name',
-            widget: TextField(
-              controller: widget.nameController,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      // Using a list view inside the constrained box to make the content scrollable
+      children: [
+        // Full Name
+        _FormItem(
+          label: 'Full Name',
+          widget: TextField(
+            controller: widget.nameController,
+            decoration: const InputDecoration(
+              hintText: 'Enter iteration-specific name...',
+            ),
+            onChanged: (_) => widget.onChanged(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Aliases
+        _FormItem(
+          label: 'Aliases',
+          widget: TextField(
+            controller: widget.aliasesController,
+            decoration: const InputDecoration(
+              hintText: 'Enter comma-separated aliases',
+            ),
+            onChanged: (_) => widget.onChanged(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Origin Country
+        _FormItem(
+          label: 'Origin Country',
+          widget: InkWell(
+            onTap: _isLoadingCountries ? null : _showCountrySelectionDialog,
+            child: InputDecorator(
               decoration: const InputDecoration(
-                hintText: 'Enter iteration-specific name...',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                suffixIcon: Icon(Icons.arrow_drop_down),
               ),
-              onChanged: (_) => widget.onChanged(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Aliases
-          _FormItem(
-            label: 'Aliases',
-            widget: TextField(
-              controller: widget.aliasesController,
-              decoration: const InputDecoration(
-                hintText: 'Enter comma-separated aliases',
-              ),
-              onChanged: (_) => widget.onChanged(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Origin Country
-          _FormItem(
-            label: 'Origin Country',
-            widget: InkWell(
-              onTap: _isLoadingCountries ? null : _showCountrySelectionDialog,
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  suffixIcon: Icon(Icons.arrow_drop_down),
-                ),
-                child: Text(
-                  widget.character.originCountry ?? 'Select or Type...',
-                ),
+              child: Text(
+                widget.character.originCountry ?? 'Select or Type...',
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          // Residence
-          _FormItem(
-            label: 'Residence',
-            widget: TextField(
-              decoration: const InputDecoration(hintText: 'Enter some text...'),
-              onChanged: (_) => widget.onChanged(),
-            ),
+        ),
+        const SizedBox(height: 12),
+        // Residence
+        _FormItem(
+          label: 'Residence',
+          widget: TextField(
+            decoration: const InputDecoration(hintText: 'Enter some text...'),
+            onChanged: (_) => widget.onChanged(),
           ),
-          const SizedBox(height: 12),
-          // Gender
-          _FormItem(
-            label: 'Gender',
-            widget: _buildDropdown(
-              value: widget.character.gender ?? 'Male',
-              items: ['Male', 'Female', 'Custom'],
-              onChanged: (value) {
-                widget.character.gender = value;
-                widget.onStateChanged();
-                widget.onChanged();
-              },
-              hint: 'Select or Type...',
-            ),
+        ),
+        const SizedBox(height: 12),
+        // Gender
+        _FormItem(
+          label: 'Gender',
+          widget: _buildDropdown(
+            value: widget.character.gender ?? 'Male',
+            items: ['Male', 'Female', 'Custom'],
+            onChanged: (value) {
+              widget.character.gender = value;
+              widget.onStateChanged();
+              widget.onChanged();
+            },
+            hint: 'Select or Type...',
           ),
-          const SizedBox(height: 12),
-          if (widget.character.gender == 'Custom')
-            _FormItem(
+        ),
+        const SizedBox(height: 12),
+        if (widget.character.gender == 'Custom')
+          Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: _FormItem(
               label: 'Custom Gender',
               widget: TextField(
                 controller: widget.customGenderController,
@@ -1575,30 +1693,30 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
                 onChanged: (_) => widget.onChanged(),
               ),
             ),
-          const SizedBox(height: 12),
-          // Formal Education
-          _FormItem(
-            label: 'Formal Education',
-            widget: _buildDropdown(
-              value: null, // Placeholder
-              items: [],
-              onChanged: (v) {},
-              hint: 'Select or Type...',
-            ),
           ),
-          const SizedBox(height: 12),
-          // Occupation
-          _FormItem(
-            label: 'Occupation',
-            widget: TextField(
-              controller: widget.occupationController,
-              decoration: const InputDecoration(hintText: 'Enter some text...'),
-              onChanged: (_) => widget.onChanged(),
-            ),
+        const SizedBox(height: 12),
+        // Formal Education
+        _FormItem(
+          label: 'Formal Education',
+          widget: _buildDropdown(
+            value: null, // Placeholder
+            items: [],
+            onChanged: (v) {},
+            hint: 'Select or Type...',
           ),
-          const SizedBox(height: 12),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        // Occupation
+        _FormItem(
+          label: 'Occupation',
+          widget: TextField(
+            controller: widget.occupationController,
+            decoration: const InputDecoration(hintText: 'Enter some text...'),
+            onChanged: (_) => widget.onChanged(),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
@@ -1693,16 +1811,13 @@ class _FormItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          widget,
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        widget,
+      ],
     );
   }
 }

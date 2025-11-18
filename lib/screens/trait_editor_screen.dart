@@ -1,18 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:lore_keeper/services/trait_service.dart';
+import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 
 // --- 1. Data Models ---
 
 // Model for simple traits (Congenital, Physical)
+@HiveType(typeId: 9) // Assign a unique typeId
 class SimpleTrait {
+  @HiveField(0)
   final String name;
+  @HiveField(1)
   final String icon;
+  @HiveField(2)
   final String explanation;
+  @HiveField(3)
+  final String type; // 'congenital' or 'physical'
 
   SimpleTrait({
     required this.name,
     required this.icon,
     required this.explanation,
+    this.type = 'congenital', // Default type
   });
+
+  // Factory constructor for creating a new SimpleTrait instance from a map.
+  factory SimpleTrait.fromJson(Map<String, dynamic> json) {
+    return SimpleTrait(
+      name: json['name'] as String,
+      icon: json['icon'] as String,
+      explanation: json['explanation'] as String,
+      type: json['type'] as String? ?? 'congenital', // Provide a default value
+    );
+  }
+
+  // Method for converting a SimpleTrait instance to a map.
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'icon': icon,
+      'explanation': explanation,
+      'type': type,
+    };
+  }
 }
 
 // Model for personality traits (Dichotomous, Spectrum)
@@ -306,6 +336,61 @@ final Map<String, dynamic> traitData = {
         ),
       ],
     ),
+    PersonalityTrait(
+      groupName: "Forgiveness",
+      options: [
+        TraitOption(
+          name: "Forgiving",
+          value: 1,
+          icon: "🤝",
+          explanation: "Ready to pardon others and let go of grudges.",
+        ),
+        TraitOption(
+          name: "Vengeful",
+          value: -1,
+          icon: "🔪",
+          explanation: "Driven to seek retribution for perceived injuries.",
+        ),
+      ],
+    ),
+    PersonalityTrait(
+      groupName: "Trust",
+      options: [
+        TraitOption(
+          name: "Trusting",
+          value: 1,
+          icon: "🤗",
+          explanation:
+              "Tends to believe in the good intentions and reliability of others.",
+        ),
+        TraitOption(
+          name: "Paranoid",
+          value: -1,
+          icon: "👀",
+          explanation:
+              "Suspicious and distrustful, often expecting betrayal or harm.",
+        ),
+      ],
+    ),
+    PersonalityTrait(
+      groupName: "Orderliness",
+      options: [
+        TraitOption(
+          name: "Methodical",
+          value: 1,
+          icon: "📋",
+          explanation:
+              "Prefers structure, planning, and systematic approaches.",
+        ),
+        TraitOption(
+          name: "Chaotic",
+          value: -1,
+          icon: "💥",
+          explanation:
+              "Unpredictable and disorganized; thrives in or creates disorder.",
+        ),
+      ],
+    ),
 
     // --- Spectrum (3 Choices) ---
     PersonalityTrait(
@@ -443,6 +528,48 @@ final Map<String, dynamic> traitData = {
       icon: "💢",
       explanation:
           "Quick to anger, often violent, with little patience for others.",
+    ),
+    SimpleTrait(
+      name: "Giant",
+      icon: "🧍",
+      explanation:
+          "Towers over most, possessing immense strength but often facing social and physical challenges.",
+    ),
+    SimpleTrait(
+      name: "Dwarf",
+      icon: "⚒️",
+      explanation:
+          "Significantly shorter and stockier than average, often resilient and strong for their size.",
+    ),
+    SimpleTrait(
+      name: "Ambidextrous",
+      icon: "✍️",
+      explanation:
+          "Equally adept at using both hands, a rare and useful skill.",
+    ),
+    SimpleTrait(
+      name: "Pure-blooded",
+      icon: "🩸",
+      explanation:
+          "Descends from a historically significant and unmixed lineage, carrying social weight.",
+    ),
+    SimpleTrait(
+      name: "Twin",
+      icon: "♊",
+      explanation:
+          "Born as one of a pair, sharing a unique and sometimes mysterious bond.",
+    ),
+    SimpleTrait(
+      name: "Barren/Sterile",
+      icon: "🚫",
+      explanation:
+          "Unable to produce offspring, which can have significant social and dynastic implications.",
+    ),
+    SimpleTrait(
+      name: "Heterochromia",
+      icon: "👁️",
+      explanation:
+          "Possesses two different colored eyes, often seen as mysterious or unnatural.",
     ),
   ],
 
@@ -648,6 +775,46 @@ final Map<String, dynamic> traitData = {
       explanation:
           "A castrated man, historically employed as a guard or official.",
     ),
+    SimpleTrait(
+      name: "Tattooed",
+      icon: "🐉",
+      explanation:
+          "Body is covered in ink, telling stories or showing allegiance.",
+    ),
+    SimpleTrait(
+      name: "Branded",
+      icon: "⚜️",
+      explanation: "Marked with a symbol of ownership, shame, or honor.",
+    ),
+    SimpleTrait(
+      name: "Bald",
+      icon: "🦲",
+      explanation:
+          "Lacking hair on the head, either by choice, nature, or affliction.",
+    ),
+    SimpleTrait(
+      name: "Pockmarked",
+      icon: "🧫",
+      explanation:
+          "Skin scarred by disease, leaving a rough and pitted texture.",
+    ),
+    SimpleTrait(
+      name: "Lame",
+      icon: "🦵",
+      explanation: "Has a permanent injury to a leg, causing a limp.",
+    ),
+    SimpleTrait(
+      name: "Mute",
+      icon: "🤐",
+      explanation:
+          "Unable to speak, due to physical injury or psychological trauma.",
+    ),
+    SimpleTrait(
+      name: "Burned",
+      icon: "🔥",
+      explanation:
+          "Bears severe scars from fire, a permanent reminder of a past event.",
+    ),
   ],
 };
 
@@ -668,59 +835,110 @@ class TraitEditorScreen extends StatefulWidget {
   State<TraitEditorScreen> createState() => _TraitEditorScreenState();
 }
 
-class _TraitEditorScreenState extends State<TraitEditorScreen> {
+class _TraitEditorScreenState extends State<TraitEditorScreen>
+    with SingleTickerProviderStateMixin {
   // State for selected traits
   late Set<String> _selectedCongenitalTraits;
   late Map<String, int> _selectedPersonalityTraits;
   late Map<String, String> _selectedLeveledTraits;
   late Set<String> _selectedPhysicalTraits;
 
+  late final TraitService _traitService;
+  // State for the search functionality
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
+
+  // Make trait data mutable to allow for custom traits
+  late Map<String, dynamic> _dynamicTraitData;
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
-    _selectedCongenitalTraits = Set.from(widget.initialSelectedTraits);
-    _selectedPhysicalTraits = {}; // Will be populated from congenital traits
-    _selectedLeveledTraits = {};
-    _selectedPersonalityTraits = Map.from(widget.initialPersonalityTraits);
 
-    // Initialize Leveled Traits
-    widget.initialLeveledTraits.forEach((groupName, traitIndex) {
-      final List<SimpleTrait>? traitsInGroup = traitData['leveled'][groupName]
-          ?.cast<SimpleTrait>();
-      if (traitsInGroup != null &&
-          traitIndex >= 0 &&
-          traitIndex < traitsInGroup.length) {
-        _selectedLeveledTraits[groupName] = traitsInGroup[traitIndex].name;
-      }
+    _tabController = TabController(length: 5, vsync: this);
+
+    _traitService = TraitService();
+    _searchController = TextEditingController();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
     });
 
-    // Separate congenital and physical traits from the initial set
-    final physicalTraitNames = traitData['physical']
-        .cast<SimpleTrait>()
-        .map((t) => t.name)
-        .toSet();
-    final congenitalTraitNames = traitData['congenital']
-        .cast<SimpleTrait>()
-        .map((t) => t.name)
-        .toSet();
+    try {
+      // Initialize mutable trait data from the hardcoded map
+      _dynamicTraitData = Map<String, dynamic>.from(
+        traitData.map((key, value) {
+          if (value is List) {
+            return MapEntry(key, List<dynamic>.from(value));
+          }
+          if (value is Map) {
+            return MapEntry(key, Map<String, dynamic>.from(value));
+          }
+          return MapEntry(key, value);
+        }),
+      );
+      _loadCustomTraits();
 
-    for (final traitName in widget.initialSelectedTraits) {
-      if (physicalTraitNames.contains(traitName)) {
-        _selectedPhysicalTraits.add(traitName);
+      _selectedCongenitalTraits = Set.from(widget.initialSelectedTraits);
+      _selectedPhysicalTraits = {}; // Will be populated from congenital traits
+      _selectedLeveledTraits = {};
+      _selectedPersonalityTraits = Map.from(widget.initialPersonalityTraits);
+
+      // Initialize Leveled Traits
+      widget.initialLeveledTraits.forEach((groupName, traitIndex) {
+        final List<SimpleTrait>? traitsInGroup =
+            _dynamicTraitData['leveled'][groupName]?.cast<SimpleTrait>();
+        if (traitsInGroup != null &&
+            traitIndex >= 0 &&
+            traitIndex < traitsInGroup.length) {
+          _selectedLeveledTraits[groupName] = traitsInGroup[traitIndex].name;
+        }
+      });
+
+      // Separate congenital and physical traits from the initial set
+      final physicalTraitNames = _dynamicTraitData['physical']
+          .cast<SimpleTrait>()
+          .map((t) => t.name)
+          .toSet();
+      final congenitalTraitNames = _dynamicTraitData['congenital']
+          .cast<SimpleTrait>()
+          .map((t) => t.name)
+          .toSet();
+
+      for (final traitName in widget.initialSelectedTraits) {
+        if (physicalTraitNames.contains(traitName)) {
+          _selectedPhysicalTraits.add(traitName);
+        }
+        // We only want to keep the purely congenital traits in this set.
+        if (!congenitalTraitNames.contains(traitName)) {
+          // This handles cases where a physical trait might have been saved
+          // under the 'congenital' key from the old combined logic.
+          _selectedCongenitalTraits.remove(traitName);
+        }
       }
-      // We only want to keep the purely congenital traits in this set.
-      if (!congenitalTraitNames.contains(traitName)) {
-        // This handles cases where a physical trait might have been saved
-        // under the 'congenital' key from the old combined logic.
-        _selectedCongenitalTraits.remove(traitName);
-      }
+    } catch (e) {
+      debugPrint('Error initializing trait editor state: $e');
+      // Handle error, maybe show a dialog or pop the screen
     }
   }
 
   @override
   void dispose() {
-    // Dispose any controllers if they were used
+    _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
+  }
+
+  void _loadCustomTraits() {
+    final customTraits = _traitService.loadCustomTraits();
+    setState(() {
+      (_dynamicTraitData['congenital'] as List).addAll(
+        customTraits['congenital']!,
+      );
+      (_dynamicTraitData['physical'] as List).addAll(customTraits['physical']!);
+    });
   }
 
   void _saveAndExit() {
@@ -729,8 +947,8 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     // Convert leveled traits from Map<String, String> to Map<String, int> for saving
     final Map<String, int> leveledTraitsToSave = {};
     _selectedLeveledTraits.forEach((groupName, traitName) {
-      final List<SimpleTrait> traitsInGroup = traitData['leveled'][groupName]
-          .cast<SimpleTrait>();
+      final List<SimpleTrait> traitsInGroup =
+          _dynamicTraitData['leveled'][groupName].cast<SimpleTrait>();
       final index = traitsInGroup.indexWhere((t) => t.name == traitName);
       if (index != -1) {
         leveledTraitsToSave[groupName] = index;
@@ -750,173 +968,402 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     Navigator.of(context).pop(results);
   }
 
+  bool _categoryHasSearchResults(int tabIndex) {
+    if (_searchQuery.isEmpty) return false;
+
+    switch (tabIndex) {
+      case 0: // Personality
+        final List<PersonalityTrait> personalityTraits =
+            _dynamicTraitData['personality'].cast<PersonalityTrait>();
+        return personalityTraits.any((traitGroup) {
+          if (traitGroup.groupName.toLowerCase().contains(_searchQuery)) {
+            return true;
+          }
+          return traitGroup.options.any(
+            (option) =>
+                option.name.toLowerCase().contains(_searchQuery) ||
+                option.explanation.toLowerCase().contains(_searchQuery),
+          );
+        });
+      case 1: // Education
+        return false; // No searchable content yet
+      case 2: // Congenital
+        final List<SimpleTrait> traits = _dynamicTraitData['congenital']
+            .cast<SimpleTrait>();
+        return traits.any(
+          (trait) =>
+              trait.name.toLowerCase().contains(_searchQuery) ||
+              trait.explanation.toLowerCase().contains(_searchQuery),
+        );
+      case 3: // Leveled
+        final Map<String, List<SimpleTrait>> allLeveledTraits =
+            (_dynamicTraitData['leveled'] as Map).map(
+              (key, value) => MapEntry(key, value.cast<SimpleTrait>()),
+            );
+        return allLeveledTraits.entries.any((entry) {
+          if (entry.key.toLowerCase().contains(_searchQuery)) return true;
+          return entry.value.any(
+            (trait) =>
+                trait.name.toLowerCase().contains(_searchQuery) ||
+                trait.explanation.toLowerCase().contains(_searchQuery),
+          );
+        });
+      case 4: // Physical
+        final List<SimpleTrait> traits = _dynamicTraitData['physical']
+            .cast<SimpleTrait>();
+        return traits.any(
+          (trait) =>
+              trait.name.toLowerCase().contains(_searchQuery) ||
+              trait.explanation.toLowerCase().contains(_searchQuery),
+        );
+      default:
+        return false;
+    }
+  }
+
+  Widget _buildTab(String text, int index) {
+    final bool hasResults = _categoryHasSearchResults(index);
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text),
+          if (hasResults) ...[
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 4,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalSearchHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search all traits...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        // 1. Personality Traits
+        _buildTabContent(
+          context,
+          'Personality Traits',
+          "Core dualities and spectrums that define a character's behavior.",
+          const Color(0xFF3B82F6),
+          (constraints) => _buildPersonalityTraits(colorScheme, constraints),
+        ),
+        // 2. Educational Traits
+        _buildTabContent(
+          context,
+          'Educational Traits',
+          'Skills and knowledge acquired through learning and experience.',
+          const Color(0xFFF59E0B),
+          (constraints) => Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                'Educational Traits section is reserved and currently blank.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // 3. Congenital Traits
+        _buildTabContent(
+          context,
+          'Congenital Traits',
+          'Inborn traits that are part of a character from birth.',
+          const Color(0xFF10B981),
+          (constraints) =>
+              _buildMultiSelectTraits('congenital', const Color(0xFF10B981)),
+        ),
+        // 4. Leveled Traits
+        _buildTabContent(
+          context,
+          'Leveled Traits',
+          'Attributes that exist on a spectrum, like appearance or intelligence.',
+          const Color(0xFF9B34EB),
+          (constraints) => _buildLeveledTraits(),
+        ),
+        // 5. Physical Traits
+        _buildTabContent(
+          context,
+          'Physical Traits',
+          'Acquired physical characteristics, scars, or conditions.',
+          const Color(0xFFEF4444),
+          (constraints) =>
+              _buildMultiSelectTraits('physical', const Color(0xFFEF4444)),
+        ),
+      ],
+    );
+  }
+
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      title: const Text(
+        'Character Trait Selection',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(onPressed: _saveAndExit, child: const Text('Done')),
+        const SizedBox(width: 16),
+      ],
+      bottom: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabs: [
+          _buildTab('Personality', 0),
+          _buildTab('Education', 1),
+          _buildTab('Congenital', 2),
+          _buildTab('Leveled', 3),
+          _buildTab('Physical', 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent(
+    BuildContext context,
+    String title,
+    String subtitle,
+    Color accentColor,
+    Widget Function(BoxConstraints) contentBuilder,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ListView(
+          padding: const EdgeInsets.all(24.0), // This was correct
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Container(
+                  height: 4,
+                  width: 100,
+                  color: accentColor,
+                  margin: const EdgeInsets.only(top: 4, bottom: 8),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                contentBuilder(constraints),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+      backgroundColor: colorScheme.surface,
+      appBar: _buildAppBar(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildGlobalSearchHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreateCustomTraitDialog(String type) async {
+    final newTrait = await showDialog<SimpleTrait>(
+      context: context,
+      builder: (context) => _CustomTraitDialog(type: type),
+    );
+
+    if (newTrait != null) {
+      await _traitService.saveCustomTrait(newTrait);
+      setState(() {
+        // Add the new trait to our dynamic data source
+        (_dynamicTraitData[type] as List<dynamic>).add(newTrait);
+        // Automatically select the newly created trait
+        if (type == 'congenital') {
+          _selectedCongenitalTraits.add(newTrait.name);
+        } else if (type == 'physical') {
+          _selectedPhysicalTraits.add(newTrait.name);
+        }
+      });
+    }
+  }
+
+  Future<void> _handleEditTrait(SimpleTrait traitToEdit, String type) async {
+    final editedTrait = await showDialog<SimpleTrait>(
+      context: context,
+      builder: (context) =>
+          _CustomTraitDialog(initialTrait: traitToEdit, type: type),
+    );
+
+    if (editedTrait != null) {
+      // Persist the change using the service
+      await _traitService.updateCustomTrait(traitToEdit, editedTrait);
+
+      setState(() {
+        final traitList = (_dynamicTraitData[type] as List);
+        final index = traitList.indexWhere((t) => t.name == traitToEdit.name);
+        if (index != -1) {
+          traitList[index] = editedTrait;
+
+          // If the name changed, update the selection sets
+          final selectionSet = type == 'congenital'
+              ? _selectedCongenitalTraits
+              : _selectedPhysicalTraits;
+          if (selectionSet.contains(traitToEdit.name)) {
+            selectionSet.remove(traitToEdit.name);
+            selectionSet.add(editedTrait.name);
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _handleDeleteTrait(
+    SimpleTrait traitToDelete,
+    String type,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => KeyboardAwareDialog(
+        title: const Text('Delete Trait'),
+        content: Text(
+          'Are you sure you want to permanently delete the trait "${traitToDelete.name}"? This cannot be undone.',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          const SizedBox(width: 8),
-          FilledButton(onPressed: _saveAndExit, child: const Text('Done')),
-          const SizedBox(width: 16),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop(true);
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
         ],
+        onConfirm: () => Navigator.of(context).pop(true),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Text(
-                'Character Trait Selection',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              Container(
-                height: 4,
-                width: 100,
-                color: colorScheme.primary,
-                margin: const EdgeInsets.only(top: 4, bottom: 8),
-              ),
-              Text(
-                "Select traits to define the character's core attributes and history.",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
+    );
 
-              // 1. Personality Traits
-              _buildSection(
-                title: 'Personality Traits',
-                accentColor: const Color(0xFF3B82F6), // blue-500
-                content: _buildPersonalityTraits(colorScheme),
-              ),
+    if (confirmed == true) {
+      await _traitService.deleteCustomTrait(traitToDelete);
+      setState(() {
+        (_dynamicTraitData[type] as List<dynamic>).removeWhere(
+          (t) => t.name == traitToDelete.name,
+        );
+        if (type == 'congenital') {
+          _selectedCongenitalTraits.remove(traitToDelete.name);
+        } else if (type == 'physical') {
+          _selectedPhysicalTraits.remove(traitToDelete.name);
+        }
+      });
+    }
+  }
 
-              // 2. Educational Traits (Placeholder)
-              _buildSection(
-                title: 'Educational Traits',
-                accentColor: const Color(0xFFF59E0B), // amber-500 (yellow)
-                content: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Educational Traits section is reserved and currently blank.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ),
-
-              // 3. Congenital or Inherited Traits
-              _buildSection(
-                title: 'Congenital or Inherited Traits',
-                accentColor: const Color(0xFF10B981), // green-500
-                content: _buildMultiSelectTraits(
-                  'congenital',
-                  const Color(0xFF10B981),
-                ),
-              ),
-
-              // 4. Leveled Congenital Traits (Spectrum)
-              _buildSection(
-                title: 'Leveled Congenital Traits (Spectrum)',
-                accentColor: const Color(0xFF9B34EB), // purple-500
-                content: _buildLeveledTraits(),
-              ),
-
-              // 5. Physical Traits
-              _buildSection(
-                title: 'Physical Traits',
-                accentColor: const Color(0xFFEF4444), // red-500
-                content: _buildMultiSelectTraits(
-                  'physical',
-                  const Color(0xFFEF4444),
-                ),
-              ),
-            ],
+  Widget _buildAddButton(String type) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0),
+      child: Center(
+        child: OutlinedButton.icon(
+          icon: const Icon(Icons.add),
+          label: Text(
+            'Create Custom ${type.replaceFirst(type[0], type[0].toUpperCase())} Trait',
+          ),
+          onPressed: () => _showCreateCustomTraitDialog(type),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Renders the main content card for each section
-  Widget _buildSection({
-    required String title,
-    required Color accentColor,
-    required Widget content,
-    String? subtitle,
-  }) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final isDark = colorScheme.brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 32.0),
-      padding: const EdgeInsets.all(24.0),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16.0),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.onSurface.withAlpha(isDark ? 51 : 13),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border(top: BorderSide(color: accentColor, width: 4.0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title, // This was correct
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          if (subtitle != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-              child: Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colorScheme.onSurfaceVariant, // This was correct
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-          content,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonalityTraits(ColorScheme colorScheme) {
+  Widget _buildPersonalityTraits(
+    ColorScheme colorScheme,
+    BoxConstraints constraints,
+  ) {
     final List<PersonalityTrait> personalityTraits = traitData['personality']
         .cast<PersonalityTrait>();
-    final dichotomousTraits = personalityTraits
+
+    // Filter traits based on the search query
+    final filteredTraits = personalityTraits.where((traitGroup) {
+      if (_searchQuery.isEmpty) {
+        return true;
+      }
+      if (traitGroup.groupName.toLowerCase().contains(_searchQuery)) {
+        return true;
+      }
+      return traitGroup.options.any(
+        (option) =>
+            option.name.toLowerCase().contains(_searchQuery) ||
+            option.explanation.toLowerCase().contains(_searchQuery),
+      );
+    }).toList();
+
+    final dichotomousTraits = filteredTraits
         .where((t) => t.options.length == 2)
         .toList();
-    final spectrumTraits = personalityTraits
+    final spectrumTraits = filteredTraits
         .where((t) => t.options.length > 2)
         .toList();
 
@@ -935,9 +1382,9 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 450,
-            childAspectRatio: 3.0,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: (constraints.maxWidth / 450).ceil().clamp(1, 2),
+            mainAxisExtent: 200,
             crossAxisSpacing: 16.0,
             mainAxisSpacing: 16.0,
           ),
@@ -968,10 +1415,16 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     final int? selectedValue = _selectedPersonalityTraits[groupName];
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
+    // Assert that there are exactly 2 options for dichotomous traits
+    assert(
+      options.length == 2,
+      'Dichotomous traits must have exactly 2 options',
+    );
+
     return Container(
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: colorScheme.surface.withAlpha(204),
+        color: colorScheme.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: [
           BoxShadow(
@@ -994,31 +1447,35 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          // Use Row with Expanded children instead of Wrap to prevent vertical wrapping and overflow
           Row(
-            children: options.map((option) {
-              final isSelected = selectedValue == option.value;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: option == options.first ? 8.0 : 0.0,
-                    left: option == options.last ? 8.0 : 0.0,
-                  ),
-                  child: _buildDichotomousButton(
-                    option: option,
-                    isSelected: isSelected,
-                    onTap: () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedPersonalityTraits.remove(groupName);
-                        } else {
-                          _selectedPersonalityTraits[groupName] = option.value;
-                        }
-                      });
-                    },
+            children: [
+              Expanded(
+                child: _buildDichotomousButton(
+                  option: options[0],
+                  isSelected: selectedValue == options[0].value,
+                  onTap: () => setState(
+                    () => _selectedPersonalityTraits[groupName] =
+                        selectedValue == options[0].value
+                        ? 0
+                        : options[0].value,
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: _buildDichotomousButton(
+                  option: options[1],
+                  isSelected: selectedValue == options[1].value,
+                  onTap: () => setState(
+                    () => _selectedPersonalityTraits[groupName] =
+                        selectedValue == options[1].value
+                        ? 0
+                        : options[1].value,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1033,7 +1490,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
     final Color selectedColor = colorScheme.primary;
-    final Color unselectedBg = colorScheme.surface;
+    final Color unselectedBg = colorScheme.secondaryContainer;
     final Color selectedIconContrast = colorScheme.primary.withAlpha(204);
     final Color unselectedIconBg = colorScheme.secondaryContainer;
 
@@ -1041,89 +1498,94 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     final Color iconAreaColor = isSelected
         ? selectedIconContrast
         : unselectedIconBg;
-    final Color iconColor = isSelected ? Colors.white : colorScheme.primary;
-    final Color titleColor = isSelected ? Colors.white : colorScheme.onSurface;
+    final Color iconColor = isSelected
+        ? colorScheme.onPrimary
+        : colorScheme.primary;
+    final Color titleColor = isSelected
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface;
     final Color explanationColor = isSelected
-        ? Colors.white70
-        : colorScheme.onSurfaceVariant; // This was correct
+        ? colorScheme.onPrimary.withAlpha(179)
+        : colorScheme.onSurfaceVariant;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12.0),
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: buttonColor,
-          borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(
-            color: isSelected
-                ? selectedColor
-                : colorScheme.outlineVariant.withAlpha(128),
-            width: 1.0,
+    return SizedBox(
+      height: 80,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: buttonColor,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: selectedColor.withAlpha(128),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: selectedColor.withAlpha(128),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left Icon Area
+              Container(
+                width: 65,
+                decoration: BoxDecoration(color: iconAreaColor),
+                child: Center(
+                  child: Text(
+                    option.icon,
+                    style: TextStyle(fontSize: 32, color: iconColor),
                   ),
-                ]
-              : null,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left Icon Area
-            Container(
-              width: 65,
-              decoration: BoxDecoration(color: iconAreaColor),
-              child: Center(
-                child: Text(
-                  option.icon,
-                  style: TextStyle(fontSize: 32, color: iconColor),
                 ),
               ),
-            ),
-            // Right Text Area
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 8.0,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      option.name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: titleColor,
-                        height: 1.2,
+              // Right Text Area
+              Flexible(
+                // Use Flexible instead of Expanded
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8.0,
+                    horizontal: 8.0,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        option.name,
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: titleColor,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      option.explanation,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: explanationColor,
-                        height: 1.3,
+                      const SizedBox(height: 4),
+                      Flexible(
+                        // Wrap the explanation Text in Flexible to prevent any potential inner overflow
+                        child: Text(
+                          option.explanation,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color:
+                                explanationColor, // This is now a non-const value
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1136,7 +1598,15 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     final int? selectedValue = _selectedPersonalityTraits[groupName];
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
-    final crossAxisCount = options.length == 4 ? 2 : 3;
+    // Determine grid layout based on number of options
+    final int crossAxisCount;
+    if (options.length == 4) {
+      crossAxisCount = 4;
+    } else if (options.length == 3 || options.length > 6) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
 
     return Container(
       margin: const EdgeInsets.only(top: 16.0),
@@ -1167,91 +1637,28 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Calculate dynamic crossAxisCount based on constraint width
-              int dynamicCrossAxisCount = (constraints.maxWidth / 200)
-                  .floor()
-                  .clamp(1, crossAxisCount);
-
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: dynamicCrossAxisCount,
-                  childAspectRatio: 0.9,
-                  crossAxisSpacing: 8.0,
-                  mainAxisSpacing: 8.0,
-                ),
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options[index];
-                  final isSelected = selectedValue == option.value;
-
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedPersonalityTraits.remove(groupName);
-                        } else {
-                          _selectedPersonalityTraits[groupName] = option.value;
-                        }
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(12.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(8.0),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isSelected
-                                ? colorScheme.primary.withAlpha(102)
-                                : Colors.transparent,
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            option.icon,
-                            style: const TextStyle(fontSize: 28),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            option.name,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? Colors.white
-                                  : colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            option.explanation,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: isSelected
-                                  ? Colors.white70
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 3.5, // Make buttons wider
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+            ),
+            itemCount: options.length,
+            itemBuilder: (context, index) {
+              final option = options[index];
+              final isSelected = selectedValue == option.value;
+              return _buildSpectrumButton(
+                option: option,
+                isSelected: isSelected,
+                onTap: () {
+                  setState(() {
+                    _selectedPersonalityTraits[groupName] = isSelected
+                        ? 0
+                        : option.value;
+                  });
                 },
               );
             },
@@ -1261,14 +1668,132 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     );
   }
 
+  // New button widget specifically for spectrum traits to match horizontal style
+  Widget _buildSpectrumButton({
+    required TraitOption option,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final Color accentColor = colorScheme.primary;
+
+    final Color selectedColor = accentColor;
+    final Color unselectedBg = colorScheme.surfaceContainerHighest;
+    final Color selectedIconContrast = accentColor.withAlpha(204);
+    final Color unselectedIconBg = accentColor.withAlpha(26);
+
+    final Color buttonColor = isSelected ? selectedColor : unselectedBg;
+    final Color iconAreaColor = isSelected
+        ? selectedIconContrast
+        : unselectedIconBg;
+    final Color iconColor = isSelected ? colorScheme.onPrimary : accentColor;
+    final Color titleColor = isSelected
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface;
+    final Color explanationColor = isSelected
+        ? colorScheme.onPrimary.withAlpha(179)
+        : colorScheme.onSurfaceVariant;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: buttonColor,
+          borderRadius: BorderRadius.circular(12.0),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: selectedColor.withAlpha(128),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 50, // Smaller icon area
+              decoration: BoxDecoration(color: iconAreaColor),
+              child: Center(
+                child: Text(
+                  option.icon,
+                  style: TextStyle(fontSize: 24, color: iconColor),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 12.0,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titleColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Flexible(
+                      child: Text(
+                        option.explanation,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: explanationColor,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLeveledTraits() {
-    const Color purpleAccent = Color(0xFF9B34EB); // purple-500
+    const Color purpleAccent = Color(0xFF9B34EB);
+    final Map<String, List<SimpleTrait>> allLeveledTraits =
+        (traitData['leveled'] as Map).map(
+          (key, value) => MapEntry(key, value.cast<SimpleTrait>()),
+        );
+
+    final filteredGroups = allLeveledTraits.entries.where((entry) {
+      if (_searchQuery.isEmpty) return true;
+      if (entry.key.toLowerCase().contains(_searchQuery)) return true;
+      return entry.value.any(
+        (trait) =>
+            trait.name.toLowerCase().contains(_searchQuery) ||
+            trait.explanation.toLowerCase().contains(_searchQuery),
+      );
+    });
+
+    if (filteredGroups.isEmpty && _searchQuery.isNotEmpty) {
+      return _buildNoResultsFound();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: traitData['leveled'].keys.map<Widget>((groupName) {
-        final List<SimpleTrait> traits = traitData['leveled'][groupName]
-            .cast<SimpleTrait>();
+      children: filteredGroups.map<Widget>((entry) {
+        final groupName = entry.key;
+        final List<SimpleTrait> traits = entry.value;
         final String? selectedName = _selectedLeveledTraits[groupName];
 
         return Padding(
@@ -1288,10 +1813,11 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 450,
-                  mainAxisExtent: 110, // Set a fixed height for the row
-                  crossAxisSpacing: 8.0, // Keep horizontal spacing
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio:
+                      3.5, // Match aspect ratio of other horizontal buttons
+                  crossAxisSpacing: 8.0,
                   mainAxisSpacing: 8.0,
                 ),
                 itemCount: traits.length,
@@ -1314,6 +1840,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
                         }
                       });
                     },
+                    isCustom: false, // Leveled traits are not custom
                   );
                 },
               ),
@@ -1325,42 +1852,84 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
   }
 
   Widget _buildMultiSelectTraits(String type, Color accentColor) {
-    final List<SimpleTrait> traits = traitData[type].cast<SimpleTrait>();
+    final List<SimpleTrait> allTraits = _dynamicTraitData[type]
+        .cast<SimpleTrait>();
     final Set<String> selectedNames = type == 'congenital'
         ? _selectedCongenitalTraits
         : _selectedPhysicalTraits;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 400, // Max width of button for responsive layout
-        mainAxisExtent: 110, // Set a fixed height for the row
-        crossAxisSpacing: 12.0, // Keep horizontal spacing
-        mainAxisSpacing: 12.0,
-      ),
-      itemCount: traits.length,
-      itemBuilder: (context, index) {
-        final trait = traits[index];
-        final isSelected = selectedNames.contains(trait.name);
+    // Get the original default traits to distinguish them from custom ones
+    final defaultTraitNames = (traitData[type] as List<dynamic>)
+        .cast<SimpleTrait>()
+        .map((t) => t.name)
+        .toSet();
 
-        return _buildHorizontalTraitButton(
-          name: trait.name,
-          icon: trait.icon,
-          explanation: trait.explanation,
-          isSelected: isSelected,
-          accentColor: accentColor,
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                selectedNames.remove(trait.name);
-              } else {
-                selectedNames.add(trait.name);
-              }
-            });
+    final filteredTraits = allTraits.where((trait) {
+      if (_searchQuery.isEmpty) return true;
+      return trait.name.toLowerCase().contains(_searchQuery) ||
+          trait.explanation.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    if (filteredTraits.isEmpty && _searchQuery.isNotEmpty) {
+      return _buildNoResultsFound();
+    }
+
+    return Column(
+      children: [
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent:
+                400, // Max width of button for responsive layout
+            mainAxisExtent: 110,
+            crossAxisSpacing: 12.0,
+            mainAxisSpacing: 12.0,
+          ),
+          itemCount: filteredTraits.length,
+          itemBuilder: (context, index) {
+            final trait = filteredTraits[index];
+            final isSelected = selectedNames.contains(trait.name);
+            final isCustom = !defaultTraitNames.contains(trait.name);
+
+            return _buildHorizontalTraitButton(
+              name: trait.name,
+              icon: trait.icon,
+              explanation: trait.explanation,
+              isSelected: isSelected,
+              accentColor: accentColor,
+              onTap: () {
+                setState(() {
+                  if (isSelected) {
+                    selectedNames.remove(trait.name);
+                  } else {
+                    selectedNames.add(trait.name);
+                  }
+                });
+              },
+              isCustom: isCustom,
+              onEdit: () => _handleEditTrait(trait, type),
+              onDelete: () => _handleDeleteTrait(trait, type),
+            );
           },
-        );
-      },
+        ),
+        _buildAddButton(type),
+      ],
+    );
+  }
+
+  Widget _buildNoResultsFound() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24.0),
+      child: Center(
+        child: Text(
+          'No traits found for "$_searchQuery"',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1372,21 +1941,29 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
     required bool isSelected,
     required Color accentColor,
     required VoidCallback onTap,
+    bool isCustom = false,
+    VoidCallback? onEdit,
+    VoidCallback? onDelete,
   }) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
     final Color selectedColor = colorScheme.primary;
+    final Color unselectedBg = colorScheme.secondaryContainer;
     final Color selectedIconContrast = colorScheme.primary.withAlpha(204);
     final Color unselectedIconBg = accentColor.withAlpha(26);
 
-    final Color buttonColor = isSelected ? selectedColor : colorScheme.surface;
+    final Color buttonColor = isSelected ? selectedColor : unselectedBg;
     final Color iconAreaColor = isSelected
         ? selectedIconContrast
         : unselectedIconBg;
-    final Color iconColor = isSelected ? Colors.white : accentColor;
-    final Color titleColor = isSelected ? Colors.white : colorScheme.onSurface;
+    final Color iconColor = isSelected ? colorScheme.onPrimary : accentColor;
+    final Color titleColor = isSelected
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface;
     final Color explanationColor = isSelected
-        ? Colors.white70
+        ? colorScheme.onPrimary.withAlpha(
+            179,
+          ) // Use withAlpha for better precision
         : colorScheme.onSurfaceVariant;
 
     return InkWell(
@@ -1396,12 +1973,6 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
         decoration: BoxDecoration(
           color: buttonColor,
           borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(
-            color: isSelected
-                ? selectedColor
-                : colorScheme.outlineVariant.withAlpha(128),
-            width: 1.0,
-          ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
@@ -1414,59 +1985,194 @@ class _TraitEditorScreenState extends State<TraitEditorScreen> {
         ),
         clipBehavior: Clip.antiAlias,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Left Icon Area (w-1/4)
-            Container(
-              width: 100, // Fixed width for consistent look on large screens
-              decoration: BoxDecoration(color: iconAreaColor),
-              child: Center(
-                child: Text(
-                  icon,
-                  style: TextStyle(fontSize: 32, color: iconColor),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left Icon Area (w-1/4)
+                Container(
+                  width: 80, // Use a fixed width for the icon area
+                  decoration: BoxDecoration(color: iconAreaColor),
+                  child: Center(
+                    child: Text(
+                      icon,
+                      style: TextStyle(fontSize: 32, color: iconColor),
+                    ),
+                  ),
                 ),
-              ),
+                // Right Text Area (expanded)
+                SizedBox(
+                  width: 250, // Give a reasonable width to the text area
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                            height: 1.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Flexible(
+                          // Wrap the explanation Text in Flexible to prevent any potential inner overflow
+                          child: Text(
+                            explanation,
+                            style: TextStyle(
+                              // Removed const
+                              fontSize: 12,
+                              color: explanationColor,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            // Right Text Area (w-3/4)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 16.0,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: titleColor,
-                        height: 1.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            if (isCustom)
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit?.call();
+                  } else if (value == 'delete') {
+                    onDelete?.call();
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: ListTile(
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Edit'),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      explanation,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: explanationColor,
-                        height: 1.3,
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_outline, color: Colors.red),
+                      title: Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
+                  ),
+                ],
+                icon: Icon(Icons.more_vert, color: titleColor),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomTraitDialog extends StatefulWidget {
+  final SimpleTrait? initialTrait;
+  final String type; // 'congenital' or 'physical'
+  const _CustomTraitDialog({this.initialTrait, required this.type});
+
+  @override
+  State<_CustomTraitDialog> createState() => _CustomTraitDialogState();
+}
+
+class _CustomTraitDialogState extends State<_CustomTraitDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _iconController = TextEditingController();
+  final _explanationController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTrait != null) {
+      _nameController.text = widget.initialTrait!.name;
+      _iconController.text = widget.initialTrait!.icon;
+      _explanationController.text = widget.initialTrait!.explanation;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _iconController.dispose();
+    _explanationController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      final newTrait = SimpleTrait(
+        name: _nameController.text.trim(),
+        icon: _iconController.text.trim(),
+        explanation: _explanationController.text.trim(),
+        type: widget.type,
+      );
+      Navigator.of(context).pop(newTrait);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.initialTrait != null;
+    return AlertDialog(
+      title: Text(isEditing ? 'Edit Custom Trait' : 'Create Custom Trait'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Trait Name'),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _iconController,
+              decoration: const InputDecoration(labelText: 'Icon (Emoji)'),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Icon cannot be empty'
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _explanationController,
+              decoration: const InputDecoration(labelText: 'Explanation'),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Explanation cannot be empty'
+                  : null,
             ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(isEditing ? 'Save' : 'Create'),
+        ),
+      ],
     );
   }
 }

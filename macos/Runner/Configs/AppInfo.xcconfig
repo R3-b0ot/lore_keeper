@@ -12,3 +12,6 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.loreKeeper
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+
+PRODUCT_DISPLAY_NAME = LORE KEEPER
+

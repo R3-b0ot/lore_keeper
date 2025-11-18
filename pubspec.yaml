@@ -44,6 +44,8 @@ dependencies:
   language_tool: ^2.2.0 # For grammar and style checking
   file_picker: ^10.3.6 # For picking files from the local system (e.g., images)
 
+
+
   # If you encounter dependency conflicts after adding flutter_quill,
   # you might need to add specific dependency_overrides here.
   # For example:
@@ -74,6 +76,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -115,3 +119,46 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Configuration for flutter_launcher_icons
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  # The main image path, used for iOS and legacy Android.
+  # This should be a square image with a solid background color.
+  image_path: "assets/icon/icon-background.png"
+  min_sdk_android: 21 # optional
+
+  # --- Adaptive Icon configuration for modern Android ---
+  # The background can be a solid color or a background image.
+  adaptive_icon_background: "#1F1F1F" # A neutral dark grey background
+  # The foreground should be your icon with a transparent background.
+  adaptive_icon_foreground: "assets/icon/icon-foreground.png"
+
+  # --- Desktop Icon configuration ---
+  windows:
+    generate: true
+    image_path: "assets/icon/icon-background.png"
+    icon_size: 48 # The default size of the generated .ico file
+  macos:
+    generate: true
+    image_path: "assets/icon/icon-background.png"
+  linux:
+    generate: true
+    image_path: "assets/icon/icon-background.png"
+
+# Configuration for flutter_native_splash
+flutter_native_splash:
+  # This color will be used as the background for your splash screen.
+  color: "#1F1F1F"
+  # The image should be your icon with a transparent background.
+  image: assets/icon/icon-foreground.png
+
+  # (Optional) You can specify different assets for dark mode.
+  color_dark: "#1F1F1F"
+  image_dark: assets/icon/icon-foreground.png
+
+  # Android 12 handles splash screens differently. This section is for that.
+  android_12:
+    image: assets/icon/icon-foreground.png
+    color: "#1F1F1F"

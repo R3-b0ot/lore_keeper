@@ -10,10 +10,9 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
 FlutterWindow::~FlutterWindow() {}
 
 bool FlutterWindow::OnCreate() {
-  if (!Win32Window::OnCreate()) {
-    return false;
-  }
-
+  // The color #1F1F1F in RGB is (31, 31, 31).
+  HBRUSH background_brush = CreateSolidBrush(RGB(31, 31, 31));
+  SetClassLongPtr(GetHandle(), GCLP_HBRBACKGROUND, (LONG_PTR)background_brush);
   RECT frame = GetClientArea();
 
   // The size here must match the window dimensions to avoid unnecessary surface
