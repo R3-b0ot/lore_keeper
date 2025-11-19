@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 // IMPORTANT: Replace with the actual path to your Flutter SDK
-                "C:/flutter/bin/cache/artifacts/engine/windows-x64/include",
+                "E:/src/flutter/bin/cache/artifacts/engine/windows-x64/include",
                 "${workspaceFolder}/windows/flutter/ephemeral",
                 "${workspaceFolder}/windows/runner"
             ],

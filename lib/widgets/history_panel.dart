@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lore_keeper/models/history_entry.dart';
 import 'package:lore_keeper/widgets/diff_view_dialog.dart';
+import 'package:lore_keeper/widgets/chapter_diff_view_dialog.dart';
 
 class HistoryPanel extends StatefulWidget {
   final dynamic targetKey;
@@ -43,12 +44,20 @@ class _HistoryPanelState extends State<HistoryPanel> {
           },
         ),
       );
-    } else {
-      // TODO: Implement diff view for Chapters
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Diff view for chapters not yet implemented.'),
+    } else if (entry.targetType == 'Chapter') {
+      showDialog(
+        context: context,
+        builder: (context) => ChapterDiffViewDialog(
+          historyEntry: entry,
+          onReverted: () {
+            widget.onReverted();
+            widget.onClose();
+          },
         ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Diff view not supported for this type.')),
       );
     }
   }

@@ -53,10 +53,12 @@ dependencies:
   # characters: 1.4.0
   provider: ^6.0.0 # Add this line
   http: ^1.5.0
+  shared_preferences: ^2.2.3
   flutter_svg: ^2.0.10+1
   vector_math: ^2.1.4
   graphite: ^1.2.1 # This was correct
   intl: ^0.20.2
+  diff_match_patch: ^0.4.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

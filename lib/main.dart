@@ -20,6 +20,7 @@ import 'package:lore_keeper/widgets/project_details_dialog.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
 import 'package:lore_keeper/widgets/create_project_dialog.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'screens/trait_editor_screen.dart';
 
@@ -45,9 +46,12 @@ void main() async {
 
 /// Initializes the Hive database, sets the directory, and registers Type Adapters.
 Future<void> initializeHive() async {
-  Directory dir = await getApplicationSupportDirectory();
-
-  await Hive.initFlutter(dir.path);
+  if (kIsWeb) {
+    await Hive.initFlutter();
+  } else {
+    Directory dir = await getApplicationSupportDirectory();
+    await Hive.initFlutter(dir.path);
+  }
 
   Hive.registerAdapter(ProjectAdapter());
   Hive.registerAdapter(ChapterAdapter());

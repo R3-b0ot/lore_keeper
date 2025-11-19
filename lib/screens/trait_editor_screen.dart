@@ -1424,7 +1424,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
     return Container(
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: colorScheme.surface.withOpacity(0.8),
+        color: colorScheme.surface.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: [
           BoxShadow(

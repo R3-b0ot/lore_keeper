@@ -23,18 +23,18 @@ import 'package:lore_keeper/widgets/dictionary_manager_dialog.dart';
 
 class SettingsDialog extends StatefulWidget {
   final Project? project;
-  final int moduleIndex;
+  final int? moduleIndex;
   final ChapterListProvider? chapterProvider;
   final CharacterListProvider? characterProvider;
-  final VoidCallback onDictionaryOpened;
+  final VoidCallback? onDictionaryOpened;
 
   const SettingsDialog({
     super.key,
     this.project,
-    required this.moduleIndex,
+    this.moduleIndex,
     this.chapterProvider,
     this.characterProvider,
-    required this.onDictionaryOpened,
+    this.onDictionaryOpened,
   });
 
   @override
@@ -61,15 +61,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _loadCommonWords();
     // Determine categories based on whether it's global or project settings
     if (widget.project == null) {
-      _categories = ['About', 'Appearance'];
+      _categories = ['AI', 'About', 'Appearance'];
     } else {
       _categories = [
+        'AI',
         'Information',
         'Cast Overview',
         'Metadata',
         'Proofing',
         'History',
         'Appearance',
+        'About',
       ];
       _titleController = TextEditingController(text: widget.project!.title);
       _bookTitleController = TextEditingController(
@@ -201,6 +203,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildSettingsContent() {
     switch (_categories[_selectedCategoryIndex]) {
+      case 'AI':
+        return _buildAIContent();
       case 'Information':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -343,6 +347,77 @@ class _SettingsDialogState extends State<SettingsDialog> {
       default:
         return const Center(child: Text('Select a category'));
     }
+  }
+
+  Widget _buildAIContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'AI Features',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: TextEditingController(), // TODO: Load from prefs
+            decoration: const InputDecoration(
+              labelText: 'OpenAI API Key',
+              hintText: 'Enter your OpenAI API key for AI features',
+            ),
+            obscureText: true,
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'AI Writing Tools',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Implement grammar check using language_tool
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Grammar Check: Feature coming soon'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.spellcheck),
+            label: const Text('Grammar Check'),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Implement language improvement
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Improve Language: Feature coming soon'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('Improve Language'),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Implement writing improvement
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Improve Writing: Feature coming soon'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.auto_fix_high),
+            label: const Text('Improve Writing'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMetadataContent() {
@@ -712,7 +787,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   void _openDictionaryManager() {
     // Renamed from _openDictionaryManager to openDictionaryManager
     // First, notify the parent that we are opening the dictionary.
-    widget.onDictionaryOpened();
+    widget.onDictionaryOpened?.call();
 
     // Then, show the dictionary dialog.
     showDialog(

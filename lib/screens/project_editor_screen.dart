@@ -12,6 +12,7 @@ import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
+import 'package:lore_keeper/widgets/ai_features_dialog.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -33,6 +34,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   bool _isSidebarExpanded = false;
   bool _isHistoryPanelVisible = false;
+  bool _isMobile = false;
 
   final GlobalKey<State<ManuscriptEditor>> _projectEditorKey = GlobalKey(
     debugLabel: 'ManuscriptEditor',
@@ -127,7 +129,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     });
   }
 
-  void _onChapterSelected(String key) {
+  void _onChapterSelected(String key, {bool closeDrawer = false}) {
     setState(() {
       _selectedChapterKey = key;
     });
@@ -171,6 +173,15 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   void _handleDictionaryClose() {
     // After the dictionary is closed, trigger a grammar check.
     _projectEditorKey.currentState?.triggerGrammarCheck();
+  }
+
+  void _openAIFeatures() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const AIFeaturesDialog();
+      },
+    );
   }
 
   void _onChapterCreated(String newKey) {
@@ -320,25 +331,21 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   // Helper method to build the second column based on the selected module
   Widget _buildSecondColumn() {
     if (_moduleIndex == 0) {
-      return SizedBox(
-        width: 280,
-        child: ChapterPane(
-          chapterProvider: _chapterListProvider!,
-          selectedChapterKey: _selectedChapterKey,
-          onChapterSelected: _onChapterSelected,
-          onChapterCreated: _onChapterCreated,
-        ),
+      return ChapterPane(
+        chapterProvider: _chapterListProvider!,
+        selectedChapterKey: _selectedChapterKey,
+        onChapterSelected: _onChapterSelected,
+        onChapterCreated: _onChapterCreated,
+        isMobile: _isMobile,
       );
     } else if (_moduleIndex == 1) {
-      return SizedBox(
-        width: 280,
-        child: CharacterListPane(
-          characterProvider: _characterListProvider!,
-          selectedCharacterKey: _selectedCharacterKey,
-          onCharacterSelected: _onCharacterSelected,
-          onCharacterCreated: _onCharacterCreated,
-          onCharacterEdit: _showEditNameDialog,
-        ),
+      return CharacterListPane(
+        characterProvider: _characterListProvider!,
+        selectedCharacterKey: _selectedCharacterKey,
+        onCharacterSelected: _onCharacterSelected,
+        onCharacterCreated: _onCharacterCreated,
+        onCharacterEdit: _showEditNameDialog,
+        isMobile: _isMobile,
       );
     }
     return const SizedBox.shrink();
@@ -381,10 +388,182 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     });
   }
 
+  Future<void> _createNewChapterForMobile() async {
+    final title = await _showChapterTitleDialog(context);
+    if (title != null && title.isNotEmpty && mounted) {
+      final newKey = await _chapterListProvider!.createNewChapter(title);
+      _onChapterSelected(newKey.toString());
+    }
+  }
+
+  Future<String?> _showChapterTitleDialog(
+    BuildContext context, {
+    String? initialTitle,
+  }) {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) =>
+          ChapterTitleDialog(initialTitle: initialTitle ?? ''),
+    );
+  }
+
+  void _showSelectionDialog() {
+    if (_moduleIndex == 0) {
+      // Show chapter selection dialog with front matter and search
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          final searchController = TextEditingController();
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text('Select Chapter'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  height: 400,
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: searchController,
+                        decoration: const InputDecoration(
+                          hintText: 'Search chapters...',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (value) => setState(() {}),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListenableBuilder(
+                          listenable: _chapterListProvider!,
+                          builder: (context, child) {
+                            final frontPage = _chapterListProvider!.frontPage;
+                            final indexPage = _chapterListProvider!.indexPage;
+                            final aboutAuthorPage =
+                                _chapterListProvider!.aboutAuthorPage;
+                            final chapters = _chapterListProvider!.chapters;
+
+                            final allItems = <Chapter>[];
+                            if (frontPage != null) allItems.add(frontPage);
+                            if (indexPage != null) allItems.add(indexPage);
+                            if (aboutAuthorPage != null) {
+                              allItems.add(aboutAuthorPage);
+                            }
+                            allItems.addAll(chapters);
+
+                            final query = searchController.text.toLowerCase();
+                            final filteredItems = allItems
+                                .where(
+                                  (item) =>
+                                      item.title.toLowerCase().contains(query),
+                                )
+                                .toList();
+
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, index) {
+                                final chapter = filteredItems[index];
+                                final isSelected =
+                                    chapter.key.toString() ==
+                                    _selectedChapterKey;
+                                final isFrontMatter = chapter.key
+                                    .toString()
+                                    .startsWith('front_matter_');
+                                final displayTitle = isFrontMatter
+                                    ? chapter.title
+                                    : '${chapter.orderIndex + 1}. ${chapter.title}';
+                                return ListTile(
+                                  title: Text(displayTitle),
+                                  selected: isSelected,
+                                  onTap: () {
+                                    _onChapterSelected(chapter.key.toString());
+                                    Navigator.of(context).pop();
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } else if (_moduleIndex == 1) {
+      // Show character selection dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Character'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListenableBuilder(
+                listenable: _characterListProvider!,
+                builder: (context, child) {
+                  final characters = _characterListProvider!.characters;
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: characters.length,
+                    itemBuilder: (context, index) {
+                      final character = characters[index];
+                      final isSelected =
+                          character.key.toString() == _selectedCharacterKey;
+                      return ListTile(
+                        title: Text(character.name),
+                        selected: isSelected,
+                        onTap: () {
+                          _onCharacterSelected(character.key.toString());
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _isMobile = constraints.maxWidth < 600;
+        if (_isMobile) {
+          return _buildMobileLayout();
+        } else {
+          return _buildDesktopLayout();
+        }
+      },
+    );
+  }
+
+  Widget _buildDesktopLayout() {
     final double collapsedWidth = 60.0;
-    final double expandedWidth = 200.0;
+    final double expandedWidth = _isMobile && _isSidebarExpanded
+        ? 400.0
+        : 200.0;
 
     return Scaffold(
       appBar: null,
@@ -412,9 +591,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           // ------------------------------------------
           // 2. Second Column (Chapter Pane or Character List Pane)
           // ------------------------------------------
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildSecondColumn(),
+          Expanded(
+            flex: 1,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _buildSecondColumn(),
+            ),
           ),
 
           // Vertical divider between Second Column and Editor
@@ -469,9 +651,133 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               showHistoryButton:
                   _moduleIndex == 0 ||
                   _moduleIndex == 1, // Manuscript or Character
+              onSettingsPressed: _openSettings,
+              onAIPressed: _openAIFeatures,
+              isMobile: _isMobile,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    final String currentModuleName =
+        _moduleItems[_moduleIndex]['label'] as String;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(currentModuleName),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        actions: [
+          if (_moduleIndex == 0 || _moduleIndex == 1)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                switch (value) {
+                  case 'select':
+                    _showSelectionDialog();
+                  case 'history':
+                    _toggleHistoryPanel();
+                  case 'add':
+                    if (_moduleIndex == 0) {
+                      _createNewChapterForMobile();
+                    } else if (_moduleIndex == 1) {
+                      _onCharacterCreated();
+                    }
+                  case 'settings':
+                    _openSettings();
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'select',
+                  child: Text(
+                    _moduleIndex == 0 ? 'Select Chapter' : 'Select Character',
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'history',
+                  child: Text(
+                    _isHistoryPanelVisible ? 'Hide History' : 'Show History',
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'add',
+                  child: Text(
+                    _moduleIndex == 0 ? 'Add New Chapter' : 'Add New Character',
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'settings',
+                  child: Text('Settings'),
+                ),
+              ],
+            ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ModuleSidebar(
+          isExpanded: true,
+          moduleItems: _moduleItems,
+          selectedIndex: _moduleIndex,
+          onModuleTapped: (index) {
+            _onModuleTapped(index);
+            Navigator.of(context).pop(); // Close drawer
+          },
+          onToggleExpanded: () {}, // Not needed in drawer
+          projectTitle: widget.project.title,
+          onGoHome: () {
+            _goToMainScreen();
+            Navigator.of(context).pop();
+          },
+          onOpenSettings: () {
+            _openSettings();
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+      body: Column(
+        children: [
+          // Main Content
+          Expanded(child: _buildModuleContent()),
+          // History Panel if visible
+          if (_isHistoryPanelVisible &&
+              (_moduleIndex == 0 || _moduleIndex == 1))
+            SizedBox(
+              height: 200,
+              child: _moduleIndex == 0
+                  ? HistoryPanel(
+                      targetKey: _selectedChapterKey.startsWith('front_matter_')
+                          ? _selectedChapterKey
+                          : int.tryParse(_selectedChapterKey),
+                      targetType: 'Chapter',
+                      onClose: _toggleHistoryPanel,
+                      onReverted: _handleRevert,
+                    )
+                  : HistoryPanel(
+                      targetKey: int.tryParse(_selectedCharacterKey),
+                      targetType: 'Character',
+                      onClose: _toggleHistoryPanel,
+                      onReverted: _handleRevert,
+                    ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (_moduleIndex == 0) {
+            // Add chapter
+            _createNewChapterForMobile();
+          } else if (_moduleIndex == 1) {
+            // Add character
+            _onCharacterCreated();
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -536,10 +842,11 @@ class ModuleSidebar extends StatelessWidget {
                       Expanded(
                         child: Text(
                           projectTitle,
-                          style: const TextStyle(
-                            color: Colors
-                                .white, // Keeping title white for contrast on dark sidebar
-                            fontWeight: FontWeight.bold,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
                             fontSize: 14,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -557,6 +864,7 @@ class ModuleSidebar extends StatelessWidget {
             ],
           ),
         ),
+        const Divider(height: 1),
 
         // Navigation Buttons (Scrollable Section)
         Expanded(
@@ -733,8 +1041,9 @@ class _FooterSidebarItem extends StatelessWidget {
 class ChapterPane extends StatefulWidget {
   final ChapterListProvider chapterProvider;
   final String selectedChapterKey;
-  final ValueChanged<String> onChapterSelected;
+  final Function(String key, {bool closeDrawer}) onChapterSelected;
   final ValueChanged<String> onChapterCreated;
+  final bool isMobile;
 
   const ChapterPane({
     super.key,
@@ -742,6 +1051,7 @@ class ChapterPane extends StatefulWidget {
     required this.selectedChapterKey,
     required this.onChapterSelected,
     required this.onChapterCreated,
+    required this.isMobile,
   });
 
   @override
@@ -763,213 +1073,240 @@ class _ChapterPaneState extends State<ChapterPane> {
           final indexPage = widget.chapterProvider.indexPage;
           final aboutAuthorPage = widget.chapterProvider.aboutAuthorPage;
 
+          final itemCount = chapters.isEmpty ? 2 : chapters.length + 1;
+
           return Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Manuscript',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    TextButton(onPressed: () {}, child: const Text('edit')),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildExpandableButton(
-                  context: context,
-                  icon: _isFrontMatterExpanded
-                      ? Icons.folder_open
-                      : Icons.folder,
-                  label: 'Front Matter',
-                  isExpanded: _isFrontMatterExpanded,
-                  onPressed: () {
-                    setState(() {
-                      _isFrontMatterExpanded = !_isFrontMatterExpanded;
-                    });
-                  },
-                ),
-                if (_isFrontMatterExpanded)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 24.0, top: 4.0),
+            child: ReorderableListView.builder(
+              itemCount: itemCount,
+              buildDefaultDragHandles: false,
+              onReorder: (oldIndex, newIndex) {
+                if (oldIndex == 0 || newIndex == 0) return;
+                widget.chapterProvider.reorderChapter(
+                  oldIndex - 1,
+                  newIndex - 1,
+                );
+              },
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Container(
+                    key: const ValueKey('header'),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (frontPage != null)
-                          _buildFrontMatterItem(
-                            context,
-                            frontPage,
-                            widget.selectedChapterKey,
-                            widget.onChapterSelected,
-                          ),
-                        if (indexPage != null)
-                          _buildFrontMatterItem(
-                            context,
-                            indexPage,
-                            widget.selectedChapterKey,
-                            widget.onChapterSelected,
-                          ),
-                        if (aboutAuthorPage != null)
-                          _buildFrontMatterItem(
-                            context,
-                            aboutAuthorPage,
-                            widget.selectedChapterKey,
-                            widget.onChapterSelected,
-                          ),
-                      ],
-                    ),
-                  ),
-                _buildAddButton(context, Icons.add, 'New Chapter', () async {
-                  final title = await _showChapterTitleDialog(context);
-                  if (title != null && title.isNotEmpty) {
-                    final newKey = await widget.chapterProvider
-                        .createNewChapter(title);
-                    widget.onChapterCreated(newKey.toString());
-                  }
-                }),
-                const Divider(height: 32),
-                const Text(
-                  'Body',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ReorderableListView.builder(
-                    itemCount: chapters.length,
-                    buildDefaultDragHandles:
-                        false, // Disable default drag handles
-                    onReorder: widget.chapterProvider.reorderChapter,
-                    itemBuilder: (context, index) {
-                      final chapter = chapters[index];
-                      final isSelected =
-                          chapter.key.toString() == widget.selectedChapterKey;
-                      return Padding(
-                        key: ValueKey(chapter.key), // Important for reordering
-                        padding: const EdgeInsets.only(bottom: 4.0),
-                        child: Row(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Drag handle
-                            ReorderableDragStartListener(
-                              index: index,
-                              child: const Padding(
-                                padding: EdgeInsets.only(right: 8.0),
-                                child: Icon(
-                                  Icons.drag_indicator,
-                                  color: Color(0x00808080),
-                                ),
+                            Text(
+                              'Manuscript',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
-                            Expanded(
-                              child: _buildButton(
-                                context,
-                                Icons.person_outline,
-                                '${chapter.orderIndex + 1}. ${chapter.title}',
-                                isSelected,
-                                onPressed: () => widget.onChapterSelected(
-                                  chapter.key.toString(),
-                                ),
-                                onRename: () async {
-                                  final newTitle =
-                                      await _showChapterTitleDialog(
-                                        context,
-                                        initialTitle: chapter.title,
-                                      );
-                                  if (newTitle != null &&
-                                      newTitle.isNotEmpty &&
-                                      newTitle != chapter.title) {
-                                    widget.chapterProvider.updateChapterTitle(
-                                      chapter.key as int,
-                                      newTitle,
-                                    );
-                                  }
-                                },
-                                onDelete: () async {
-                                  final confirmed =
-                                      await _showDeleteConfirmDialog(
-                                        context,
-                                        chapter.title,
-                                      );
-                                  if (confirmed == true) {
-                                    final currentIndex = chapters.indexOf(
-                                      chapter,
-                                    );
-                                    await widget.chapterProvider.deleteChapter(
-                                      chapter.key as int,
-                                    );
-
-                                    // After deletion, select a new chapter or clear the selection.
-                                    if (widget
-                                        .chapterProvider
-                                        .chapters
-                                        .isNotEmpty) {
-                                      final newIndex = (currentIndex > 0)
-                                          ? currentIndex - 1
-                                          : 0;
-                                      // Ensure the index is valid for the new list length.
-                                      if (newIndex <
-                                          widget
-                                              .chapterProvider
-                                              .chapters
-                                              .length) {
-                                        widget.onChapterSelected(
-                                          widget
-                                              .chapterProvider
-                                              .chapters[newIndex]
-                                              .key
-                                              .toString(),
-                                        );
-                                      } else {
-                                        // Fallback if index logic fails, select the first.
-                                        widget.onChapterSelected(
-                                          widget
-                                              .chapterProvider
-                                              .chapters
-                                              .first
-                                              .key
-                                              .toString(),
-                                        );
-                                      }
-                                    } else {
-                                      widget.onChapterSelected(
-                                        '',
-                                      ); // No chapters left
-                                    }
-                                  }
-                                },
-                              ),
+                            TextButton(
+                              onPressed: () {},
+                              child: const Text('edit'),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-                if (chapters.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          const Text('No chapters found.'),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () => _createNewChapter(context),
-                            child: const Text('Create New Chapter'),
+                        const SizedBox(height: 16),
+                        _buildExpandableButton(
+                          context: context,
+                          icon: _isFrontMatterExpanded
+                              ? Icons.folder_open
+                              : Icons.folder,
+                          label: 'Front Matter',
+                          isExpanded: _isFrontMatterExpanded,
+                          onPressed: () {
+                            setState(() {
+                              _isFrontMatterExpanded = !_isFrontMatterExpanded;
+                            });
+                          },
+                        ),
+                        if (_isFrontMatterExpanded)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 24.0,
+                              top: 4.0,
+                            ),
+                            child: Column(
+                              children: [
+                                if (frontPage != null)
+                                  _buildFrontMatterItem(
+                                    context,
+                                    frontPage,
+                                    widget.selectedChapterKey,
+                                    (key) => widget.onChapterSelected(
+                                      key,
+                                      closeDrawer: true,
+                                    ),
+                                  ),
+                                if (indexPage != null)
+                                  _buildFrontMatterItem(
+                                    context,
+                                    indexPage,
+                                    widget.selectedChapterKey,
+                                    (key) => widget.onChapterSelected(
+                                      key,
+                                      closeDrawer: true,
+                                    ),
+                                  ),
+                                if (aboutAuthorPage != null)
+                                  _buildFrontMatterItem(
+                                    context,
+                                    aboutAuthorPage,
+                                    widget.selectedChapterKey,
+                                    (key) => widget.onChapterSelected(
+                                      key,
+                                      closeDrawer: true,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ],
+                        _buildAddButton(
+                          context,
+                          Icons.add,
+                          'New Chapter',
+                          () async {
+                            final title = await _showChapterTitleDialog(
+                              context,
+                            );
+                            if (title != null && title.isNotEmpty) {
+                              final newKey = await widget.chapterProvider
+                                  .createNewChapter(title);
+                              widget.onChapterCreated(newKey.toString());
+                            }
+                          },
+                        ),
+                        const Divider(height: 32),
+                        const Text(
+                          'Body',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                } else if (chapters.isEmpty) {
+                  return Container(
+                    key: const ValueKey('empty'),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            const Text('No chapters found.'),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () => _createNewChapter(context),
+                              child: const Text('Create New Chapter'),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                  );
+                } else {
+                  final chapterIndex = index - 1;
+                  final chapter = chapters[chapterIndex];
+                  final isSelected =
+                      chapter.key.toString() == widget.selectedChapterKey;
+                  return Padding(
+                    key: ValueKey(chapter.key),
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Row(
+                      children: [
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 8.0),
+                            child: Icon(
+                              Icons.drag_indicator,
+                              color: Color(0x00808080),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildButton(
+                            context,
+                            Icons.person_outline,
+                            '${chapter.orderIndex + 1}. ${chapter.title}',
+                            isSelected,
+                            onPressed: () => widget.onChapterSelected(
+                              chapter.key.toString(),
+                              closeDrawer: true,
+                            ),
+                            onRename: () async {
+                              final newTitle = await _showChapterTitleDialog(
+                                context,
+                                initialTitle: chapter.title,
+                              );
+                              if (newTitle != null &&
+                                  newTitle.isNotEmpty &&
+                                  newTitle != chapter.title) {
+                                widget.chapterProvider.updateChapterTitle(
+                                  chapter.key as int,
+                                  newTitle,
+                                );
+                              }
+                            },
+                            onDelete: () async {
+                              final confirmed = await _showDeleteConfirmDialog(
+                                context,
+                                chapter.title,
+                              );
+                              if (confirmed == true) {
+                                final currentIndex = chapters.indexOf(chapter);
+                                await widget.chapterProvider.deleteChapter(
+                                  chapter.key as int,
+                                );
+
+                                // After deletion, select a new chapter or clear the selection.
+                                if (widget
+                                    .chapterProvider
+                                    .chapters
+                                    .isNotEmpty) {
+                                  final newIndex = (currentIndex > 0)
+                                      ? currentIndex - 1
+                                      : 0;
+                                  // Ensure the index is valid for the new list length.
+                                  if (newIndex <
+                                      widget.chapterProvider.chapters.length) {
+                                    widget.onChapterSelected(
+                                      widget
+                                          .chapterProvider
+                                          .chapters[newIndex]
+                                          .key
+                                          .toString(),
+                                    );
+                                  } else {
+                                    // Fallback if index logic fails, select the first.
+                                    widget.onChapterSelected(
+                                      widget.chapterProvider.chapters.first.key
+                                          .toString(),
+                                    );
+                                  }
+                                } else {
+                                  widget.onChapterSelected(
+                                    '',
+                                  ); // No chapters left
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
             ),
           );
         },
-      ), // Closing parenthesis for ListenableBuilder
+      ),
     );
   }
 
@@ -1031,25 +1368,29 @@ class _ChapterPaneState extends State<ChapterPane> {
     required VoidCallback onPressed,
   }) {
     final theme = Theme.of(context);
-    return OutlinedButton.icon(
+    return OutlinedButton(
       onPressed: onPressed,
-      icon: Icon(icon, size: 16, color: theme.colorScheme.onSurface),
-      label: Row(
-        children: [
-          Expanded(child: Text(label, softWrap: true)),
-          Icon(
-            isExpanded ? Icons.expand_less : Icons.expand_more,
-            size: 20,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ],
-      ),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.centerLeft,
         backgroundColor: theme.colorScheme.surface,
         foregroundColor: theme.colorScheme.onSurface,
         side: BorderSide(color: theme.colorScheme.outline),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Expanded(child: Text(label, softWrap: true)),
+            Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1058,7 +1399,7 @@ class _ChapterPaneState extends State<ChapterPane> {
     BuildContext context,
     Chapter chapter,
     String selectedChapterKey,
-    ValueChanged<String> onChapterSelected,
+    ValueChanged<String> onChapterSelected, // This is now just a key
   ) {
     final isSelected = chapter.key.toString() == selectedChapterKey;
     return Padding(
@@ -1068,7 +1409,7 @@ class _ChapterPaneState extends State<ChapterPane> {
         Icons.article_outlined,
         chapter.title,
         isSelected,
-        onPressed: () => onChapterSelected(chapter.key.toString()),
+        onPressed: () => onChapterSelected(chapter.key),
         // No rename/delete for front matter pages for now
       ),
     );
@@ -1096,7 +1437,7 @@ class _ChapterPaneState extends State<ChapterPane> {
               size: 16,
               color: isSelected ? colorScheme.primary : colorScheme.onSurface,
             ),
-            label: Flexible(child: Text(label, softWrap: true)),
+            label: Text(label, softWrap: true),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.centerLeft,
@@ -1122,13 +1463,59 @@ class _ChapterPaneState extends State<ChapterPane> {
           ),
         ),
         if (onRename != null)
-          _buildKebabMenu(
-            context: context,
-            isSelected: isSelected,
-            onRename: onRename,
-            onEdit: onEdit,
-            onDelete: onDelete, // Pass the onDelete callback
-          ),
+          if (!widget.isMobile)
+            _buildKebabMenu(
+              context: context,
+              isSelected: isSelected,
+              onRename: onRename,
+              onEdit: onEdit,
+              onDelete: onDelete, // Pass the onDelete callback
+            )
+          else
+            Container(
+              width: 80,
+              height: 36,
+              margin: const EdgeInsets.only(left: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surface,
+                border: Border.all(
+                  color: isSelected ? colorScheme.primary : colorScheme.outline,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface,
+                      ),
+                      onPressed: onRename,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                  if (onDelete != null)
+                    Expanded(
+                      child: IconButton(
+                        icon: Icon(Icons.delete, size: 18, color: Colors.red),
+                        onPressed: onDelete,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
       ],
     );
   }
@@ -1241,53 +1628,122 @@ class SpecificFunctionsBar extends StatelessWidget {
   final VoidCallback onHistoryPressed;
   final bool isHistoryVisible;
   final bool showHistoryButton;
+  final VoidCallback? onSettingsPressed;
+  final VoidCallback? onAIPressed;
+  final bool isMobile;
 
   const SpecificFunctionsBar({
     super.key,
     required this.onHistoryPressed,
     required this.isHistoryVisible,
     required this.showHistoryButton,
+    this.onSettingsPressed,
+    this.onAIPressed,
+    required this.isMobile,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        if (showHistoryButton)
-          _buildIcon(
-            Icons.history,
-            'History',
-            onPressed: onHistoryPressed,
-            isSelected: isHistoryVisible,
+    if (isMobile) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'history':
+                  onHistoryPressed();
+                  break;
+                case 'settings':
+                  onSettingsPressed?.call();
+                  break;
+                // Other items have no action
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              if (showHistoryButton)
+                PopupMenuItem<String>(
+                  value: 'history',
+                  child: Text(
+                    isHistoryVisible ? 'Hide History' : 'Show History',
+                  ),
+                ),
+              const PopupMenuItem<String>(
+                value: 'bookmarks',
+                child: Text('Bookmarks'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'comments',
+                child: Text('Comments'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'add_block',
+                child: Text('Add Block'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'download',
+                child: Text('Download'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Text('Settings'),
+              ),
+            ],
           ),
-        _buildIcon(Icons.bookmark_border, 'Bookmarks'),
-        _buildIcon(Icons.comment_outlined, 'Comments'),
-        _buildIcon(Icons.add, 'Add Block'),
-        const Spacer(),
-        _buildIcon(Icons.download, 'Download'),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildIcon(
-    IconData icon,
-    String tooltip, {
-    VoidCallback? onPressed,
-    bool isSelected = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: Tooltip(
-        message: tooltip,
-        child: IconButton(
-          icon: Icon(icon, size: 20),
-          onPressed: onPressed ?? () {},
-          color: isSelected ? Colors.blue : Colors.grey.shade600,
-        ),
-      ),
-    );
+          const Spacer(),
+          const SizedBox(height: 16),
+        ],
+      );
+    } else {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          if (showHistoryButton)
+            IconButton(
+              icon: Icon(
+                isHistoryVisible ? Icons.history_toggle_off : Icons.history,
+              ),
+              onPressed: onHistoryPressed,
+              tooltip: isHistoryVisible ? 'Hide History' : 'Show History',
+            ),
+          if (onAIPressed != null)
+            IconButton(
+              icon: const Icon(Icons.smart_toy),
+              onPressed: onAIPressed,
+              tooltip: 'AI Features',
+            ),
+          IconButton(
+            icon: const Icon(Icons.bookmark),
+            onPressed: null,
+            tooltip: 'Bookmarks',
+          ),
+          IconButton(
+            icon: const Icon(Icons.comment),
+            onPressed: null,
+            tooltip: 'Comments',
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_box),
+            onPressed: null,
+            tooltip: 'Add Block',
+          ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: null,
+            tooltip: 'Download',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: onSettingsPressed,
+            tooltip: 'Settings',
+          ),
+          const Spacer(),
+          const SizedBox(height: 16),
+        ],
+      );
+    }
   }
 }

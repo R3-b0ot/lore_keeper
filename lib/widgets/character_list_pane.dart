@@ -8,6 +8,7 @@ class CharacterListPane extends StatelessWidget {
   final ValueChanged<String> onCharacterSelected; // This is correct
   final VoidCallback onCharacterCreated;
   final ValueChanged<String>? onCharacterEdit;
+  final bool isMobile;
 
   const CharacterListPane({
     super.key,
@@ -16,12 +17,12 @@ class CharacterListPane extends StatelessWidget {
     required this.onCharacterSelected,
     required this.onCharacterCreated,
     this.onCharacterEdit,
+    required this.isMobile,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
       color: Theme.of(context).colorScheme.surfaceContainerLowest,
       padding: const EdgeInsets.all(12.0),
       child: ListenableBuilder(
