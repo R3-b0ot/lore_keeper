@@ -816,6 +816,100 @@ final Map<String, dynamic> traitData = {
           "Bears severe scars from fire, a permanent reminder of a past event.",
     ),
   ],
+
+  // --- Coping Mechanisms (Multi-select) ---
+  'coping': [
+    SimpleTrait(
+      name: "Alcoholic",
+      icon: "🍺",
+      explanation:
+          "Finds solace in alcohol, reducing stress but risking addiction and impaired judgment.",
+    ),
+    SimpleTrait(
+      name: "Self-Harmer",
+      icon: "🪓",
+      explanation:
+          "Self-flagellation provides relief from mental anguish, but leaves physical scars and pain.",
+    ),
+    SimpleTrait(
+      name: "Overeater",
+      icon: "🍕",
+      explanation:
+          "Turns to food for comfort, easing stress but leading to weight gain and health issues.",
+    ),
+    SimpleTrait(
+      name: "Guilt-Prone",
+      icon: "🙏",
+      explanation:
+          "Excessive self-blame and repentance alleviates guilt, but fosters low self-esteem.",
+    ),
+    SimpleTrait(
+      name: "Reckless Spender",
+      icon: "💸",
+      explanation:
+          "Reckless spending distracts from worries, but causes financial ruin.",
+    ),
+    SimpleTrait(
+      name: "Loss of Appetite",
+      icon: "🚫🍽️",
+      explanation:
+          "Loss of appetite during stress helps cope, but leads to malnutrition and weakness.",
+    ),
+    SimpleTrait(
+      name: "Withdrawer",
+      icon: "🏠",
+      explanation:
+          "Withdraws from society to find peace, but isolates and hinders relationships.",
+    ),
+    SimpleTrait(
+      name: "Short-Tempered",
+      icon: "😠",
+      explanation:
+          "Quick temper releases tension, but alienates others and causes conflicts.",
+    ),
+    SimpleTrait(
+      name: "Flirtatious",
+      icon: "🎩",
+      explanation:
+          "Charm and flirtation distract from stress, but leads to shallow relationships and heartbreak.",
+    ),
+    SimpleTrait(
+      name: "Substance Abuser",
+      icon: "🌿",
+      explanation:
+          "Uses substances for escape, calming nerves but causing dependency and clouded thoughts.",
+    ),
+    SimpleTrait(
+      name: "Extravagant",
+      icon: "🎰",
+      explanation:
+          "Extravagant indulgence provides thrill, but results in debt and moral decay.",
+    ),
+    SimpleTrait(
+      name: "Oversharer",
+      icon: "🗣️",
+      explanation:
+          "Shares burdens with others, lightening load but risking betrayal or judgment.",
+    ),
+    SimpleTrait(
+      name: "Journal Keeper",
+      icon: "📓",
+      explanation:
+          "Writing thoughts organizes mind, reducing stress and improving clarity.",
+    ),
+    SimpleTrait(
+      name: "Athletic",
+      icon: "🏃",
+      explanation:
+          "Physical exertion channels energy, boosting health and resilience.",
+    ),
+    SimpleTrait(
+      name: "Overburdened",
+      icon: "🎒",
+      explanation:
+          "Bears extra responsibilities to cope, but becomes overwhelmed and exhausted.",
+    ),
+  ],
 };
 
 /// A screen for selecting and managing character traits.
@@ -823,12 +917,14 @@ class TraitEditorScreen extends StatefulWidget {
   final Set<String> initialSelectedTraits;
   final Map<String, int> initialPersonalityTraits;
   final Map<String, int> initialLeveledTraits;
+  final Set<String> initialSelectedCopingTraits;
 
   const TraitEditorScreen({
     super.key,
     this.initialSelectedTraits = const {},
     this.initialPersonalityTraits = const {},
     this.initialLeveledTraits = const {},
+    this.initialSelectedCopingTraits = const {},
   });
 
   @override
@@ -842,6 +938,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
   late Map<String, int> _selectedPersonalityTraits;
   late Map<String, String> _selectedLeveledTraits;
   late Set<String> _selectedPhysicalTraits;
+  late Set<String> _selectedCopingTraits;
 
   late final TraitService _traitService;
   // State for the search functionality
@@ -856,7 +953,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
 
     _traitService = TraitService();
     _searchController = TextEditingController();
@@ -885,6 +982,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
       _selectedPhysicalTraits = {}; // Will be populated from congenital traits
       _selectedLeveledTraits = {};
       _selectedPersonalityTraits = Map.from(widget.initialPersonalityTraits);
+      _selectedCopingTraits = Set.from(widget.initialSelectedCopingTraits);
 
       // Initialize Leveled Traits
       widget.initialLeveledTraits.forEach((groupName, traitIndex) {
@@ -938,6 +1036,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
         customTraits['congenital']!,
       );
       (_dynamicTraitData['physical'] as List).addAll(customTraits['physical']!);
+      (_dynamicTraitData['coping'] as List).addAll(customTraits['coping']!);
     });
   }
 
@@ -964,6 +1063,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
       'personality': _selectedPersonalityTraits,
       'leveled': leveledTraitsToSave,
       'congenital': allCongenitalTraits,
+      'coping': _selectedCopingTraits,
     };
     Navigator.of(context).pop(results);
   }
@@ -1010,6 +1110,14 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
         });
       case 4: // Physical
         final List<SimpleTrait> traits = _dynamicTraitData['physical']
+            .cast<SimpleTrait>();
+        return traits.any(
+          (trait) =>
+              trait.name.toLowerCase().contains(_searchQuery) ||
+              trait.explanation.toLowerCase().contains(_searchQuery),
+        );
+      case 5: // Coping
+        final List<SimpleTrait> traits = _dynamicTraitData['coping']
             .cast<SimpleTrait>();
         return traits.any(
           (trait) =>
@@ -1121,6 +1229,15 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
           (constraints) =>
               _buildMultiSelectTraits('physical', const Color(0xFFEF4444)),
         ),
+        // 6. Coping Traits
+        _buildTabContent(
+          context,
+          'Coping Traits',
+          'Mechanisms for dealing with stress and trauma.',
+          const Color(0xFF8B5CF6),
+          (constraints) =>
+              _buildMultiSelectTraits('coping', const Color(0xFF8B5CF6)),
+        ),
       ],
     );
   }
@@ -1152,6 +1269,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
           _buildTab('Congenital', 2),
           _buildTab('Leveled', 3),
           _buildTab('Physical', 4),
+          _buildTab('Coping', 5),
         ],
       ),
     );
@@ -1319,7 +1437,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
 
   Widget _buildAddButton(String type) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Center(
         child: OutlinedButton.icon(
           icon: const Icon(Icons.add),
@@ -1876,6 +1994,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
 
     return Column(
       children: [
+        _buildAddButton(type),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1913,7 +2032,6 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
             );
           },
         ),
-        _buildAddButton(type),
       ],
     );
   }
@@ -2012,16 +2130,19 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: titleColor,
-                            height: 1.2,
+                        Tooltip(
+                          message: explanation,
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: titleColor,
+                              height: 1.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Flexible(

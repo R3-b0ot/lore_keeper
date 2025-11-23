@@ -60,6 +60,18 @@ Built with Flutter, it is designed to be a cross-platform tool for Windows and L
 
 ---
 
+## Features Currently in Development
+
+These features have UI components implemented but are not yet fully functional.
+
+*   **AI Writing Tools**: AI-powered assistance for writing improvement.
+    -   **Grammar Check**: Automated grammar and style checking using AI.
+    -   **Improve Language**: Suggestions to enhance language quality.
+    -   **Improve Writing**: Overall writing improvement recommendations.
+*   **Character Filter Functionality**: Ability to filter and search characters in the character list pane.
+
+---
+
 ## Features In Progress / Planned
 
 This is a list of modules and features that are either under active development or planned for future releases, based on the current codebase structure.

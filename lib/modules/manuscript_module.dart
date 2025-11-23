@@ -13,6 +13,35 @@ import 'package:language_tool/language_tool.dart';
 import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
 
+// Custom embed for page breaks
+class PageBreakEmbed extends Embeddable {
+  const PageBreakEmbed() : super('page_break', null);
+
+  @override
+  Map<String, dynamic> toJson() => {'type': 'page_break'};
+
+  static PageBreakEmbed fromJson(Map<String, dynamic> json) =>
+      const PageBreakEmbed();
+}
+
+// Builder for page break embed
+class PageBreakEmbedBuilder extends EmbedBuilder {
+  @override
+  String get key => 'page_break';
+
+  @override
+  Widget build(BuildContext context, EmbedContext embedContext) {
+    return Container(
+      height: 20,
+      alignment: Alignment.center,
+      child: const Text(
+        '--- Page Break ---',
+        style: TextStyle(color: Colors.grey),
+      ),
+    );
+  }
+}
+
 // The main application widget for the editor module
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
@@ -383,7 +412,12 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     super.dispose();
   }
 
-  Widget _buildEditorContent() {
+  Widget _buildEditorContent(Color backgroundColor) {
+    // Determine text color based on background lightness
+    final textColor = backgroundColor.computeLuminance() > 0.5
+        ? Colors.black87
+        : Colors.white;
+
     // Check if the selected page is the Index page
     if (widget.selectedChapterKey == 'front_matter_-2') {
       return IndexPageWidget(
@@ -398,15 +432,34 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       focusNode: _focusNode,
       scrollController: _scrollController,
       config: QuillEditorConfig(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         placeholder: 'Start writing your epic manuscript here...',
-        embedBuilders: FlutterQuillEmbeds.editorBuilders(),
+        embedBuilders: [
+          ...FlutterQuillEmbeds.editorBuilders(),
+          PageBreakEmbedBuilder(),
+        ],
+        customStyles: DefaultStyles(
+          paragraph: DefaultTextBlockStyle(
+            TextStyle(fontSize: 16, height: 1.5, color: textColor),
+            const HorizontalSpacing(0, 0),
+            const VerticalSpacing(6, 0),
+            const VerticalSpacing(0, 0),
+            null,
+          ),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = () {
+      final theme = Theme.of(context);
+      final baseColor = theme.colorScheme.surface;
+      final hsl = HSLColor.fromColor(baseColor);
+      return hsl.withLightness((hsl.lightness + 0.2).clamp(0.0, 1.0)).toColor();
+    }();
+
     return Scaffold(
       // The AppBar is handled by the parent screen, so it's removed here.
       body: _isLoading
@@ -419,40 +472,125 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                   QuillSimpleToolbar(
                     controller: _controller,
                     config: QuillSimpleToolbarConfig(
-                      showCodeBlock: false,
-                      showListCheck: false,
-                      showAlignmentButtons: true,
+                      customButtons: [
+                        QuillToolbarCustomButtonOptions(
+                          icon: const Icon(Icons.insert_page_break),
+                          onPressed: () {
+                            final index = _controller.selection.baseOffset;
+                            _controller.document.insert(
+                              index,
+                              PageBreakEmbed(),
+                            );
+                            _controller.moveCursorToPosition(index + 1);
+                          },
+                          tooltip: 'Insert Page Break',
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        color: backgroundColor,
                         borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha((0.1 * 255).round()),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: InteractiveViewer(
-                        boundaryMargin: const EdgeInsets.all(double.infinity),
-                        minScale: 0.5,
-                        maxScale: 4.0,
-                        scaleEnabled: false, // Disable user scaling gestures
-                        child: Transform.scale(
-                          scale: _zoomFactor,
-                          child: Scrollbar(
-                            controller: _scrollController,
-                            child: Listener(
-                              onPointerSignal: (pointerSignal) {
-                                if (pointerSignal is PointerScrollEvent) {
-                                  _scrollController.jumpTo(
-                                    _scrollController.offset +
-                                        pointerSignal.scrollDelta.dy,
-                                  );
-                                }
-                              },
-                              child: _buildEditorContent(),
+                      child: Stack(
+                        children: [
+                          // Page container
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 20,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(
+                                    (0.2 * 255).round(),
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: InteractiveViewer(
+                              boundaryMargin: const EdgeInsets.all(
+                                double.infinity,
+                              ),
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              scaleEnabled:
+                                  false, // Disable user scaling gestures
+                              child: Transform.scale(
+                                scale: _zoomFactor,
+                                child: Scrollbar(
+                                  controller: _scrollController,
+                                  child: Listener(
+                                    onPointerSignal: (pointerSignal) {
+                                      if (pointerSignal is PointerScrollEvent) {
+                                        _scrollController.jumpTo(
+                                          _scrollController.offset +
+                                              pointerSignal.scrollDelta.dy,
+                                        );
+                                      }
+                                    },
+                                    child: _buildEditorContent(Colors.white),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          // Vertical ruler on the left
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 1,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          // Horizontal ruler on the top
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              height: 1,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          // Vertical ruler on the right
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 1,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          // Horizontal ruler on the bottom
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              height: 1,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

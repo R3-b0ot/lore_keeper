@@ -25,7 +25,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 // IMPORTANT: Replace with the actual path to your Flutter SDK
-                "C:/flutter/bin/cache/artifacts/engine/linux-x64/include"
+                "E:/src/flutter/bin/cache/artifacts/engine/linux-x64/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

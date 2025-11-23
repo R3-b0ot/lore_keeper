@@ -36,13 +36,11 @@ dependencies:
   hive_flutter: ^1.1.0 # Flutter integration
   path_provider: ^2.1.0
   path: ^1.9.0 # To parse file paths for fonts
-  system_fonts: ^1.0.0 # To get system fonts for the editor
 
   flutter_quill: ^11.0.0 # The original rich text editor package
   flutter_quill_extensions: ^11.0.0 # Companion package for extra features
 
   language_tool: ^2.2.0 # For grammar and style checking
-  file_picker: ^10.3.6 # For picking files from the local system (e.g., images)
 
 
 
@@ -54,9 +52,7 @@ dependencies:
   provider: ^6.0.0 # Add this line
   http: ^1.5.0
   shared_preferences: ^2.2.3
-  flutter_svg: ^2.0.10+1
   vector_math: ^2.1.4
-  graphite: ^1.2.1 # This was correct
   intl: ^0.20.2
   diff_match_patch: ^0.4.1
 
@@ -79,7 +75,6 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
-  flutter_native_splash: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

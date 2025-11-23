@@ -16,6 +16,8 @@ import 'package:lore_keeper/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
 import 'package:lore_keeper/widgets/dictionary_manager_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:language_tool/language_tool.dart';
 
 // -------------------------------------------------------------
 // --- Settings Dialog Widget
@@ -55,10 +57,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String _selectedGenre = '';
   late double _historyLimit;
 
+  // AI Features state
+  late TextEditingController _apiKeyController;
+  final TextEditingController _aiTextController = TextEditingController();
+  String _aiResult = '';
+  bool _isProcessingAI = false;
+
   @override
   void initState() {
     super.initState();
     _loadCommonWords();
+    _loadApiKey();
     // Determine categories based on whether it's global or project settings
     if (widget.project == null) {
       _categories = ['AI', 'About', 'Appearance'];
@@ -93,6 +102,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _apiKeyController.dispose();
     if (widget.project != null) {
       _titleController.dispose();
       _bookTitleController.dispose();
@@ -129,6 +139,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
     }
   }
 
+  Future<void> _loadApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('openai_api_key') ?? '';
+    if (mounted) {
+      setState(() {
+        _apiKeyController = TextEditingController(text: apiKey);
+        _apiKeyController.addListener(_saveApiKey);
+      });
+    }
+  }
+
+  Future<void> _saveApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('openai_api_key', _apiKeyController.text);
+  }
+
   void _onFieldChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 750), _saveMetadata);
@@ -148,7 +174,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Future<void> _deleteProject() async {
     final project = widget.project;
-    if (project == null || !context.mounted) return;
+    if (project == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -196,8 +222,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
       await project.delete();
 
       // 4. Navigate back to the home screen
-      if (!context.mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (context.mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     }
   }
 
@@ -349,6 +376,85 @@ class _SettingsDialogState extends State<SettingsDialog> {
     }
   }
 
+  Future<void> _performGrammarCheck() async {
+    if (_aiTextController.text.isEmpty) {
+      setState(() {
+        _aiResult = 'Please enter some text to check.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isProcessingAI = true;
+      _aiResult = 'Checking grammar...';
+    });
+
+    try {
+      final languageTool = LanguageTool(language: 'en-US');
+      final mistakes = await languageTool.check(_aiTextController.text);
+
+      if (mistakes.isEmpty) {
+        setState(() {
+          _aiResult = 'No grammar issues found. Great job!';
+        });
+      } else {
+        final issues = mistakes.map((m) => '- ${m.message}').join('\n');
+        setState(() {
+          _aiResult = 'Grammar Issues Found:\n$issues';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _aiResult = 'Error checking grammar: $e';
+      });
+    } finally {
+      setState(() {
+        _isProcessingAI = false;
+      });
+    }
+  }
+
+  void _improveLanguage() {
+    if (_aiTextController.text.isEmpty) {
+      setState(() {
+        _aiResult = 'Please enter some text to improve.';
+      });
+      return;
+    }
+
+    // Simple language improvement suggestions
+    String improved = _aiTextController.text
+        .replaceAll('i ', 'I ') // Capitalize 'I'
+        .replaceAll(' i ', ' I ') // Capitalize 'I' in middle
+        .replaceAll('i\'', 'I\'') // Capitalize 'I' in contractions
+        .replaceAll('  ', ' ') // Remove double spaces
+        .trim();
+
+    setState(() {
+      _aiResult = 'Improved Text:\n$improved';
+    });
+  }
+
+  void _improveWriting() {
+    if (_aiTextController.text.isEmpty) {
+      setState(() {
+        _aiResult = 'Please enter some text to improve.';
+      });
+      return;
+    }
+
+    // Simple writing improvement suggestions
+    String suggestions = 'Writing Improvement Suggestions:\n';
+    suggestions += '- Consider varying sentence length for better rhythm.\n';
+    suggestions += '- Use active voice where possible.\n';
+    suggestions += '- Check for unnecessary words or redundancy.\n';
+    suggestions += '- Ensure clear topic sentences in paragraphs.';
+
+    setState(() {
+      _aiResult = suggestions;
+    });
+  }
+
   Widget _buildAIContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -364,7 +470,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
           const SizedBox(height: 16),
           TextField(
-            controller: TextEditingController(), // TODO: Load from prefs
+            controller: _apiKeyController,
             decoration: const InputDecoration(
               labelText: 'OpenAI API Key',
               hintText: 'Enter your OpenAI API key for AI features',
@@ -377,44 +483,50 @@ class _SettingsDialogState extends State<SettingsDialog> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement grammar check using language_tool
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Grammar Check: Feature coming soon'),
+          TextField(
+            controller: _aiTextController,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              labelText: 'Enter text for AI analysis',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isProcessingAI ? null : _performGrammarCheck,
+                  icon: const Icon(Icons.spellcheck),
+                  label: const Text('Grammar Check'),
                 ),
-              );
-            },
-            icon: const Icon(Icons.spellcheck),
-            label: const Text('Grammar Check'),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _improveLanguage,
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Improve Language'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement language improvement
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Improve Language: Feature coming soon'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('Improve Language'),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement writing improvement
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Improve Writing: Feature coming soon'),
-                ),
-              );
-            },
+            onPressed: _improveWriting,
             icon: const Icon(Icons.auto_fix_high),
             label: const Text('Improve Writing'),
           ),
+          const SizedBox(height: 16),
+          if (_aiResult.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(_aiResult),
+            ),
         ],
       ),
     );

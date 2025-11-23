@@ -13,6 +13,7 @@ class TraitService {
     final Map<String, List<SimpleTrait>> customTraits = {
       'congenital': [],
       'physical': [],
+      'coping': [],
     };
 
     for (final trait in _customTraitsBox.values) {

@@ -8,6 +8,7 @@ class CharacterListProvider with ChangeNotifier {
   final Box<Character> _characterBox;
   List<Character> _characters = [];
   bool _isInitialized = false;
+  String _filterText = '';
 
   CharacterListProvider(this._projectId)
     : _characterBox = Hive.box<Character>('characters') {
@@ -16,6 +17,19 @@ class CharacterListProvider with ChangeNotifier {
 
   List<Character> get characters => _characters;
   bool get isInitialized => _isInitialized;
+  String get filterText => _filterText;
+
+  List<Character> get filteredCharacters {
+    if (_filterText.isEmpty) return _characters;
+    return _characters
+        .where((c) => c.name.toLowerCase().contains(_filterText.toLowerCase()))
+        .toList();
+  }
+
+  void setFilterText(String text) {
+    _filterText = text;
+    notifyListeners();
+  }
 
   void _loadCharacters() {
     _characters = _characterBox.values
