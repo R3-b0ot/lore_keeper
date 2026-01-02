@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart'; // Import the new module
 import 'package:lore_keeper/modules/character_module.dart'; // Import the new module
+import 'package:lore_keeper/modules/map_module.dart'; // Import the map module
+import 'package:lore_keeper/providers/map_list_provider.dart'; // Import map list provider
+import 'package:lore_keeper/widgets/map_list_pane.dart'; // Import map list pane
+// Import the new module
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
@@ -13,6 +18,7 @@ import 'package:lore_keeper/widgets/settings_dialog.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
 import 'package:lore_keeper/widgets/ai_features_dialog.dart';
+import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -31,6 +37,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
   String _selectedChapterKey = '';
   String _selectedCharacterKey = '';
+  String _selectedMapKey = '';
 
   bool _isSidebarExpanded = false;
   bool _isHistoryPanelVisible = false;
@@ -40,6 +47,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     debugLabel: 'ManuscriptEditor',
   );
 
+  QuillController? _currentController;
+
   final GlobalKey<CharacterModuleState> _characterModuleKey = GlobalKey(
     debugLabel: 'CharacterModule',
   );
@@ -47,6 +56,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   ChapterListProvider? _chapterListProvider;
   CharacterListProvider? _characterListProvider;
   LinkProvider? _linkProvider;
+  MapListProvider? _mapListProvider;
 
   final List<Map<String, dynamic>> _moduleItems = const <Map<String, dynamic>>[
     {'label': 'Manuscript', 'icon': Icons.menu_book},
@@ -75,6 +85,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _chapterListProvider = ChapterListProvider(widget.project.key);
     _characterListProvider = CharacterListProvider(widget.project.key);
     _linkProvider = LinkProvider();
+    _mapListProvider = MapListProvider(projectId: widget.project.key);
     _chapterListProvider!.addListener(() {
       // Also check for initial character selection here, in case chapters load first
       if (mounted &&
@@ -93,7 +104,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           setState(() {
             // Prioritize the last edited chapter, otherwise fall back to the first.
             _selectedChapterKey =
-                widget.project.lastEditedChapterKey ??
+                widget.project.lastEditedChapterKey?.toString() ??
                 _chapterListProvider!.chapters.first.key.toString();
           });
         }
@@ -184,6 +195,28 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     );
   }
 
+  void _openFindReplaceDialog() {
+    // Only allow for manuscript module
+    if (_moduleIndex != 0) return;
+    // Get the controller from the manuscript module
+    final controller = _projectEditorKey.currentState?.getController();
+    if (controller != null) {
+      // Unfocus any focused widget to avoid keyboard event conflicts
+      FocusScope.of(context).unfocus();
+      // Delay the dialog opening to ensure keyboard events are processed
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return FindReplaceDialog(controller: controller);
+            },
+          );
+        }
+      });
+    }
+  }
+
   void _onChapterCreated(String newKey) {
     setState(() {
       _selectedChapterKey = newKey;
@@ -197,6 +230,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _chapterListProvider?.dispose();
     _characterListProvider?.dispose();
     _linkProvider?.dispose();
+    _mapListProvider?.dispose();
     super.dispose();
   }
 
@@ -347,6 +381,15 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onCharacterEdit: _showEditNameDialog,
         isMobile: _isMobile,
       );
+    } else if (_moduleIndex == 3) {
+      // Maps module
+      return MapListPane(
+        mapProvider: _mapListProvider!,
+        selectedMapKey: _selectedMapKey,
+        onMapSelected: (mapKey) {
+          setState(() => _selectedMapKey = mapKey);
+        },
+      );
     }
     return const SizedBox.shrink();
   }
@@ -364,6 +407,9 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               selectedChapterKey: _selectedChapterKey,
               chapterProvider: _chapterListProvider!,
               onChapterSelected: _onChapterSelected,
+              onControllerReady: (QuillController? controller) {
+                _currentController = controller;
+              },
               key: _projectEditorKey,
             );
     } else if (_moduleIndex == 1) {
@@ -375,6 +421,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               key: _characterModuleKey, // Assign the key here
               onReload: _handleRevert,
             );
+    } else if (_moduleIndex == 3) {
+      // Maps module
+      return MapModule(
+        projectId: widget.project.key,
+        selectedMapKey: _selectedMapKey.isNotEmpty ? _selectedMapKey : null,
+        mapListProvider: _mapListProvider,
+      );
     }
     return _ModulePlaceholder(
       moduleName: currentModuleName,
@@ -600,7 +653,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           ),
 
           // Vertical divider between Second Column and Editor
-          (_moduleIndex == 0 || _moduleIndex == 1)
+          (_moduleIndex == 0 || _moduleIndex == 1 || _moduleIndex == 3)
               ? const VerticalDivider(
                   width: 1,
                   thickness: 1,
@@ -653,7 +706,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                   _moduleIndex == 1, // Manuscript or Character
               onSettingsPressed: _openSettings,
               onAIPressed: _openAIFeatures,
+              onFindReplacePressed: _moduleIndex == 0
+                  ? _openFindReplaceDialog
+                  : null,
               isMobile: _isMobile,
+              isFindReplaceAvailable: _moduleIndex == 0,
             ),
           ),
         ],
@@ -680,16 +737,23 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                 switch (value) {
                   case 'select':
                     _showSelectionDialog();
+                    break;
                   case 'history':
                     _toggleHistoryPanel();
+                    break;
+                  case 'find_replace':
+                    _openFindReplaceDialog();
+                    break;
                   case 'add':
                     if (_moduleIndex == 0) {
                       _createNewChapterForMobile();
                     } else if (_moduleIndex == 1) {
                       _onCharacterCreated();
                     }
+                    break;
                   case 'settings':
                     _openSettings();
+                    break;
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -705,6 +769,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                     _isHistoryPanelVisible ? 'Hide History' : 'Show History',
                   ),
                 ),
+                if (_moduleIndex == 0)
+                  const PopupMenuItem<String>(
+                    value: 'find_replace',
+                    child: Text('Find and Replace'),
+                  ),
                 PopupMenuItem<String>(
                   value: 'add',
                   child: Text(
@@ -1630,7 +1699,9 @@ class SpecificFunctionsBar extends StatelessWidget {
   final bool showHistoryButton;
   final VoidCallback? onSettingsPressed;
   final VoidCallback? onAIPressed;
+  final VoidCallback? onFindReplacePressed;
   final bool isMobile;
+  final bool isFindReplaceAvailable;
 
   const SpecificFunctionsBar({
     super.key,
@@ -1639,7 +1710,9 @@ class SpecificFunctionsBar extends StatelessWidget {
     required this.showHistoryButton,
     this.onSettingsPressed,
     this.onAIPressed,
+    this.onFindReplacePressed,
     required this.isMobile,
+    required this.isFindReplaceAvailable,
   });
 
   @override
@@ -1656,6 +1729,9 @@ class SpecificFunctionsBar extends StatelessWidget {
                 case 'history':
                   onHistoryPressed();
                   break;
+                case 'find_replace':
+                  onFindReplacePressed?.call();
+                  break;
                 case 'settings':
                   onSettingsPressed?.call();
                   break;
@@ -1669,6 +1745,11 @@ class SpecificFunctionsBar extends StatelessWidget {
                   child: Text(
                     isHistoryVisible ? 'Hide History' : 'Show History',
                   ),
+                ),
+              if (onFindReplacePressed != null)
+                const PopupMenuItem<String>(
+                  value: 'find_replace',
+                  child: Text('Find and Replace'),
                 ),
               const PopupMenuItem<String>(
                 value: 'bookmarks',
@@ -1714,6 +1795,12 @@ class SpecificFunctionsBar extends StatelessWidget {
               icon: const Icon(Icons.smart_toy),
               onPressed: onAIPressed,
               tooltip: 'AI Features',
+            ),
+          if (onFindReplacePressed != null)
+            IconButton(
+              icon: const Icon(Icons.find_replace),
+              onPressed: onFindReplacePressed,
+              tooltip: 'Find and Replace',
             ),
           IconButton(
             icon: const Icon(Icons.bookmark),

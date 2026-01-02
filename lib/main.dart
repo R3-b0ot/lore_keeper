@@ -1,13 +1,13 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
+import 'package:lore_keeper/models/map_model.dart';
 import 'package:lore_keeper/models/section.dart'; // ⭐️ NEW IMPORT ⭐️
 import 'package:lore_keeper/models/link.dart'; // 1. Import the new Link model
 import 'package:lore_keeper/models/history_entry.dart';
@@ -29,6 +29,7 @@ late Box<Project> projectBox;
 late Box<Section> sectionBox;
 late Box<Chapter> chapterBox;
 late Box<Character> characterBox;
+late Box<MapModel> mapBox;
 // We will access chapter data through a service/local box later.
 
 void main() async {
@@ -37,9 +38,11 @@ void main() async {
   await RelationshipService()
       .initialize(); // Initialize the relationship service
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
-      child: const LoreKeeperApp(),
+    riverpod.ProviderScope(
+      child: ChangeNotifierProvider(
+        create: (_) => ThemeNotifier(),
+        child: const LoreKeeperApp(),
+      ),
     ),
   );
 }
@@ -59,13 +62,17 @@ Future<void> initializeHive() async {
   Hive.registerAdapter(SectionAdapter()); // ⭐️ REGISTER NEW ADAPTER ⭐️
   Hive.registerAdapter(LinkAdapter()); // 2. Register the LinkAdapter
   Hive.registerAdapter(CharacterIterationAdapter()); // Add this line
+  Hive.registerAdapter(CustomFieldAdapter());
+  Hive.registerAdapter(CustomPanelAdapter());
   Hive.registerAdapter(CustomTraitAdapter());
+  Hive.registerAdapter(MapModelAdapter());
   Hive.registerAdapter(HistoryEntryAdapter()); // Register the History adapter
 
   projectBox = await Hive.openBox<Project>('projects');
   sectionBox = await Hive.openBox<Section>('sections');
   chapterBox = await Hive.openBox<Chapter>('chapters');
   characterBox = await Hive.openBox<Character>('characters');
+  mapBox = await Hive.openBox<MapModel>('maps');
   await Hive.openBox<Link>('links'); // 3. Open the 'links' box
   await Hive.openBox<HistoryEntry>('history');
   await Hive.openBox<SimpleTrait>('custom_traits');

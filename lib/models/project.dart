@@ -19,7 +19,7 @@ class Project extends HiveObject {
   String? bookTitle;
 
   @HiveField(4)
-  String? lastEditedChapterKey;
+  dynamic lastEditedChapterKey;
 
   @HiveField(5) // Field 4 is the Genre
   String? genre;

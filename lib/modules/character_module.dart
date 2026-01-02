@@ -7,9 +7,13 @@ import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/services/history_service.dart';
-import 'package:lore_keeper/screens/trait_editor_screen.dart';
 import 'package:lore_keeper/screens/relation_chart_screen.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
+import 'package:lore_keeper/services/global_custom_field_service.dart';
+import 'package:lore_keeper/services/global_custom_panel_service.dart';
+import 'package:lore_keeper/screens/trait_editor_screen.dart';
+
+enum PanelType { bio, links, image, traits }
 
 class CharacterModule extends StatefulWidget {
   final String characterKey;
@@ -33,6 +37,20 @@ class CharacterModuleState extends State<CharacterModule>
   Timer? _debounce;
   bool _isSaving = false;
   final HistoryService _historyService = HistoryService();
+  final GlobalCustomPanelService _customPanelService =
+      GlobalCustomPanelService();
+  List<PanelType> panelOrder = [
+    PanelType.bio,
+    PanelType.links,
+    PanelType.image,
+    PanelType.traits,
+  ];
+
+  List<PanelType> singleColumnPanelOrder = [
+    PanelType.bio,
+    PanelType.image,
+    PanelType.links,
+  ];
 
   // Controllers for text fields
   final TextEditingController _nameController = TextEditingController();
@@ -49,6 +67,7 @@ class CharacterModuleState extends State<CharacterModule>
     super.initState();
     widget.linkProvider.addListener(_rebuild);
     _tabController = TabController(length: 1, vsync: this);
+    _customPanelService.init();
     _loadCharacter();
   }
 
@@ -72,36 +91,7 @@ class CharacterModuleState extends State<CharacterModule>
   }
 
   void reload() {
-    final box = Hive.box<Character>('characters');
-    Character? character;
-    // 1. Try to get the character using the key as a String.
-    // This is the most common case for non-integer keys.
-    character = box.get(widget.characterKey);
-    // 2. If not found, try parsing the key as an integer.
-    if (character == null) {
-      final intKey = int.tryParse(widget.characterKey);
-      if (intKey != null) {
-        character = box.get(intKey);
-      }
-    }
-    // Now, update the state.
-    setState(() {
-      _character = character;
-      _migrateToIterations();
-      final int tabLength = _character?.iterations.isEmpty ?? true
-          ? 1
-          : _character!.iterations.length;
-      if (_tabController?.length != tabLength) {
-        _tabController?.dispose();
-        _tabController = TabController(
-          length: tabLength,
-          vsync: this,
-          initialIndex: _currentIterationIndex.clamp(0, tabLength - 1),
-        );
-        _tabController!.addListener(() => _onTabTapped(_tabController!.index));
-      }
-      _updateUIForCurrentIteration();
-    });
+    _loadCharacter();
     widget.onReload();
   }
 
@@ -118,9 +108,6 @@ class CharacterModuleState extends State<CharacterModule>
 
   void _migrateToIterations() {
     if (_character != null && _character!.iterations.isEmpty) {
-      debugPrint(
-        'Migrating character "${_character!.name}" to iteration format.',
-      );
       final firstIteration = CharacterIteration(
         iterationName: 'The First',
         name: _character!.name,
@@ -130,6 +117,7 @@ class CharacterModuleState extends State<CharacterModule>
         occupation: _character!.occupation, // This was correct
         gender: _character!.gender,
         customGender: _character!.customGender,
+        customPanels: [], // Initialize empty list for custom panels
       );
       _character!.iterations.add(firstIteration);
     }
@@ -197,10 +185,36 @@ class CharacterModuleState extends State<CharacterModule>
   }
 
   void _onFieldChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
     _debounce = Timer(const Duration(milliseconds: 750), () {
       _saveChanges();
     });
+  }
+
+  void _reorderSingleColumnPanel(int oldIndex, int newIndex) {
+    setState(() {
+      final panel = singleColumnPanelOrder.removeAt(oldIndex);
+      singleColumnPanelOrder.insert(newIndex, panel);
+    });
+  }
+
+  void _reorderCustomPanel(int oldIndex, int newIndex) {
+    final customPanels = _currentIteration.customPanels;
+    if (oldIndex < 0 ||
+        oldIndex >= customPanels.length ||
+        newIndex < 0 ||
+        newIndex >= customPanels.length) {
+      return;
+    }
+    final panel = customPanels.removeAt(oldIndex);
+    customPanels.insert(newIndex, panel);
+    // Update orders
+    for (int i = 0; i < customPanels.length; i++) {
+      customPanels[i].order = i;
+    }
+    _saveChanges();
   }
 
   Future<void> _saveChanges() async {
@@ -244,6 +258,7 @@ class CharacterModuleState extends State<CharacterModule>
       context: context,
       builder: (context) => const _NewIterationDialog(),
     );
+    if (!mounted) return;
     if (result != null && result['name'] != null) {
       final String name = result['name'] as String;
       final bool importData = result['import'] as bool? ?? false;
@@ -313,6 +328,7 @@ class CharacterModuleState extends State<CharacterModule>
         );
       },
     );
+    if (!mounted) return;
     if (newName != null && newName != iteration.iterationName) {
       setState(() {
         iteration.iterationName = newName;
@@ -432,6 +448,47 @@ class CharacterModuleState extends State<CharacterModule>
     }
   }
 
+  Future<void> _showAddCustomFieldDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const _AddCustomFieldDialog(),
+    );
+    if (result != null) {
+      final customField = CustomField(
+        name: result['name'],
+        type: result['type'],
+        value: result['value'],
+      );
+      // Add to global service
+      final service = GlobalCustomFieldService();
+      await service.init();
+      await service.addCustomField(customField);
+      // Set initial value in current iteration
+      _currentIteration.customFieldValues[customField.name] = customField.value;
+      _saveChanges();
+    }
+  }
+
+  Future<void> _showAddCustomPanelDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const _AddCustomPanelDialog(),
+    );
+    if (result != null) {
+      final customPanel = CustomPanel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: result['name'],
+        type: result['type'],
+        content: result['content'],
+        items: result['items'] ?? [],
+        order: _currentIteration.customPanels.length,
+        column: result['column'] ?? 'right',
+      );
+      _currentIteration.customPanels.add(customPanel);
+      _saveChanges();
+    }
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -448,226 +505,339 @@ class CharacterModuleState extends State<CharacterModule>
   @override
   Widget build(BuildContext context) {
     if (_character == null) {
-      return const Scaffold(body: Center(child: Text('Character not found.')));
+      return const Center(child: Text('Character not found.'));
     }
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        toolbarHeight: kToolbarHeight,
-        titleSpacing: 0,
-        flexibleSpace: Row(
-          children: [
-            Expanded(
-              child: TabBar(
-                controller: _tabController,
-                onTap: (index) => _onTabTapped(index),
-                isScrollable: true,
-                tabs: _character!.iterations.isEmpty
-                    ? [const Tab(text: 'The First')]
-                    : _character!.iterations.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final iter = entry.value;
-                        return Tab(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(iter.iterationName),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, size: 18),
-                                onSelected: (value) {
-                                  if (value == 'rename') {
-                                    _renameIteration(index);
-                                  } else if (value == 'delete') {
-                                    _deleteIteration(index);
-                                  }
-                                },
-                                itemBuilder: (BuildContext context) {
-                                  final canDelete =
-                                      _character!.iterations.length > 1;
-                                  return [
-                                    const PopupMenuItem(
-                                      value: 'rename',
-                                      child: Text('Rename'),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'delete',
-                                      enabled: canDelete,
-                                      child: Tooltip(
-                                        message: (canDelete
-                                            ? 'Delete this iteration'
-                                            : "The character must have at least one iteration. To remove the character entirely, use the main character list."),
-                                        child: Text(
-                                          'Delete',
-                                          style: TextStyle(
-                                            color: (canDelete
-                                                ? Colors.red
-                                                : Colors.grey),
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      child: Column(
+        children: [
+          // AppBar equivalent
+          SizedBox(
+            height: kToolbarHeight,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TabBar(
+                    controller: _tabController,
+                    onTap: (index) => _onTabTapped(index),
+                    isScrollable: true,
+                    tabs: _character!.iterations.isEmpty
+                        ? [const Tab(text: 'The First')]
+                        : _character!.iterations.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final iter = entry.value;
+                            return Tab(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(iter.iterationName),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, size: 18),
+                                    onSelected: (value) {
+                                      if (value == 'rename') {
+                                        _renameIteration(index);
+                                      } else if (value == 'delete') {
+                                        _deleteIteration(index);
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) {
+                                      final canDelete =
+                                          _character!.iterations.length > 1;
+                                      return [
+                                        const PopupMenuItem(
+                                          value: 'rename',
+                                          child: Text('Rename'),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'delete',
+                                          enabled: canDelete,
+                                          child: Tooltip(
+                                            message: (canDelete
+                                                ? 'Delete this iteration'
+                                                : "The character must have at least one iteration. To remove the character entirely, use the main character list."),
+                                            child: Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: (canDelete
+                                                    ? Colors.red
+                                                    : Colors.grey),
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                  ];
-                                },
+                                      ];
+                                    },
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                indicator: const UnderlineTabIndicator(),
-              ),
+                            );
+                          }).toList(),
+                    indicator: const UnderlineTabIndicator(),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'New Iteration',
+                  onPressed: _showNewIterationDialog,
+                ),
+                const SizedBox(width: 8), // Some padding
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'New Iteration',
-              onPressed: _showNewIterationDialog,
+          ),
+          // Body
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Determine if we should use a single column (mobile) or two columns (tablet/desktop)
+                final isLargeScreen = constraints.maxWidth > 800;
+                return TabBarView(
+                  controller: _tabController,
+                  children: _character!.iterations.isEmpty
+                      ? [const Center(child: CircularProgressIndicator())]
+                      : _character!.iterations.map((iteration) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(16.0),
+                            child: isLargeScreen
+                                ? _buildTwoColumnLayout(context, constraints)
+                                : _buildSingleColumnLayout(context),
+                          );
+                        }).toList(),
+                );
+              },
             ),
-            const SizedBox(width: 8), // Some padding
-          ],
-        ),
+          ),
+          // Bottom status bar
+          _buildBottomStatusBar(),
+        ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // Determine if we should use a single column (mobile) or two columns (tablet/desktop)
-          final isLargeScreen = constraints.maxWidth > 800;
-          return TabBarView(
-            controller: _tabController,
-            children: _character!.iterations.isEmpty
-                ? [const Center(child: CircularProgressIndicator())]
-                : _character!.iterations.map((iteration) {
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: isLargeScreen
-                          ? _buildTwoColumnLayout(context)
-                          : _buildSingleColumnLayout(context),
-                    );
-                  }).toList(),
-          );
-        },
-      ),
-      bottomNavigationBar: _buildBottomStatusBar(),
     );
   }
 
   // Layout for large screens (two columns) - CORRECTED
-  Widget _buildTwoColumnLayout(BuildContext context) {
+  Widget _buildTwoColumnLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Left Column Content
-        Expanded(
-          child: Column(
-            children: [
-              _PanelCard(
-                title: 'Basic Information',
-                content: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _BasicInfoForm(
-                    nameController: _nameController,
-                    aliasesController: _aliasesController,
-                    occupationController: _occupationController,
-                    customGenderController: _customGenderController,
-                    character: _currentIteration,
-                    onChanged: _onFieldChanged,
-                    onStateChanged: () => setState(() {}),
-                  ),
-                ),
+        Flexible(
+          flex: 1,
+          child: _PanelCard(
+            title: 'Basic Information',
+            onEdit: _showAddCustomFieldDialog,
+            editIcon: Icons.add,
+            editTooltip: 'Add Custom Field',
+            content: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _BasicInfoForm(
+                nameController: _nameController,
+                aliasesController: _aliasesController,
+                occupationController: _occupationController,
+                customGenderController: _customGenderController,
+                character: _currentIteration,
+                onChanged: _onFieldChanged,
+                onStateChanged: () => setState(() {}),
               ),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
         ),
         const SizedBox(width: 16),
         // Right Column Content
-        Expanded(
-          child: Column(
-            children: [
-              _PanelCard(
-                title: 'Bio',
-                content: _BioPanel(
-                  controller: _bioController,
-                  onChanged: _onFieldChanged,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _LinkPanel(
-                character: _character!,
-                iterationIndex: _currentIterationIndex,
-                linkProvider: widget.linkProvider,
-                onAddLink: ({Link? initialLink}) async {
-                  final newLink = await _showLinkCreationDialog(
-                    initialLink: initialLink,
-                  );
-                  if (newLink != null) {
-                    _handleLinkAdded(newLink);
-                  }
-                },
-                onLinkAdded: _handleLinkAdded,
-                onViewChart: (key) => _viewRelationChart(context, key),
-                onReverted: reload,
-              ),
-              const SizedBox(height: 16),
-              const _PanelCard(title: 'Image', content: _ImageUploadPanel()),
-              const SizedBox(height: 16),
-              _PanelCard(
-                title: 'Traits',
-                onEdit: _showTraitEditor,
-                content: _TraitsPanel(iteration: _currentIteration),
-              ),
-            ],
-          ),
+        Flexible(
+          flex: 1,
+          child: Column(children: _buildRightColumnPanels(context)),
         ),
       ],
     );
   }
 
+  List<Widget> _buildRightColumnPanels(BuildContext context) {
+    final List<Widget> panels = [];
+    for (int i = 0; i < panelOrder.length; i++) {
+      final panelType = panelOrder[i];
+      Widget panelWidget;
+      switch (panelType) {
+        case PanelType.bio:
+          panelWidget = _PanelCard(
+            title: 'Bio',
+            content: _BioPanel(
+              controller: _bioController,
+              onChanged: _onFieldChanged,
+            ),
+          );
+          break;
+        case PanelType.links:
+          panelWidget = _PanelCard(
+            title: 'Links',
+            content: _LinkPanel(
+              character: _character!,
+              iterationIndex: _currentIterationIndex,
+              linkProvider: widget.linkProvider,
+              onAddLink: ({Link? initialLink}) async {
+                final newLink = await _showLinkCreationDialog(
+                  initialLink: initialLink,
+                );
+                if (newLink != null) _handleLinkAdded(newLink);
+              },
+              onLinkAdded: _handleLinkAdded,
+              onViewChart: (key) => _viewRelationChart(context, key),
+              onReverted: reload,
+            ),
+          );
+          break;
+        case PanelType.image:
+          panelWidget = _PanelCard(
+            title: 'Image',
+            content: const _ImageUploadPanel(),
+          );
+          break;
+        case PanelType.traits:
+          panelWidget = _PanelCard(
+            title: 'Traits',
+            onEdit: _showTraitEditor,
+            editIcon: Icons.edit,
+            editTooltip: 'Edit Traits',
+            content: _TraitsPanel(iteration: _currentIteration),
+          );
+          break;
+      }
+      panels.add(panelWidget);
+      if (i < panelOrder.length - 1) {
+        panels.add(const SizedBox(height: 16));
+      }
+    }
+    // Add custom panels
+    final customPanels = _currentIteration.customPanels
+      ..sort((a, b) => a.order.compareTo(b.order));
+    if (customPanels.isNotEmpty) {
+      panels.add(const Divider());
+      panels.add(const SizedBox(height: 16));
+    }
+    for (int i = 0; i < customPanels.length; i++) {
+      final customPanel = customPanels[i];
+      panels.add(
+        _buildCustomPanelWidget(
+          customPanel,
+          onReorderUp: i > 0 ? () => _reorderCustomPanel(i, i - 1) : null,
+          onReorderDown: i < customPanels.length - 1
+              ? () => _reorderCustomPanel(i, i + 1)
+              : null,
+        ),
+      );
+      if (i < customPanels.length - 1) {
+        panels.add(const SizedBox(height: 16));
+      }
+    }
+    // Add button to add new custom panel
+    if (customPanels.isNotEmpty) {
+      panels.add(const SizedBox(height: 16));
+    }
+    panels.add(
+      Center(
+        child: ElevatedButton.icon(
+          onPressed: _showAddCustomPanelDialog,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Custom Panel'),
+        ),
+      ),
+    );
+    return panels;
+  }
+
   Widget _buildSingleColumnLayout(BuildContext context) {
+    final List<Widget> panels = [];
+
+    // Basic Information (not reorderable)
+    panels.add(
+      _PanelCard(
+        title: 'Basic Information',
+        content: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _BasicInfoForm(
+            nameController: _nameController,
+            aliasesController: _aliasesController,
+            occupationController: _occupationController,
+            customGenderController: _customGenderController,
+            character: _currentIteration,
+            onChanged: _onFieldChanged,
+            onStateChanged: () => setState(() {}),
+          ),
+        ),
+      ),
+    );
+    panels.add(const SizedBox(height: 16));
+
+    // Reorderable panels
+    for (int i = 0; i < singleColumnPanelOrder.length; i++) {
+      final panelType = singleColumnPanelOrder[i];
+      Widget panelWidget;
+      switch (panelType) {
+        case PanelType.bio:
+          panelWidget = _PanelCard(
+            title: 'Bio',
+            onReorderUp: i > 0
+                ? () => _reorderSingleColumnPanel(i, i - 1)
+                : null,
+            onReorderDown: i < singleColumnPanelOrder.length - 1
+                ? () => _reorderSingleColumnPanel(i, i + 1)
+                : null,
+            content: _BioPanel(
+              controller: _bioController,
+              onChanged: _onFieldChanged,
+            ),
+          );
+          break;
+        case PanelType.image:
+          panelWidget = _PanelCard(
+            title: 'Image',
+            onReorderUp: i > 0
+                ? () => _reorderSingleColumnPanel(i, i - 1)
+                : null,
+            onReorderDown: i < singleColumnPanelOrder.length - 1
+                ? () => _reorderSingleColumnPanel(i, i + 1)
+                : null,
+            content: const _ImageUploadPanel(),
+          );
+          break;
+        case PanelType.links:
+          panelWidget = _PanelCard(
+            title: 'Links',
+            onReorderUp: i > 0
+                ? () => _reorderSingleColumnPanel(i, i - 1)
+                : null,
+            onReorderDown: i < singleColumnPanelOrder.length - 1
+                ? () => _reorderSingleColumnPanel(i, i + 1)
+                : null,
+            content: _LinkPanel(
+              character: _character!,
+              iterationIndex: _currentIterationIndex,
+              linkProvider: widget.linkProvider,
+              onAddLink: ({Link? initialLink}) =>
+                  _showLinkCreationDialog(initialLink: initialLink).then((
+                    newLink,
+                  ) {
+                    if (newLink != null) _handleLinkAdded(newLink);
+                  }),
+              onLinkAdded: _handleLinkAdded,
+              onViewChart: (key) => _viewRelationChart(context, key),
+              onReverted: reload,
+            ),
+          );
+          break;
+        default:
+          continue; // Skip unknown panel types
+      }
+      panels.add(panelWidget);
+      if (i < singleColumnPanelOrder.length - 1) {
+        panels.add(const SizedBox(height: 16));
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Basic Information
-        _PanelCard(
-          title: 'Basic Information',
-          content: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _BasicInfoForm(
-              nameController: _nameController,
-              aliasesController: _aliasesController,
-              occupationController: _occupationController,
-              customGenderController: _customGenderController,
-              character: _currentIteration,
-              onChanged: _onFieldChanged,
-              onStateChanged: () => setState(() {}),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Bio
-        _PanelCard(
-          title: 'Bio',
-          content: _BioPanel(
-            controller: _bioController,
-            onChanged: _onFieldChanged,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Image
-        const _PanelCard(title: 'Image', content: _ImageUploadPanel()),
-        const SizedBox(height: 16),
-        // Links
-        _LinkPanel(
-          character: _character!,
-          iterationIndex: _currentIterationIndex,
-          linkProvider: widget.linkProvider,
-          onAddLink: ({Link? initialLink}) =>
-              _showLinkCreationDialog(initialLink: initialLink).then((newLink) {
-                if (newLink != null) _handleLinkAdded(newLink);
-              }),
-          onLinkAdded: _handleLinkAdded,
-          onViewChart: (key) => _viewRelationChart(context, key),
-          onReverted: reload,
-        ),
-      ],
+      children: panels,
     );
   }
 
@@ -704,6 +874,31 @@ class CharacterModuleState extends State<CharacterModule>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCustomPanelWidget(
+    CustomPanel customPanel, {
+    VoidCallback? onReorderUp,
+    VoidCallback? onReorderDown,
+  }) {
+    return _CustomPanelWidget(
+      customPanel: customPanel,
+      onChanged: _onFieldChanged,
+      onReorderUp: onReorderUp,
+      onReorderDown: onReorderDown,
+      onEdit: () async {
+        final result = await showDialog<String>(
+          context: context,
+          builder: (context) => _EditCustomPanelDialog(panel: customPanel),
+        );
+        if (result == 'delete') {
+          _currentIteration.customPanels.remove(customPanel);
+          _saveChanges();
+        } else if (result == 'saved') {
+          _onFieldChanged();
+        }
+      },
     );
   }
 }
@@ -922,7 +1117,7 @@ class _LinkCreationDialogState extends State<_LinkCreationDialog> {
                         child: Column(
                           children: [
                             Padding(
-                              padding: const EdgeInsets.all(8.0),
+                              padding: const EdgeInsets.all(16.0),
                               child: TextField(
                                 controller: _searchController,
                                 decoration: InputDecoration(
@@ -1125,59 +1320,55 @@ class _LinkPanel extends StatelessWidget {
     final locationCount = countForType('Location');
     final itemCount = countForType('Item');
     final organizationCount = countForType('Organization');
-    return _PanelCard(
-      title: 'Links',
-      content: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 2. Row of Three Square Category Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: _LinkCategoryButton(
-                    label: 'Characters',
-                    icon: Icons.person_outline,
-                    color: Colors.green,
-                    count: characterCount,
-                    onTap: () => onViewChart(character.key),
-                  ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 2. Row of Four Square Category Buttons filling horizontal space
+          Row(
+            children: [
+              Expanded(
+                child: _LinkCategoryButton(
+                  label: 'Characters',
+                  icon: Icons.person_outline,
+                  color: Colors.green,
+                  count: characterCount,
+                  onTap: () => onViewChart(character.key),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _LinkCategoryButton(
-                    label: 'Locations',
-                    icon: Icons.map_outlined,
-                    color: Colors.blue,
-                    count: locationCount,
-                    onTap: null,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LinkCategoryButton(
+                  label: 'Locations',
+                  icon: Icons.map_outlined,
+                  color: Colors.blue,
+                  count: locationCount,
+                  onTap: null,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _LinkCategoryButton(
-                    label: 'Items',
-                    icon: Icons.category_outlined,
-                    color: Colors.orange,
-                    count: itemCount,
-                    onTap: null,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LinkCategoryButton(
+                  label: 'Items',
+                  icon: Icons.category_outlined,
+                  color: Colors.orange,
+                  count: itemCount,
+                  onTap: null,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _LinkCategoryButton(
-                    label: 'Organizations',
-                    icon: Icons.group_work_outlined,
-                    color: Colors.purple,
-                    count: organizationCount,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LinkCategoryButton(
+                  label: 'Organizations',
+                  icon: Icons.group_work_outlined,
+                  color: Colors.purple,
+                  count: organizationCount,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1250,41 +1441,66 @@ class _PanelCard extends StatelessWidget {
   final String title;
   final Widget content;
   final VoidCallback? onEdit;
-
-  const _PanelCard({required this.title, required this.content, this.onEdit});
+  final IconData? editIcon;
+  final String? editTooltip;
+  final VoidCallback? onReorderUp;
+  final VoidCallback? onReorderDown;
+  const _PanelCard({
+    required this.title,
+    required this.content,
+    this.onEdit,
+    this.editIcon,
+    this.editTooltip,
+    this.onReorderUp,
+    this.onReorderDown,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                if (onEdit != null)
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: onEdit,
-                    tooltip: 'Edit',
-                  )
-                else
-                  const Icon(Icons.more_vert, color: Colors.transparent),
-              ],
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  if (onReorderUp != null || onReorderDown != null) ...[
+                    IconButton(
+                      icon: const Icon(Icons.arrow_upward, size: 18),
+                      onPressed: onReorderUp,
+                      tooltip: 'Move Up',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_downward, size: 18),
+                      onPressed: onReorderDown,
+                      tooltip: 'Move Down',
+                    ),
+                    const VerticalDivider(width: 16),
+                  ],
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (onEdit != null)
+                    IconButton(
+                      icon: Icon(editIcon ?? Icons.edit_outlined),
+                      onPressed: onEdit,
+                      tooltip: editTooltip ?? 'Edit',
+                    ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          content,
-        ],
+            const Divider(height: 1),
+            content,
+          ],
+        ),
       ),
     );
   }
@@ -1559,11 +1775,24 @@ class _BasicInfoForm extends StatefulWidget {
 class __BasicInfoFormState extends State<_BasicInfoForm> {
   List<String> _realWorldCountries = [];
   bool _isLoadingCountries = true;
+  List<CustomField> _customFields = [];
+  final Map<String, TextEditingController> _customFieldControllers = {};
 
   @override
   void initState() {
     super.initState();
     _fetchCountries();
+    _loadCustomFields().then((_) => _initializeControllers());
+  }
+
+  Future<void> _loadCustomFields() async {
+    final service = GlobalCustomFieldService();
+    await service.init();
+    if (mounted) {
+      setState(() {
+        _customFields = service.getCustomFields().toList();
+      });
+    }
   }
 
   Future<void> _fetchCountries() async {
@@ -1608,115 +1837,319 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
     }
   }
 
+  void _initializeControllers() {
+    for (var field in _customFields) {
+      final controller = TextEditingController(
+        text: widget.character.customFieldValues[field.name] ?? field.value,
+      );
+      _customFieldControllers[field.name] = controller;
+    }
+  }
+
+  void _refreshCustomFields() async {
+    // Dispose existing controllers
+    for (var controller in _customFieldControllers.values) {
+      controller.dispose();
+    }
+    _customFieldControllers.clear();
+    await _loadCustomFields();
+    _initializeControllers();
+    setState(() {});
+  }
+
+  Widget _buildCustomFieldItem(CustomField field) {
+    final controller = _customFieldControllers[field.name];
+    if (controller == null) return const SizedBox.shrink();
+
+    Widget input;
+    switch (field.type) {
+      case 'text':
+        input = TextField(
+          controller: controller,
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      case 'number':
+        input = TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      case 'float':
+        input = TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      case 'large_text':
+        input = TextField(
+          controller: controller,
+          maxLines: 5,
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      case 'calendar':
+        input = TextField(
+          controller: controller,
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      case 'date':
+        input = TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'YYYY-MM-DD'),
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+        break;
+      default:
+        input = TextField(
+          controller: controller,
+          readOnly: !field.visible,
+          onChanged: (value) {
+            widget.character.customFieldValues[field.name] = value;
+            widget.onChanged();
+          },
+        );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(field.name, style: Theme.of(context).textTheme.labelLarge),
+              const Spacer(),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  final service = GlobalCustomFieldService();
+                  await service.init();
+                  switch (value) {
+                    case 'edit':
+                      final result = await showDialog<Map<String, dynamic>>(
+                        context: context,
+                        builder: (context) =>
+                            _EditCustomFieldDialog(field: field),
+                      );
+                      if (result != null) {
+                        await service.removeCustomField(field.name);
+                        final newField = CustomField(
+                          name: result['name'],
+                          type: result['type'],
+                          value: result['value'],
+                        );
+                        await service.addCustomField(newField);
+                        _refreshCustomFields();
+                      }
+                      break;
+                    case 'delete':
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Custom Field'),
+                          content: Text(
+                            'Are you sure you want to delete "${field.name}"?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await service.removeCustomField(field.name);
+                        _refreshCustomFields();
+                      }
+                      break;
+                    case 'toggle':
+                      await service.toggleVisibility(field.name);
+                      _refreshCustomFields();
+                      break;
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Text('Edit'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Text('Delete'),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'toggle',
+                    child: Text(field.visible ? 'Disable' : 'Enable'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          input,
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _customFieldControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      // Using a list view inside the constrained box to make the content scrollable
-      children: [
-        // Full Name
-        _FormItem(
-          label: 'Full Name',
-          widget: TextField(
-            controller: widget.nameController,
-            decoration: const InputDecoration(
-              hintText: 'Enter iteration-specific name...',
-            ),
-            onChanged: (_) => widget.onChanged(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Aliases
-        _FormItem(
-          label: 'Aliases',
-          widget: TextField(
-            controller: widget.aliasesController,
-            decoration: const InputDecoration(
-              hintText: 'Enter comma-separated aliases',
-            ),
-            onChanged: (_) => widget.onChanged(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Origin Country
-        _FormItem(
-          label: 'Origin Country',
-          widget: InkWell(
-            onTap: _isLoadingCountries ? null : _showCountrySelectionDialog,
-            child: InputDecorator(
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        // Using a list view inside the constrained box to make the content scrollable
+        children: [
+          // Full Name
+          _FormItem(
+            label: 'Full Name',
+            widget: TextField(
+              controller: widget.nameController,
               decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                suffixIcon: Icon(Icons.arrow_drop_down),
+                hintText: 'Enter iteration-specific name...',
               ),
-              child: Text(
-                widget.character.originCountry ?? 'Select or Type...',
-              ),
+              onChanged: (_) => widget.onChanged(),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Residence
-        _FormItem(
-          label: 'Residence',
-          widget: TextField(
-            decoration: const InputDecoration(hintText: 'Enter some text...'),
-            onChanged: (_) => widget.onChanged(),
+          const SizedBox(height: 12),
+          // Aliases
+          _FormItem(
+            label: 'Aliases',
+            widget: TextField(
+              controller: widget.aliasesController,
+              decoration: const InputDecoration(
+                hintText: 'Enter comma-separated aliases',
+              ),
+              onChanged: (_) => widget.onChanged(),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Gender
-        _FormItem(
-          label: 'Gender',
-          widget: _buildDropdown(
-            value: widget.character.gender ?? 'Male',
-            items: ['Male', 'Female', 'Custom'],
-            onChanged: (value) {
-              widget.character.gender = value;
-              widget.onStateChanged();
-              widget.onChanged();
-            },
-            hint: 'Select or Type...',
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (widget.character.gender == 'Custom')
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0),
-            child: _FormItem(
-              label: 'Custom Gender',
-              widget: TextField(
-                controller: widget.customGenderController,
+          const SizedBox(height: 12),
+          // Origin Country
+          _FormItem(
+            label: 'Origin Country',
+            widget: InkWell(
+              onTap: _isLoadingCountries ? null : _showCountrySelectionDialog,
+              child: InputDecorator(
                 decoration: const InputDecoration(
-                  hintText: 'Specify custom gender',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  suffixIcon: Icon(Icons.arrow_drop_down),
                 ),
-                onChanged: (_) => widget.onChanged(),
+                child: Text(
+                  widget.character.originCountry ?? 'Select or Type...',
+                ),
               ),
             ),
           ),
-        const SizedBox(height: 12),
-        // Formal Education
-        _FormItem(
-          label: 'Formal Education',
-          widget: _buildDropdown(
-            value: null, // Placeholder
-            items: [],
-            onChanged: (v) {},
-            hint: 'Select or Type...',
+          const SizedBox(height: 12),
+          // Residence
+          _FormItem(
+            label: 'Residence',
+            widget: TextField(
+              decoration: const InputDecoration(hintText: 'Enter some text...'),
+              onChanged: (_) => widget.onChanged(),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Occupation
-        _FormItem(
-          label: 'Occupation',
-          widget: TextField(
-            controller: widget.occupationController,
-            decoration: const InputDecoration(hintText: 'Enter some text...'),
-            onChanged: (_) => widget.onChanged(),
+          const SizedBox(height: 12),
+          // Gender
+          _FormItem(
+            label: 'Gender',
+            widget: _buildDropdown(
+              value: widget.character.gender ?? 'Male',
+              items: ['Male', 'Female', 'Custom'],
+              onChanged: (value) {
+                widget.character.gender = value;
+                widget.onStateChanged();
+                widget.onChanged();
+              },
+              hint: 'Select or Type...',
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-      ],
+          const SizedBox(height: 12),
+          if (widget.character.gender == 'Custom') ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: _FormItem(
+                label: 'Custom Gender',
+                widget: TextField(
+                  controller: widget.customGenderController,
+                  decoration: const InputDecoration(
+                    hintText: 'Specify custom gender',
+                  ),
+                  onChanged: (String _) => widget.onChanged(),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          // Formal Education
+          _FormItem(
+            label: 'Formal Education',
+            widget: _buildDropdown(
+              value: null, // Placeholder
+              items: [],
+              onChanged: (v) {},
+              hint: 'Select or Type...',
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Occupation
+          _FormItem(
+            label: 'Occupation',
+            widget: TextField(
+              controller: widget.occupationController,
+              decoration: const InputDecoration(hintText: 'Enter some text...'),
+              onChanged: (_) => widget.onChanged(),
+            ),
+          ),
+          // Custom Fields
+          ..._customFields.map((field) => _buildCustomFieldItem(field)),
+        ],
+      ),
     );
   }
 
@@ -1855,7 +2288,7 @@ class _BioPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: TextField(
         controller: controller,
         onChanged: (_) => onChanged(),
@@ -2026,6 +2459,572 @@ class __CountrySelectionDialogState extends State<_CountrySelectionDialog> {
           );
         },
       ),
+    );
+  }
+}
+
+/// --- ADD CUSTOM FIELD DIALOG ---
+class _AddCustomFieldDialog extends StatefulWidget {
+  const _AddCustomFieldDialog();
+
+  @override
+  State<_AddCustomFieldDialog> createState() => __AddCustomFieldDialogState();
+}
+
+class __AddCustomFieldDialogState extends State<_AddCustomFieldDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _valueController = TextEditingController();
+  String _selectedType = 'text';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _valueController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.of(context).pop({
+        'name': _nameController.text.trim(),
+        'type': _selectedType,
+        'value': _valueController.text.trim(),
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Custom Field'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Field Name',
+                hintText: 'e.g., Favorite Color',
+              ),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedType,
+              items: const [
+                DropdownMenuItem(value: 'text', child: Text('Text')),
+                DropdownMenuItem(value: 'number', child: Text('Number')),
+                DropdownMenuItem(value: 'float', child: Text('Float')),
+                DropdownMenuItem(
+                  value: 'large_text',
+                  child: Text('Large Text'),
+                ),
+                DropdownMenuItem(value: 'calendar', child: Text('Calendar')),
+                DropdownMenuItem(value: 'date', child: Text('Date')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value!;
+                });
+              },
+              decoration: const InputDecoration(labelText: 'Field Type'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _valueController,
+              decoration: const InputDecoration(
+                labelText: 'Initial Value',
+                hintText: 'Enter initial value (optional)',
+              ),
+              onFieldSubmitted: (_) => _submit(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Add Field')),
+      ],
+    );
+  }
+}
+
+/// --- EDIT CUSTOM FIELD DIALOG ---
+class _EditCustomFieldDialog extends StatefulWidget {
+  final CustomField field;
+
+  const _EditCustomFieldDialog({required this.field});
+
+  @override
+  State<_EditCustomFieldDialog> createState() => __EditCustomFieldDialogState();
+}
+
+class __EditCustomFieldDialogState extends State<_EditCustomFieldDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _valueController;
+  late String _selectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.field.name);
+    _valueController = TextEditingController(text: widget.field.value);
+    _selectedType = widget.field.type;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _valueController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.of(context).pop({
+        'name': _nameController.text.trim(),
+        'type': _selectedType,
+        'value': _valueController.text.trim(),
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Custom Field'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Field Name',
+                hintText: 'e.g., Favorite Color',
+              ),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedType,
+              items: const [
+                DropdownMenuItem(value: 'text', child: Text('Text')),
+                DropdownMenuItem(value: 'number', child: Text('Number')),
+                DropdownMenuItem(value: 'float', child: Text('Float')),
+                DropdownMenuItem(
+                  value: 'large_text',
+                  child: Text('Large Text'),
+                ),
+                DropdownMenuItem(value: 'calendar', child: Text('Calendar')),
+                DropdownMenuItem(value: 'date', child: Text('Date')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value!;
+                });
+              },
+              decoration: const InputDecoration(labelText: 'Field Type'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _valueController,
+              decoration: const InputDecoration(
+                labelText: 'Default Value',
+                hintText: 'Enter default value (optional)',
+              ),
+              onFieldSubmitted: (_) => _submit(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save Changes')),
+      ],
+    );
+  }
+}
+
+/// --- ADD CUSTOM PANEL DIALOG ---
+class _AddCustomPanelDialog extends StatefulWidget {
+  const _AddCustomPanelDialog();
+
+  @override
+  State<_AddCustomPanelDialog> createState() => __AddCustomPanelDialogState();
+}
+
+class __AddCustomPanelDialogState extends State<_AddCustomPanelDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _contentController = TextEditingController();
+  String _selectedType = 'large_text';
+  final List<String> _items = [];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.of(context).pop({
+        'name': _nameController.text.trim(),
+        'type': _selectedType,
+        'content': _contentController.text.trim(),
+        'items': _items,
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Custom Panel'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Panel Name',
+                hintText: 'e.g., Notes',
+              ),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedType,
+              items: const [
+                DropdownMenuItem(
+                  value: 'large_text',
+                  child: Text('Large Text'),
+                ),
+                DropdownMenuItem(
+                  value: 'item_lister',
+                  child: Text('Item Lister'),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value!;
+                });
+              },
+              decoration: const InputDecoration(labelText: 'Panel Type'),
+            ),
+            const SizedBox(height: 16),
+            if (_selectedType == 'large_text')
+              TextFormField(
+                controller: _contentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Initial Content',
+                  hintText: 'Enter initial text (optional)',
+                ),
+                onFieldSubmitted: (_) => _submit(),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Add Panel')),
+      ],
+    );
+  }
+}
+
+/// --- EDIT CUSTOM PANEL DIALOG ---
+class _EditCustomPanelDialog extends StatefulWidget {
+  final CustomPanel panel;
+
+  const _EditCustomPanelDialog({required this.panel});
+
+  @override
+  State<_EditCustomPanelDialog> createState() => __EditCustomPanelDialogState();
+}
+
+class __EditCustomPanelDialogState extends State<_EditCustomPanelDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _contentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.panel.name);
+    _contentController = TextEditingController(text: widget.panel.content);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      widget.panel.name = _nameController.text.trim();
+      if (widget.panel.type == 'large_text') {
+        widget.panel.content = _contentController.text.trim();
+      }
+      Navigator.of(context).pop('saved');
+    }
+  }
+
+  void _delete() {
+    Navigator.of(context).pop('delete');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      // Using KeyboardAwareDialog to handle Escape key for cancellation.
+      actionsPadding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      title: const Text('Edit Custom Panel'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Panel Name',
+                hintText: 'e.g., Notes',
+              ),
+              validator: (value) => (value?.trim().isEmpty ?? true)
+                  ? 'Name cannot be empty'
+                  : null,
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            if (widget.panel.type == 'large_text')
+              TextFormField(
+                controller: _contentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Content',
+                  hintText: 'Enter text',
+                ),
+                onFieldSubmitted: (_) => _submit(),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Confirm Deletion'),
+                content: Text(
+                  'Are you sure you want to delete the panel "${widget.panel.name}"?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true) _delete();
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Panel'),
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(onPressed: _submit, child: const Text('Save Changes')),
+      ],
+    );
+  }
+}
+
+/// --- CUSTOM PANEL WIDGET ---
+class _CustomPanelWidget extends StatefulWidget {
+  final CustomPanel customPanel;
+  final VoidCallback onChanged;
+  final VoidCallback? onReorderUp;
+  final VoidCallback? onReorderDown;
+  final Function()? onEdit;
+
+  const _CustomPanelWidget({
+    required this.customPanel,
+    required this.onChanged,
+    this.onReorderUp,
+    this.onReorderDown,
+    this.onEdit,
+  });
+
+  @override
+  State<_CustomPanelWidget> createState() => _CustomPanelWidgetState();
+}
+
+class _CustomPanelWidgetState extends State<_CustomPanelWidget> {
+  late TextEditingController _contentController;
+  late List<TextEditingController> _itemControllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController = TextEditingController(
+      text: widget.customPanel.content,
+    );
+    _itemControllers = widget.customPanel.items
+        .map((item) => TextEditingController(text: item))
+        .toList();
+  }
+
+  @override
+  void didUpdateWidget(_CustomPanelWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.customPanel.content != widget.customPanel.content) {
+      _contentController.text = widget.customPanel.content;
+    }
+    if (oldWidget.customPanel.items.length != widget.customPanel.items.length) {
+      // Dispose old controllers
+      for (var controller in _itemControllers) {
+        controller.dispose();
+      }
+      // Create new ones
+      _itemControllers = widget.customPanel.items
+          .map((item) => TextEditingController(text: item))
+          .toList();
+    } else {
+      // Update existing
+      for (int i = 0; i < _itemControllers.length; i++) {
+        if (_itemControllers[i].text != widget.customPanel.items[i]) {
+          _itemControllers[i].text = widget.customPanel.items[i];
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _contentController.dispose();
+    for (var controller in _itemControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content;
+    switch (widget.customPanel.type) {
+      case 'large_text':
+        content = Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _contentController,
+            maxLines: 10,
+            minLines: 5,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              hintText: 'Enter text here...',
+              border: InputBorder.none,
+            ),
+            onChanged: (value) {
+              widget.customPanel.content = value;
+              widget.onChanged();
+            },
+          ),
+        );
+        break;
+      case 'item_lister':
+        content = Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              for (int i = 0; i < _itemControllers.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: TextField(
+                    controller: _itemControllers[i],
+                    decoration: InputDecoration(
+                      hintText: 'Item ${i + 1}',
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      widget.customPanel.items[i] = value;
+                      widget.onChanged();
+                    },
+                  ),
+                ),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    widget.customPanel.items.add('');
+                    _itemControllers.add(TextEditingController());
+                  });
+                  widget.onChanged();
+                },
+                child: const Text('Add Item'),
+              ),
+            ],
+          ),
+        );
+        break;
+      default:
+        content = const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Unsupported panel type'),
+        );
+    }
+
+    return _PanelCard(
+      title: widget.customPanel.name,
+      content: content,
+      onReorderUp: widget.onReorderUp,
+      onReorderDown: widget.onReorderDown,
+      onEdit: widget.onEdit,
+      editIcon: Icons.edit,
+      editTooltip: 'Edit Panel',
     );
   }
 }

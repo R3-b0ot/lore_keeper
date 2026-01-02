@@ -55,6 +55,9 @@ dependencies:
   vector_math: ^2.1.4
   intl: ^0.20.2
   diff_match_patch: ^0.4.1
+  json_annotation: ^4.9.0
+  flutter_riverpod: ^3.0.3
+  uuid: ^4.2.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -66,6 +69,7 @@ dev_dependencies:
 # Add Isar code generation tools
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
+  json_serializable: ^6.8.0
   mockito: ^5.4.4
   analyzer: ^6.4.1 # This version range should be compatible with recent SDKs
   # The "flutter_lints" package below contains a set of recommended lints to

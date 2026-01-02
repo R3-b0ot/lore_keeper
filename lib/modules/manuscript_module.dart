@@ -3,44 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:hive/hive.dart';
-import 'package:flutter/gestures.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
+import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 import 'package:language_tool/language_tool.dart';
 import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
-
-// Custom embed for page breaks
-class PageBreakEmbed extends Embeddable {
-  const PageBreakEmbed() : super('page_break', null);
-
-  @override
-  Map<String, dynamic> toJson() => {'type': 'page_break'};
-
-  static PageBreakEmbed fromJson(Map<String, dynamic> json) =>
-      const PageBreakEmbed();
-}
-
-// Builder for page break embed
-class PageBreakEmbedBuilder extends EmbedBuilder {
-  @override
-  String get key => 'page_break';
-
-  @override
-  Widget build(BuildContext context, EmbedContext embedContext) {
-    return Container(
-      height: 20,
-      alignment: Alignment.center,
-      child: const Text(
-        '--- Page Break ---',
-        style: TextStyle(color: Colors.grey),
-      ),
-    );
-  }
-}
 
 // The main application widget for the editor module
 class ManuscriptModule extends StatelessWidget {
@@ -48,6 +19,7 @@ class ManuscriptModule extends StatelessWidget {
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
   final ValueChanged<String> onChapterSelected;
+  final Function(QuillController?) onControllerReady;
 
   const ManuscriptModule({
     super.key,
@@ -55,6 +27,7 @@ class ManuscriptModule extends StatelessWidget {
     required this.selectedChapterKey,
     required this.chapterProvider,
     required this.onChapterSelected,
+    required this.onControllerReady,
   });
 
   @override
@@ -64,6 +37,7 @@ class ManuscriptModule extends StatelessWidget {
       selectedChapterKey: selectedChapterKey,
       chapterProvider: chapterProvider,
       onChapterSelected: onChapterSelected,
+      onControllerReady: onControllerReady,
     );
   }
 }
@@ -74,12 +48,14 @@ class ManuscriptEditor extends StatefulWidget {
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
   final ValueChanged<String> onChapterSelected;
+  final Function(QuillController?) onControllerReady;
   const ManuscriptEditor({
     super.key,
     required this.projectId,
     required this.selectedChapterKey,
     required this.chapterProvider,
     required this.onChapterSelected,
+    required this.onControllerReady,
   });
   @override
   // Fix: library_private_types_in_public_api
@@ -89,8 +65,16 @@ class ManuscriptEditor extends StatefulWidget {
 // Fix: library_private_types_in_public_api
 class _ManuscriptEditorState extends State<ManuscriptEditor> {
   late final QuillController _controller;
+  // Enum to track which editor is currently focused
+  _EditorType? _activeEditor;
+
+  // ... existing code ...
+  late final QuillController _titleController;
   final FocusNode _focusNode = FocusNode();
+  late final FocusNode _titleFocusNode; // Declare as late final
   final ScrollController _scrollController = ScrollController();
+
+  Timer? _titleAutosaveTimer;
 
   // Autosave logic
   Timer? _autosaveTimer;
@@ -107,6 +91,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isSwitchingChapter = false;
   // State for status bar features
   int _wordCount = 0;
   double _zoomFactor = 1.0;
@@ -117,11 +102,28 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void initState() {
     super.initState();
     _controller = QuillController.basic();
+    _titleController = QuillController.basic();
+    widget.onControllerReady(_controller);
+
+    // Initialize _titleFocusNode here.
+    _titleFocusNode = FocusNode();
+
     _languageTool = LanguageTool(language: _proofingLanguage);
     _loadIgnoredWords();
     _loadContent();
+
     // Listen for any text change to trigger the autosave debounce function
+    _titleController.addListener(_onTitleChanged);
     _controller.addListener(_onTextChanged);
+
+    // Add listeners to track which editor has focus
+    // These listeners need to be added after _focusNode is initialized.
+    _titleFocusNode.addListener(_onFocusChange);
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _onFocusChange();
+      }
+    });
   }
 
   @override
@@ -134,16 +136,22 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     // If the selected chapter has changed, save the old content and load the new one.
     if (widget.selectedChapterKey != oldWidget.selectedChapterKey) {
-      // Immediately save any pending changes for the old chapter.
+      _isSwitchingChapter = true;
+      // Cancel any pending autosave timers
       _autosaveTimer?.cancel();
-      _saveContent(
-        isChangingChapter: true,
-        chapterKeyToSave: oldWidget.selectedChapterKey,
-      );
-
-      // Load the content for the new chapter.
-      _loadContent();
+      _titleAutosaveTimer?.cancel();
+      // Switch chapter with proper sequencing
+      _switchChapter(oldWidget.selectedChapterKey);
     }
+  }
+
+  Future<void> _switchChapter(String oldKey) async {
+    // Save old chapter content
+    await _saveContent(isChangingChapter: true, chapterKeyToSave: oldKey);
+    // Save old chapter title
+    await _saveTitle(isChangingChapter: true, chapterKeyToSave: oldKey);
+    // Now load the new content
+    _loadContent();
   }
 
   // Load ignored words from the project in Hive
@@ -195,9 +203,34 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _loadStandardContent(chapter);
   }
 
+  // New method to handle focus changes and update the active editor
+  void _onFocusChange() {
+    // Use a post-frame callback to ensure the focus state is updated
+    // before we rebuild the widget.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final newActiveEditor = _titleFocusNode.hasFocus
+          ? _EditorType.title
+          : (_focusNode.hasFocus ? _EditorType.manuscript : _activeEditor);
+
+      if (newActiveEditor == _activeEditor) return;
+
+      setState(() {
+        _activeEditor = newActiveEditor;
+      });
+    });
+  }
+
+  void _onTitleChanged() {
+    if (_isLoading) return;
+
+    _titleAutosaveTimer?.cancel();
+    _titleAutosaveTimer = Timer(_autosaveDelay, _saveTitle);
+  }
+
   // 6. Debounced Text Change Handler
   void _onTextChanged() {
-    if (_isLoading) return;
+    if (_isLoading || _isSwitchingChapter) return;
 
     _updateWordCount();
 
@@ -269,6 +302,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _controller.document = Document.fromDelta(delta);
     setState(() {
       _isLoading = false;
+      _isSwitchingChapter = false;
       _updateWordCount();
     });
   }
@@ -278,6 +312,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     // The actual UI is handled in the build method.
     setState(() {
       _isLoading = false;
+      _isSwitchingChapter = false;
+      // Clear the title controller as well
+      _titleController.document = Document.fromDelta(
+        Delta()..insert('Index\n', {'header': 1}),
+      );
       // Clear the controller to ensure no old text is shown.
       _controller.clear();
     });
@@ -285,10 +324,35 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   void _loadStandardContent(Chapter? chapter) {
     final contentJson = chapter?.richTextJson;
+    debugPrint(
+      'Loading chapter: ${chapter?.title}, key: ${chapter?.key}, contentJson: $contentJson',
+    );
+
+    // Load title
+    if (chapter != null) {
+      final titleDelta = Delta()..insert('${chapter.title}\n', {'header': 1});
+      _titleController.document = Document.fromDelta(titleDelta);
+    } else {
+      _titleController.document = Document();
+    }
+
     if (contentJson != null && contentJson.isNotEmpty) {
       try {
         final doc = jsonDecode(contentJson);
-        _controller.document = Document.fromJson(doc);
+        // Handle both formats: direct ops list or map with ops
+        Map<String, dynamic> documentMap;
+        if (doc is List) {
+          // Direct ops list
+          documentMap = {'ops': doc};
+        } else if (doc is Map<String, dynamic>) {
+          // Map with ops
+          documentMap = doc;
+        } else {
+          throw Exception('Unexpected document format');
+        }
+        // Clean the document by removing any page break embeds
+        final cleanedDoc = _cleanDocument(documentMap);
+        _controller.document = Document.fromJson(cleanedDoc);
       } catch (e) {
         debugPrint("Error loading document: $e. Loading default.");
         _controller.document = Document();
@@ -299,9 +363,27 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     setState(() {
       _isLoading = false;
+      _isSwitchingChapter = false;
       _updateWordCount();
       _performGrammarCheck();
     });
+  }
+
+  // Clean document by removing page break embeds
+  List<dynamic> _cleanDocument(Map<String, dynamic> doc) {
+    final ops = doc['ops'] as List<dynamic>?;
+    if (ops == null) return [];
+
+    final cleanedOps = ops.where((op) {
+      final insert = op['insert'];
+      if (insert is Map<String, dynamic>) {
+        // Remove page break embeds
+        return !insert.containsKey('page-break');
+      }
+      return true;
+    }).toList();
+
+    return cleanedOps;
   }
 
   /// Public method to allow parent widgets to trigger a grammar check.
@@ -340,6 +422,33 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     }
   }
 
+  Future<void> _saveTitle({
+    bool isChangingChapter = false,
+    String? chapterKeyToSave,
+  }) async {
+    final key = chapterKeyToSave ?? widget.selectedChapterKey;
+    final newTitle = _titleController.document.toPlainText().trim();
+
+    // Prevent saving an empty title
+    if (newTitle.isEmpty) return;
+
+    // Handle both string and int keys
+    dynamic chapterKey;
+    if (key.startsWith('front_matter_')) {
+      chapterKey = key;
+    } else {
+      chapterKey = int.tryParse(key);
+    }
+
+    if (chapterKey != null) {
+      // Check if title has actually changed to avoid unnecessary saves
+      final currentChapter = widget.chapterProvider.getChapter(chapterKey);
+      if (currentChapter?.title != newTitle) {
+        await widget.chapterProvider.updateChapterTitle(chapterKey, newTitle);
+      }
+    }
+  }
+
   // 7. Autosave Content to Firestore
   Future<void> _saveContent({
     bool isChangingChapter = false,
@@ -373,6 +482,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     }
     // --- END HISTORY LOGIC ---
     final contentToSave = jsonEncode(_controller.document.toDelta().toJson());
+    debugPrint('Content to save: $contentToSave');
     final key = chapterKeyToSave ?? widget.selectedChapterKey;
 
     // Handle both string and int keys
@@ -405,19 +515,20 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void dispose() {
     _autosaveTimer?.cancel();
     _grammarCheckTimer?.cancel();
+    _titleAutosaveTimer?.cancel();
     _controller.removeListener(_onTextChanged);
     _controller.dispose(); // QuillController has a dispose method
+    _titleController.dispose();
     _focusNode.dispose();
+    _titleFocusNode.dispose();
+    // Remove listeners to prevent memory leaks
+    _titleFocusNode.removeListener(_onFocusChange);
+    _focusNode.removeListener(_onFocusChange);
     _scrollController.dispose();
     super.dispose();
   }
 
   Widget _buildEditorContent(Color backgroundColor) {
-    // Determine text color based on background lightness
-    final textColor = backgroundColor.computeLuminance() > 0.5
-        ? Colors.black87
-        : Colors.white;
-
     // Check if the selected page is the Index page
     if (widget.selectedChapterKey == 'front_matter_-2') {
       return IndexPageWidget(
@@ -434,17 +545,15 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       config: QuillEditorConfig(
         padding: const EdgeInsets.all(16),
         placeholder: 'Start writing your epic manuscript here...',
-        embedBuilders: [
-          ...FlutterQuillEmbeds.editorBuilders(),
-          PageBreakEmbedBuilder(),
-        ],
+        embedBuilders: [...FlutterQuillEmbeds.editorBuilders()],
         customStyles: DefaultStyles(
           paragraph: DefaultTextBlockStyle(
-            TextStyle(fontSize: 16, height: 1.5, color: textColor),
+            const TextStyle(fontSize: 16, height: 1.5, color: Colors.black),
+            // Vertical spacing before and after
             const HorizontalSpacing(0, 0),
-            const VerticalSpacing(6, 0),
-            const VerticalSpacing(0, 0),
-            null,
+            const VerticalSpacing(6, 0), // Vertical spacing before and after
+            const VerticalSpacing(0, 0), // Vertical spacing between lines
+            null, // Decoration
           ),
         ),
       ),
@@ -469,25 +578,75 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  QuillSimpleToolbar(
-                    controller: _controller,
-                    config: QuillSimpleToolbarConfig(
-                      customButtons: [
-                        QuillToolbarCustomButtonOptions(
-                          icon: const Icon(Icons.insert_page_break),
-                          onPressed: () {
-                            final index = _controller.selection.baseOffset;
-                            _controller.document.insert(
-                              index,
-                              PageBreakEmbed(),
-                            );
-                            _controller.moveCursorToPosition(index + 1);
-                          },
-                          tooltip: 'Insert Page Break',
-                        ),
-                      ],
+                  // Don't show toolbars for the Index page
+                  if (widget.selectedChapterKey != 'front_matter_-2')
+                    // Conditionally render the correct toolbar based on focus
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      child: _activeEditor == _EditorType.title
+                          ? QuillSimpleToolbar(
+                              key: const ValueKey('title_toolbar'),
+                              controller: _titleController,
+                              config: const QuillSimpleToolbarConfig(
+                                showUndo: false,
+                                showRedo: false,
+                                showFontFamily: false,
+                                showFontSize: false,
+                                showSubscript: false,
+                                showSuperscript: false,
+                                showListBullets: false,
+                                showListNumbers: false,
+                                showListCheck: false,
+                                showCodeBlock: false,
+                                showQuote: false,
+                                showIndent: false,
+                                showLink: false,
+                                showSearchButton: false,
+                                showInlineCode: false,
+                                showClearFormat: false,
+                                showBackgroundColorButton: false,
+                                showHeaderStyle: false,
+                              ),
+                            )
+                          : QuillSimpleToolbar(
+                              key: const ValueKey('main_toolbar'),
+                              controller: _controller,
+                              config: QuillSimpleToolbarConfig(
+                                showBoldButton: true,
+                                showItalicButton: true,
+                                showUnderLineButton: true,
+                                showStrikeThrough: true,
+                                showColorButton: true,
+                                showBackgroundColorButton: true,
+                                showClearFormat: true,
+                                showAlignmentButtons: true,
+                                showHeaderStyle: true,
+                                showListNumbers: true,
+                                showListBullets: true,
+                                showListCheck: true,
+                                showCodeBlock: true,
+                                showQuote: true,
+                                showIndent: true,
+                                showLink: true,
+                                showUndo: true,
+                                showRedo: true,
+                                showFontSize: true,
+                                showFontFamily: true,
+                                showInlineCode: true,
+                                showSubscript: true,
+                                showSuperscript: true,
+                                embedButtons:
+                                    FlutterQuillEmbeds.toolbarButtons(),
+                                showSearchButton: false,
+                                customButtons: [
+                                  QuillToolbarCustomButtonOptions(
+                                    icon: Icon(Icons.search),
+                                    onPressed: _openFindReplaceDialog,
+                                  ),
+                                ],
+                              ),
+                            ),
                     ),
-                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Container(
@@ -531,20 +690,57 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                               maxScale: 4.0,
                               scaleEnabled:
                                   false, // Disable user scaling gestures
+                              panEnabled:
+                                  false, // Disable panning to allow keyboard shortcuts
                               child: Transform.scale(
                                 scale: _zoomFactor,
                                 child: Scrollbar(
                                   controller: _scrollController,
-                                  child: Listener(
-                                    onPointerSignal: (pointerSignal) {
-                                      if (pointerSignal is PointerScrollEvent) {
-                                        _scrollController.jumpTo(
-                                          _scrollController.offset +
-                                              pointerSignal.scrollDelta.dy,
-                                        );
-                                      }
-                                    },
-                                    child: _buildEditorContent(Colors.white),
+                                  child: Column(
+                                    children: [
+                                      if (widget.selectedChapterKey !=
+                                          'front_matter_-2')
+                                        QuillEditor(
+                                          controller: _titleController,
+                                          focusNode: _titleFocusNode,
+                                          scrollController: ScrollController(),
+                                          // Use a dummy controller
+                                          config: QuillEditorConfig(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
+                                            ),
+                                            autoFocus: false,
+                                            expands: false,
+                                            customStyles: DefaultStyles(
+                                              h1: DefaultTextBlockStyle(
+                                                Theme.of(context)
+                                                    .textTheme
+                                                    .displaySmall!
+                                                    .copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.black,
+                                                    ), // TextStyle
+                                                // Vertical spacing before and after
+                                                // Vertical spacing between lines
+                                                const HorizontalSpacing(0, 0),
+                                                const VerticalSpacing(16, 8),
+                                                const VerticalSpacing(
+                                                  0,
+                                                  0,
+                                                ), // Horizontal spacing
+                                                null, // Decoration
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: _buildEditorContent(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -555,40 +751,28 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                             left: 0,
                             top: 0,
                             bottom: 0,
-                            child: Container(
-                              width: 1,
-                              color: Colors.grey.shade400,
-                            ),
+                            child: Container(width: 3, color: Colors.white),
                           ),
                           // Horizontal ruler on the top
                           Positioned(
                             top: 0,
                             left: 0,
                             right: 0,
-                            child: Container(
-                              height: 1,
-                              color: Colors.grey.shade400,
-                            ),
+                            child: Container(height: 3, color: Colors.white),
                           ),
                           // Vertical ruler on the right
                           Positioned(
                             right: 0,
                             top: 0,
                             bottom: 0,
-                            child: Container(
-                              width: 1,
-                              color: Colors.grey.shade400,
-                            ),
+                            child: Container(width: 3, color: Colors.white),
                           ),
                           // Horizontal ruler on the bottom
                           Positioned(
                             bottom: 0,
                             left: 0,
                             right: 0,
-                            child: Container(
-                              height: 1,
-                              color: Colors.grey.shade400,
-                            ),
+                            child: Container(height: 3, color: Colors.white),
                           ),
                         ],
                       ),
@@ -633,10 +817,12 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                       )
                     else
                       Icon(
-                        Icons.check_circle,
+                        _grammarErrors.isEmpty
+                            ? Icons.check_circle
+                            : Icons.error_outline,
                         color: _grammarErrors.isEmpty
                             ? Colors.green
-                            : Colors.orange,
+                            : Colors.yellow,
                         size: 14,
                       ),
                     const SizedBox(width: 4),
@@ -698,7 +884,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                Icon(Icons.check_circle, color: Colors.green[600], size: 14),
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green.shade600,
+                  size: 14,
+                ),
               const SizedBox(width: 4),
               Text(
                 _isSaving ? 'Saving...' : 'Saved',
@@ -732,6 +922,14 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       },
     );
   }
+
+  void _openFindReplaceDialog() {
+    final state = this as _ManuscriptEditorState;
+    showDialog(
+      context: context,
+      builder: (context) => FindReplaceDialog(controller: state._controller),
+    );
+  }
 }
 
 extension ManuscriptEditorStateExtension on State<ManuscriptEditor> {
@@ -752,12 +950,33 @@ extension ManuscriptEditorStateExtension on State<ManuscriptEditor> {
     state._loadContent();
   }
 
+  void saveTitleAndContent() {
+    final state = this as _ManuscriptEditorState;
+    state._saveTitle();
+  }
+
   /// Public method to allow parent widgets to trigger a grammar check.
   void triggerGrammarCheck() {
     final state = this as _ManuscriptEditorState;
     state.triggerGrammarCheck();
   }
+
+  /// Public method to get the QuillController for find and replace functionality.
+  QuillController getController() {
+    final state = this as _ManuscriptEditorState;
+    return state._controller;
+  }
+
+  void _openFindReplaceDialog() {
+    final state = this as _ManuscriptEditorState;
+    showDialog(
+      context: context,
+      builder: (context) => FindReplaceDialog(controller: state._controller),
+    );
+  }
 }
+
+enum _EditorType { title, manuscript }
 
 // A dedicated stateful widget for the proofing dialog
 class _ProofingDialog extends StatefulWidget {
@@ -780,6 +999,7 @@ class _ProofingDialog extends StatefulWidget {
 class _ProofingDialogState extends State<_ProofingDialog> {
   late List<WritingMistake> _mistakes;
   int _currentIndex = 0;
+  String? _selectedSuggestion;
 
   @override
   void initState() {
@@ -791,6 +1011,7 @@ class _ProofingDialogState extends State<_ProofingDialog> {
     setState(() {
       if (_mistakes.isNotEmpty) {
         _currentIndex = (_currentIndex + 1) % _mistakes.length;
+        _selectedSuggestion = null;
       }
     });
   }
@@ -801,6 +1022,28 @@ class _ProofingDialogState extends State<_ProofingDialog> {
       if (_currentIndex >= _mistakes.length && _mistakes.isNotEmpty) {
         _currentIndex = 0;
       }
+      _selectedSuggestion = null;
+    });
+  }
+
+  void _ignoreAll() {
+    final currentMistake = _mistakes[_currentIndex];
+    final wordToIgnore = currentMistake.context.text.substring(
+      currentMistake.context.offset,
+      currentMistake.context.offset + currentMistake.context.length,
+    );
+    setState(() {
+      _mistakes.removeWhere((mistake) {
+        final mistakeWord = mistake.context.text.substring(
+          mistake.context.offset,
+          mistake.context.offset + mistake.context.length,
+        );
+        return mistakeWord.toLowerCase() == wordToIgnore.toLowerCase();
+      });
+      if (_currentIndex >= _mistakes.length && _mistakes.isNotEmpty) {
+        _currentIndex = 0;
+      }
+      _selectedSuggestion = null;
     });
   }
 
@@ -808,6 +1051,42 @@ class _ProofingDialogState extends State<_ProofingDialog> {
     final mistakeToFix = _mistakes[_currentIndex];
     widget.onFix(mistakeToFix, replacement);
     _ignore(); // Remove from the local list after sending the fix command
+  }
+
+  void _changeAll(String replacement) {
+    final currentMistake = _mistakes[_currentIndex];
+    final wordToReplace = currentMistake.context.text.substring(
+      currentMistake.context.offset,
+      currentMistake.context.offset + currentMistake.context.length,
+    );
+
+    // Apply the fix to all instances of this word
+    final mistakesToFix = _mistakes.where((mistake) {
+      final mistakeWord = mistake.context.text.substring(
+        mistake.context.offset,
+        mistake.context.offset + mistake.context.length,
+      );
+      return mistakeWord.toLowerCase() == wordToReplace.toLowerCase();
+    }).toList();
+
+    for (final mistake in mistakesToFix) {
+      widget.onFix(mistake, replacement);
+    }
+
+    // Remove all these mistakes from the list
+    setState(() {
+      _mistakes.removeWhere((mistake) {
+        final mistakeWord = mistake.context.text.substring(
+          mistake.context.offset,
+          mistake.context.offset + mistake.context.length,
+        );
+        return mistakeWord.toLowerCase() == wordToReplace.toLowerCase();
+      });
+      if (_currentIndex >= _mistakes.length && _mistakes.isNotEmpty) {
+        _currentIndex = 0;
+      }
+      _selectedSuggestion = null;
+    });
   }
 
   void _addToDictionary() {
@@ -821,84 +1100,330 @@ class _ProofingDialogState extends State<_ProofingDialog> {
     _ignore(); // Remove from local list
   }
 
+  Widget _buildHighlightedContext(WritingMistake mistake) {
+    final before = mistake.context.text.substring(0, mistake.context.offset);
+    final error = mistake.context.text.substring(
+      mistake.context.offset,
+      mistake.context.offset + mistake.context.length,
+    );
+    final after = mistake.context.text.substring(
+      mistake.context.offset + mistake.context.length,
+    );
+
+    return RichText(
+      text: TextSpan(
+        style: DefaultTextStyle.of(
+          context,
+        ).style.copyWith(fontStyle: FontStyle.italic, fontSize: 14),
+        children: [
+          TextSpan(text: '"...$before'),
+          TextSpan(
+            text: error,
+            style: const TextStyle(
+              backgroundColor: Colors.yellow,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          TextSpan(text: '$after..."'),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final bool hasMistakes = _mistakes.isNotEmpty;
     final WritingMistake? currentMistake = hasMistakes
         ? _mistakes[_currentIndex]
         : null;
 
     return AlertDialog(
-      title: Text('Proofing (${_mistakes.length} issues)'),
-      content: SizedBox(
-        width: 400,
-        height: 250,
-        child: hasMistakes && currentMistake != null
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    currentMistake.message,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '"...${currentMistake.context.text}..."',
-                    style: const TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Suggestions:'),
-                  if (currentMistake.replacements.isNotEmpty)
-                    Wrap(
-                      spacing: 8.0,
-                      children: currentMistake.replacements
-                          .take(3)
-                          .map(
-                            (rep) => ActionChip(
-                              label: Text(rep),
-                              onPressed: () => _fix(rep),
-                            ),
-                          )
-                          .toList(),
-                    )
-                  else
-                    const Text(
-                      'No suggestions available.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: _ignore,
-                        child: const Text('Ignore'),
-                      ),
-                      TextButton(
-                        onPressed: _addToDictionary,
-                        child: const Text('Add to Dictionary'),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: _nextMistake,
-                        tooltip: 'Next Issue',
-                      ),
-                    ],
-                  ),
-                ],
-              )
-            : const Center(child: Text('No issues found. Great work!')),
+      title: Row(
+        children: [
+          Icon(Icons.spellcheck, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Spelling and Grammar',
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (hasMistakes) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${_currentIndex + 1} of ${_mistakes.length}',
+                style: TextStyle(
+                  color: colorScheme.onPrimaryContainer,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              widget.onDialogClosed(_mistakes);
+              Navigator.of(context).pop();
+            },
+            tooltip: 'Close',
+            iconSize: 20,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            widget.onDialogClosed(_mistakes);
-            Navigator.of(context).pop();
-          },
-          child: const Text('Close'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: 500,
+          maxWidth: 500,
+          minHeight: 300,
+          maxHeight: 400,
         ),
-      ],
+        child: hasMistakes && currentMistake != null
+            ? SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Error message
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colorScheme.error.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error, color: colorScheme.error, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              currentMistake.message,
+                              style: TextStyle(
+                                color: colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Context with highlighted error
+                    const Text(
+                      'Context:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withOpacity(
+                          0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: _buildHighlightedContext(currentMistake),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Suggestions
+                    const Text(
+                      'Suggestions:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (currentMistake.replacements.isNotEmpty)
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 120),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: colorScheme.outline.withOpacity(0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: currentMistake.replacements.length,
+                          itemBuilder: (context, index) {
+                            final suggestion =
+                                currentMistake.replacements[index];
+                            final isSelected =
+                                _selectedSuggestion == suggestion;
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedSuggestion = isSelected
+                                      ? null
+                                      : suggestion;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? colorScheme.primaryContainer
+                                      : Colors.transparent,
+                                  borderRadius: index == 0
+                                      ? const BorderRadius.only(
+                                          topLeft: Radius.circular(4),
+                                          topRight: Radius.circular(4),
+                                        )
+                                      : index ==
+                                            currentMistake.replacements.length -
+                                                1
+                                      ? const BorderRadius.only(
+                                          bottomLeft: Radius.circular(4),
+                                          bottomRight: Radius.circular(4),
+                                        )
+                                      : BorderRadius.zero,
+                                ),
+                                child: Text(
+                                  suggestion,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? colorScheme.onPrimaryContainer
+                                        : colorScheme.onSurface,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w500
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'No suggestions available.',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Action buttons
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _ignore,
+                          icon: const Icon(Icons.skip_next, size: 18),
+                          label: const Text('Ignore'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _ignoreAll,
+                          icon: const Icon(Icons.skip_next, size: 18),
+                          label: const Text('Ignore All'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (_selectedSuggestion != null) ...[
+                          ElevatedButton.icon(
+                            onPressed: () => _fix(_selectedSuggestion!),
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Change'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _changeAll(_selectedSuggestion!),
+                            icon: const Icon(Icons.check_circle, size: 18),
+                            label: const Text('Change All'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                            ),
+                          ),
+                        ],
+                        TextButton.icon(
+                          onPressed: _addToDictionary,
+                          icon: const Icon(Icons.library_add, size: 18),
+                          label: const Text('Add to Dictionary'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colorScheme.secondary,
+                          ),
+                        ),
+                        IconButton.filled(
+                          onPressed: _nextMistake,
+                          icon: const Icon(Icons.arrow_forward),
+                          tooltip: 'Next Issue',
+                          style: IconButton.styleFrom(
+                            backgroundColor: colorScheme.primaryContainer,
+                            foregroundColor: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            : Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 48,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No issues found. Great work!',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 }

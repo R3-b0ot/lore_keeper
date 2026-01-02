@@ -11,6 +11,7 @@ Built with Flutter, it is designed to be a cross-platform tool for Windows and L
   - [Manuscript Module](#manuscript-module)
   - [Character Module](#character-module)
   - [User Experience](#user-experience)
+  - [Map Module](#map-module)
 - [Features In Progress / Planned](#features-in-progress--planned)
 
 ---
@@ -58,6 +59,12 @@ Built with Flutter, it is designed to be a cross-platform tool for Windows and L
 
 *   **Keyboard-Aware Dialogs**: Custom dialogs that respond to `Enter` (confirm) and `Escape` (cancel) for faster desktop interaction.
 
+### Map Module
+
+*   **Grid-Based Map Editor**: A basic map editor with ocean base, grid, and objects layers for creating fantasy maps.
+*   **Editing Tools**: Includes tools for select, brush, stamp, line, shape, text, and note to customize maps.
+*   **Biome System**: Color-based rendering for different biomes to visualize terrain types.
+
 ---
 
 ## Features Currently in Development
@@ -76,6 +83,13 @@ These features have UI components implemented but are not yet fully functional.
 
 This is a list of modules and features that are either under active development or planned for future releases, based on the current codebase structure.
 
+*   **Map Module Enhancements**:
+    -   **Land Layers**: Add elevation layer for height mapping, biome layer for terrain types, terrain layer for natural features, and settlements layer for man-made elements.
+    -   **Enhanced Brush Tool**: Implement biome brush functionality, add brush size and opacity controls, support different brush shapes, and add brush presets for common biomes.
+    -   **Enhanced Stamp Tool**: Add stamps for towns, mountains, castles/fortresses, forests, with support for rotation and scaling.
+    -   **Texture System**: Add texture loading system, implement distinct textures for man-made vs natural elements, add texture blending for smooth transitions, and support user-provided texture files.
+    -   **Layer Management**: Update layer panel with new layer types, add layer blending modes, implement layer ordering and visibility, and add layer export/import.
+    -   **UI Improvements**: Add tool settings panel, color picker for custom biomes, stamp library browser, and undo/redo for brush and stamp operations.
 *   **World Module**: A dedicated section for world-building elements.
     -   Locations
     -   Items

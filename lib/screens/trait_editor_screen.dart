@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
-
+part 'trait_editor_screen.g.dart';
 // --- 1. Data Models ---
 
 // Model for simple traits (Congenital, Physical)
@@ -1622,7 +1622,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
     final Color titleColor = isSelected
         ? colorScheme.onPrimary
         : colorScheme.onSurface;
-    final Color explanationColor = isSelected
+    final explanationColor = isSelected
         ? colorScheme.onPrimary.withAlpha(179)
         : colorScheme.onSurfaceVariant;
 
@@ -1808,7 +1808,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
     final Color titleColor = isSelected
         ? colorScheme.onPrimary
         : colorScheme.onSurface;
-    final Color explanationColor = isSelected
+    final explanationColor = isSelected
         ? colorScheme.onPrimary.withAlpha(179)
         : colorScheme.onSurfaceVariant;
 
@@ -2078,10 +2078,8 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
     final Color titleColor = isSelected
         ? colorScheme.onPrimary
         : colorScheme.onSurface;
-    final Color explanationColor = isSelected
-        ? colorScheme.onPrimary.withAlpha(
-            179,
-          ) // Use withAlpha for better precision
+    final explanationColor = isSelected
+        ? colorScheme.onPrimary.withAlpha(179)
         : colorScheme.onSurfaceVariant;
 
     return InkWell(

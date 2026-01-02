@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/screens/trait_editor_screen.dart';
+part 'trait_service.g.dart';
 
 class TraitService {
   late final Box<SimpleTrait> _customTraitsBox;

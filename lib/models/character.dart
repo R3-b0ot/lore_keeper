@@ -2,6 +2,99 @@ import 'package:hive/hive.dart';
 
 part 'character.g.dart';
 
+@HiveType(typeId: 20)
+class CustomField {
+  @HiveField(0)
+  String name;
+
+  @HiveField(1)
+  String type; // 'text', 'number', 'float', 'large_text', 'calendar'
+
+  @HiveField(2)
+  String value;
+
+  @HiveField(3)
+  bool visible;
+
+  CustomField({
+    required this.name,
+    required this.type,
+    this.value = '',
+    this.visible = true,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'type': type, 'value': value, 'visible': visible};
+  }
+
+  factory CustomField.fromJson(Map<String, dynamic> json) {
+    return CustomField(
+      name: json['name'],
+      type: json['type'],
+      value: json['value'],
+      visible: json['visible'] ?? true,
+    );
+  }
+}
+
+@HiveType(typeId: 21)
+class CustomPanel {
+  @HiveField(0)
+  String id;
+
+  @HiveField(1)
+  String name;
+
+  @HiveField(2)
+  String type; // 'large_text', 'item_lister'
+
+  @HiveField(3)
+  String content; // For large_text
+
+  @HiveField(4)
+  List<String> items; // For item_lister
+
+  @HiveField(5)
+  int order;
+
+  @HiveField(6)
+  String column;
+
+  CustomPanel({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.content = '',
+    List<String>? items,
+    this.order = 0,
+    this.column = 'right',
+  }) : items = items ?? [];
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type,
+      'content': content,
+      'items': items,
+      'order': order,
+      'column': column,
+    };
+  }
+
+  factory CustomPanel.fromJson(Map<String, dynamic> json) {
+    return CustomPanel(
+      id: json['id'],
+      name: json['name'],
+      type: json['type'],
+      content: json['content'] ?? '',
+      items: List<String>.from(json['items'] ?? []),
+      order: json['order'] ?? 0,
+      column: json['column'] ?? 'right',
+    );
+  }
+}
+
 @HiveType(typeId: 10) // Use a new, unused typeId
 class CharacterIteration extends HiveObject {
   @HiveField(0)
@@ -40,6 +133,37 @@ class CharacterIteration extends HiveObject {
   @HiveField(11)
   Map<String, int> personalityTraits;
 
+  @HiveField(12)
+  Map<String, String>? _customFieldValues;
+
+  Map<String, String> get customFieldValues {
+    return _customFieldValues ??= {};
+  }
+
+  @HiveField(13)
+  List<CustomPanel>? _customPanels;
+
+  List<CustomPanel> get customPanels {
+    _customPanels ??= [];
+    return _customPanels!;
+  }
+
+  set customPanels(List<CustomPanel> value) {
+    _customPanels = value;
+  }
+
+  @HiveField(14)
+  Map<String, int>? _panelOrders;
+
+  Map<String, int> get panelOrders {
+    _panelOrders ??= {'bio': 0, 'links': 1, 'image': 2, 'traits': 3};
+    return _panelOrders!;
+  }
+
+  set panelOrders(Map<String, int> value) {
+    _panelOrders = value;
+  }
+
   CharacterIteration({
     required this.iterationName,
     this.name,
@@ -50,12 +174,18 @@ class CharacterIteration extends HiveObject {
     this.bio,
     this.originCountry,
     this.traits,
-    Set<String>? congenitalTraits,
+    dynamic congenitalTraits, // Can be Set<String> or List<dynamic> from Hive
     Map<String, int>? leveledTraits,
     Map<String, int>? personalityTraits,
-  }) : congenitalTraits = congenitalTraits ?? {},
+    Map<String, String>? customFieldValues,
+    List<CustomPanel>? customPanels,
+  }) : congenitalTraits = congenitalTraits is Set<String>
+           ? congenitalTraits
+           : Set<String>.from(congenitalTraits?.cast<String>() ?? []),
        leveledTraits = leveledTraits ?? {},
-       personalityTraits = personalityTraits ?? {};
+       personalityTraits = personalityTraits ?? {},
+       _customFieldValues = customFieldValues ?? {},
+       _customPanels = customPanels ?? [];
 
   Map<String, dynamic> toJson() {
     return {
@@ -71,30 +201,62 @@ class CharacterIteration extends HiveObject {
       'congenitalTraits': congenitalTraits.toList(),
       'leveledTraits': leveledTraits,
       'personalityTraits': personalityTraits,
+      'customFieldValues': customFieldValues,
+      'customPanels': customPanels.map((p) => p.toJson()).toList(),
+      'panelOrders': panelOrders,
     };
   }
 
   factory CharacterIteration.fromJson(Map<String, dynamic> json) {
+    // Handle migration from old customFields to new customFieldValues
+    Map<String, String> customFieldValues = {};
+    if (json.containsKey('customFieldValues')) {
+      customFieldValues = Map<String, String>.from(
+        json['customFieldValues'] as Map<dynamic, dynamic>? ?? {},
+      );
+    } else if (json.containsKey('customFields')) {
+      // Migrate old customFields
+      final oldFields =
+          (json['customFields'] as List<dynamic>?)
+              ?.map((f) => CustomField.fromJson(f as Map<String, dynamic>))
+              .toList() ??
+          [];
+      for (final field in oldFields) {
+        customFieldValues[field.name] = field.value;
+      }
+    }
+
     return CharacterIteration(
-      iterationName: json['iterationName'],
-      name: json['name'],
-      bio: json['bio'],
-      aliases: (json['aliases'] as List<dynamic>?)?.cast<String>(),
-      occupation: json['occupation'],
-      gender: json['gender'],
-      customGender: json['customGender'],
-      originCountry: json['originCountry'],
-      traits: (json['traits'] as List<dynamic>?)?.cast<String>(),
-      congenitalTraits: Set<String>.from(
-        json['congenitalTraits'] as List<dynamic>? ?? [],
-      ),
-      leveledTraits: Map<String, int>.from(
-        json['leveledTraits'] as Map<dynamic, dynamic>? ?? {},
-      ),
-      personalityTraits: Map<String, int>.from(
-        json['personalityTraits'] as Map<dynamic, dynamic>? ?? {},
-      ),
-    );
+        iterationName: json['iterationName'],
+        name: json['name'],
+        bio: json['bio'],
+        aliases: (json['aliases'] as List<dynamic>?)?.cast<String>(),
+        occupation: json['occupation'],
+        gender: json['gender'],
+        customGender: json['customGender'],
+        originCountry: json['originCountry'],
+        traits: (json['traits'] as List<dynamic>?)?.cast<String>(),
+        congenitalTraits: Set<String>.from(
+          json['congenitalTraits'] as List<dynamic>? ?? [],
+        ),
+        leveledTraits: Map<String, int>.from(
+          json['leveledTraits'] as Map<dynamic, dynamic>? ?? {},
+        ),
+        personalityTraits: Map<String, int>.from(
+          json['personalityTraits'] as Map<dynamic, dynamic>? ?? {},
+        ),
+        customFieldValues: customFieldValues,
+        customPanels:
+            (json['customPanels'] as List<dynamic>?)
+                ?.map((p) => CustomPanel.fromJson(p as Map<String, dynamic>))
+                .toList() ??
+            [],
+      )
+      .._customFieldValues = customFieldValues
+      .._panelOrders = Map<String, int>.from(
+        json['panelOrders'] as Map<dynamic, dynamic>? ??
+            {'bio': 0, 'links': 1, 'image': 2, 'traits': 3},
+      );
   }
 }
 

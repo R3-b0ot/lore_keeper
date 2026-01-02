@@ -21,7 +21,7 @@ class ProjectAdapter extends TypeAdapter<Project> {
       createdAt: fields[2] as DateTime,
       description: fields[1] as String?,
       bookTitle: fields[3] as String?,
-      lastEditedChapterKey: fields[4] as String?,
+      lastEditedChapterKey: fields[4] as dynamic,
       genre: fields[5] as String?,
       authors: fields[6] as String?,
       lastModified: fields[8] as DateTime?,

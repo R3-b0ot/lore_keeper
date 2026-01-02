@@ -158,8 +158,15 @@ class ChapterListProvider with ChangeNotifier {
     dynamic chapterKey,
     String newContent,
   ) async {
+    debugPrint('PROVIDER: Updating content for chapter key: $chapterKey');
     final chapter = _manuscriptService.getChapter(chapterKey);
-    if (chapter == null) return;
+    if (chapter == null) {
+      debugPrint('PROVIDER: Chapter not found for key: $chapterKey');
+      return;
+    }
+    debugPrint(
+      'PROVIDER: Chapter found: ${chapter.title}, key: ${chapter.key}',
+    );
 
     await _manuscriptService.saveChapterContent(chapter, newContent);
 
@@ -168,6 +175,9 @@ class ChapterListProvider with ChangeNotifier {
     final project = projectBox.get(_projectId);
     project?.lastEditedChapterKey = chapterKey.toString();
     await project?.save();
+    debugPrint(
+      'PROVIDER: Content update completed for chapter: ${chapter.title}',
+    );
     // No need to notify listeners as content change doesn't affect the list.
   }
 

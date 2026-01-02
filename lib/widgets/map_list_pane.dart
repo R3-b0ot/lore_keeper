@@ -1,43 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:lore_keeper/models/character.dart';
-import 'package:lore_keeper/providers/character_list_provider.dart';
+import 'package:lore_keeper/models/map_model.dart';
+import 'package:lore_keeper/providers/map_list_provider.dart';
+import 'package:lore_keeper/services/map_service.dart';
+import 'package:lore_keeper/widgets/map_creator_dialog.dart';
 
-class CharacterListPane extends StatefulWidget {
-  final CharacterListProvider characterProvider;
-  final String? selectedCharacterKey;
-  final ValueChanged<String> onCharacterSelected; // This is correct
-  final VoidCallback onCharacterCreated;
-  final ValueChanged<String>? onCharacterEdit;
-  final bool isMobile;
+class MapListPane extends StatefulWidget {
+  final MapListProvider mapProvider;
+  final String? selectedMapKey;
+  final ValueChanged<String> onMapSelected;
 
-  const CharacterListPane({
+  const MapListPane({
     super.key,
-    required this.characterProvider,
-    required this.selectedCharacterKey,
-    required this.onCharacterSelected,
-    required this.onCharacterCreated,
-    this.onCharacterEdit,
-    required this.isMobile,
+    required this.mapProvider,
+    required this.selectedMapKey,
+    required this.onMapSelected,
   });
 
   @override
-  State<CharacterListPane> createState() => _CharacterListPaneState();
+  State<MapListPane> createState() => _MapListPaneState();
 }
 
-class _CharacterListPaneState extends State<CharacterListPane> {
-  late TextEditingController _filterController;
+class _MapListPaneState extends State<MapListPane> {
+  late TextEditingController _searchController;
   bool _showFilter = false;
 
   @override
   void initState() {
     super.initState();
-    _filterController = TextEditingController();
+    _searchController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _filterController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showCreateMapDialog() async {
+    final result = await showDialog<MapCreationResult>(
+      context: context,
+      builder: (context) => const MapCreatorDialog(),
+    );
+
+    if (result != null && result.name.isNotEmpty) {
+      // Create the map via the provider
+      final mapId = await widget.mapProvider.createNewMap(
+        result.name,
+        style: result.style,
+        resolution: result.resolution,
+        aspectRatio: result.aspectRatio,
+        gridType: result.gridType,
+      );
+
+      // Select the newly created map
+      widget.onMapSelected(mapId.toString());
+    }
   }
 
   @override
@@ -46,9 +63,13 @@ class _CharacterListPaneState extends State<CharacterListPane> {
       color: Theme.of(context).colorScheme.surfaceContainerLowest,
       padding: const EdgeInsets.all(12.0),
       child: ListenableBuilder(
-        listenable: widget.characterProvider,
+        listenable: widget.mapProvider,
         builder: (context, child) {
-          final characters = widget.characterProvider.filteredCharacters;
+          final maps = widget.mapProvider.maps.where((map) {
+            final query = _searchController.text.toLowerCase();
+            return map.name.toLowerCase().contains(query);
+          }).toList();
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -56,7 +77,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Characters',
+                    'World Maps',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   IconButton(
@@ -64,8 +85,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                       setState(() {
                         _showFilter = !_showFilter;
                         if (!_showFilter) {
-                          _filterController.clear();
-                          widget.characterProvider.setFilterText('');
+                          _searchController.clear();
                         }
                       });
                     },
@@ -73,18 +93,16 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                       _showFilter ? Icons.search_off : Icons.search,
                       size: 18,
                     ),
-                    tooltip: _showFilter
-                        ? 'Hide Search Box'
-                        : 'Search Characters',
+                    tooltip: _showFilter ? 'Hide Search Box' : 'Search Maps',
                   ),
                 ],
               ),
               if (_showFilter) ...[
                 const SizedBox(height: 8),
                 TextField(
-                  controller: _filterController,
+                  controller: _searchController,
                   decoration: const InputDecoration(
-                    hintText: 'Search characters...',
+                    hintText: 'Search maps...',
                     prefixIcon: Icon(Icons.search),
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(
@@ -92,22 +110,19 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                       vertical: 8,
                     ),
                   ),
-                  onChanged: (value) {
-                    widget.characterProvider.setFilterText(value);
-                  },
+                  onChanged: (value) => setState(() {}),
                 ),
               ],
               const SizedBox(height: 8),
               TextButton.icon(
-                onPressed:
-                    widget.onCharacterCreated, // Directly call the VoidCallback
+                onPressed: _showCreateMapDialog,
                 icon: Icon(
                   Icons.add,
                   size: 16,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 label: Text(
-                  'New Character',
+                  'New Map',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                   ),
@@ -116,12 +131,12 @@ class _CharacterListPaneState extends State<CharacterListPane> {
               const Divider(height: 24),
               Expanded(
                 child: ListView.builder(
-                  itemCount: characters.length,
+                  itemCount: maps.length,
                   itemBuilder: (context, index) {
-                    final character = characters[index];
+                    final map = maps[index];
                     final isSelected =
-                        character.key.toString() == widget.selectedCharacterKey;
-                    return _buildCharacterItem(context, character, isSelected);
+                        map.id.toString() == widget.selectedMapKey;
+                    return _buildMapItem(context, map, isSelected);
                   },
                 ),
               ),
@@ -132,11 +147,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
     );
   }
 
-  Widget _buildCharacterItem(
-    BuildContext context,
-    Character character,
-    bool isSelected,
-  ) {
+  Widget _buildMapItem(BuildContext context, MapModel map, bool isSelected) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -146,14 +157,13 @@ class _CharacterListPaneState extends State<CharacterListPane> {
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () =>
-                  widget.onCharacterSelected(character.key.toString()),
+              onPressed: () => widget.onMapSelected(map.id.toString()),
               icon: Icon(
-                Icons.person_outline,
+                Icons.map_outlined,
                 size: 16,
                 color: isSelected ? colorScheme.primary : colorScheme.onSurface,
               ),
-              label: Text(character.name),
+              label: Text(map.name),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 alignment: Alignment.centerLeft,
@@ -170,10 +180,13 @@ class _CharacterListPaneState extends State<CharacterListPane> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            onPressed: () =>
-                widget.onCharacterEdit?.call(character.key.toString()),
-            tooltip: 'Edit Character',
+            icon: const Icon(Icons.delete_outline, size: 18),
+            color: Colors.red,
+            onPressed: () {
+              // TODO: Add confirmation dialog
+              widget.mapProvider.deleteMap(map.id.toString());
+            },
+            tooltip: 'Delete Map',
           ),
         ],
       ),

@@ -58,7 +58,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late double _historyLimit;
 
   // AI Features state
-  late TextEditingController _apiKeyController;
+  late TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _aiTextController = TextEditingController();
   String _aiResult = '';
   bool _isProcessingAI = false;
@@ -476,6 +476,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               hintText: 'Enter your OpenAI API key for AI features',
             ),
             obscureText: true,
+            enableInteractiveSelection: true,
           ),
           const SizedBox(height: 24),
           const Text(

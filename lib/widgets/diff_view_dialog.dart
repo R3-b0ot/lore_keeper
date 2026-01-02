@@ -138,6 +138,12 @@ class DiffViewDialog extends StatelessWidget {
             isHistorical: isHistorical,
             maxLines: 10,
           ),
+          _buildCustomPanelsDiff(
+            context,
+            iteration,
+            historicalIteration,
+            isHistorical: isHistorical,
+          ),
         ],
       ),
     );
@@ -166,6 +172,76 @@ class DiffViewDialog extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: hasChanged ? Colors.orange.shade700 : null),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomPanelsDiff(
+    BuildContext context,
+    CharacterIteration? currentIteration,
+    CharacterIteration? historicalIteration, {
+    bool isHistorical = false,
+  }) {
+    final currentPanels = currentIteration?.customPanels ?? [];
+    final historicalPanels = historicalIteration?.customPanels ?? [];
+
+    if (currentPanels.isEmpty && historicalPanels.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Custom Panels',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const Divider(),
+          ...currentPanels.map((panel) {
+            final historicalPanel = historicalPanels.firstWhere(
+              (p) => p.id == panel.id,
+              orElse: () => panel,
+            );
+            final hasChanged =
+                panel.name != historicalPanel.name ||
+                panel.content != historicalPanel.content ||
+                panel.items.join(',') != historicalPanel.items.join(',');
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    panel.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: hasChanged ? Colors.orange.shade700 : null,
+                    ),
+                  ),
+                  if (panel.type == 'large_text')
+                    Text(
+                      panel.content,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: hasChanged ? Colors.orange.shade700 : null,
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: panel.items
+                          .map((item) => Text('• $item'))
+                          .toList(),
+                    ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

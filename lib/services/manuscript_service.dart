@@ -21,9 +21,7 @@ class ManuscriptService {
   final Box<Section> _sectionBox;
 
   static const String emptyRichTextJson = '''
-    [
-      {"insert":"\\n"}
-    ]
+    {"ops": [{"insert":"\\n"}]}
   ''';
 
   // ⭐️ FIX: Require the Hive Boxes to be passed in the constructor ⭐️
@@ -153,7 +151,13 @@ class ManuscriptService {
 
   Future<void> saveChapterContent(Chapter chapter, String richTextJson) async {
     chapter.richTextJson = richTextJson;
-    return chapter.save();
+    // For front matter pages with string keys, use put; otherwise, use save.
+    if (chapter.key is String &&
+        (chapter.key as String).startsWith('front_matter_')) {
+      await _chapterBox.put(chapter.key, chapter);
+    } else {
+      await chapter.save();
+    }
   }
 
   Future<void> reorderChaptersInSection(dynamic sectionKey) async {

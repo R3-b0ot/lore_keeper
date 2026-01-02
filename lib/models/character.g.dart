@@ -6,6 +6,101 @@ part of 'character.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
+class CustomFieldAdapter extends TypeAdapter<CustomField> {
+  @override
+  final int typeId = 20;
+
+  @override
+  CustomField read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return CustomField(
+      name: fields[0] as String,
+      type: fields[1] as String,
+      value: fields[2] as String,
+      visible: fields[3] as bool,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, CustomField obj) {
+    writer
+      ..writeByte(4)
+      ..writeByte(0)
+      ..write(obj.name)
+      ..writeByte(1)
+      ..write(obj.type)
+      ..writeByte(2)
+      ..write(obj.value)
+      ..writeByte(3)
+      ..write(obj.visible);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CustomFieldAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class CustomPanelAdapter extends TypeAdapter<CustomPanel> {
+  @override
+  final int typeId = 21;
+
+  @override
+  CustomPanel read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return CustomPanel(
+      id: fields[0] as String,
+      name: fields[1] as String,
+      type: fields[2] as String,
+      content: fields[3] as String,
+      items: (fields[4] as List?)?.cast<String>(),
+      order: fields[5] as int,
+      column: fields[6] as String,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, CustomPanel obj) {
+    writer
+      ..writeByte(7)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.type)
+      ..writeByte(3)
+      ..write(obj.content)
+      ..writeByte(4)
+      ..write(obj.items)
+      ..writeByte(5)
+      ..write(obj.order)
+      ..writeByte(6)
+      ..write(obj.column);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CustomPanelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
   @override
   final int typeId = 10;
@@ -26,16 +121,19 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       bio: fields[6] as String?,
       originCountry: fields[7] as String?,
       traits: (fields[8] as List?)?.cast<String>(),
-      congenitalTraits: (fields[9] as List?)?.cast<String>().toSet(),
+      congenitalTraits: fields[9] as dynamic,
       leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
       personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
-    );
+    )
+      .._customFieldValues = (fields[12] as Map?)?.cast<String, String>()
+      .._customPanels = (fields[13] as List?)?.cast<CustomPanel>()
+      .._panelOrders = (fields[14] as Map?)?.cast<String, int>();
   }
 
   @override
   void write(BinaryWriter writer, CharacterIteration obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.iterationName)
       ..writeByte(1)
@@ -59,7 +157,13 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       ..writeByte(10)
       ..write(obj.leveledTraits)
       ..writeByte(11)
-      ..write(obj.personalityTraits);
+      ..write(obj.personalityTraits)
+      ..writeByte(12)
+      ..write(obj._customFieldValues)
+      ..writeByte(13)
+      ..write(obj._customPanels)
+      ..writeByte(14)
+      ..write(obj._panelOrders);
   }
 
   @override
@@ -84,16 +188,14 @@ class CharacterAdapter extends TypeAdapter<Character> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Character(
-        name: fields[0] as String,
-        parentProjectId: fields[1] as int,
-        aliases: (fields[2] as List?)?.cast<String>(),
-        species: fields[3] as String?,
-        relationWebLayout: (fields[15] as Map?)?.map(
-          (dynamic k, dynamic v) =>
-              MapEntry(k as dynamic, (v as Map).cast<String, double>()),
-        ),
-        createdAt: fields[17] as DateTime?,
-      )
+      name: fields[0] as String,
+      parentProjectId: fields[1] as int,
+      aliases: (fields[2] as List?)?.cast<String>(),
+      species: fields[3] as String?,
+      relationWebLayout: (fields[15] as Map?)?.map((dynamic k, dynamic v) =>
+          MapEntry(k as dynamic, (v as Map).cast<String, double>())),
+      createdAt: fields[17] as DateTime?,
+    )
       ..gender = fields[4] as String?
       ..customGender = fields[5] as String?
       ..residence = fields[7] as String?

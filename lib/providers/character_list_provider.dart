@@ -21,9 +21,67 @@ class CharacterListProvider with ChangeNotifier {
 
   List<Character> get filteredCharacters {
     if (_filterText.isEmpty) return _characters;
-    return _characters
-        .where((c) => c.name.toLowerCase().contains(_filterText.toLowerCase()))
+    final queryWords = _filterText
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
         .toList();
+
+    bool matchesQuery(String? text) {
+      if (text == null || text.isEmpty) return false;
+      final lowerText = text.toLowerCase();
+      final textWords = lowerText.split(RegExp(r'\s+'));
+      return queryWords.any(
+        (queryWord) =>
+            textWords.any((textWord) => textWord.startsWith(queryWord)),
+      );
+    }
+
+    return _characters.where((c) {
+      // Search in main character fields
+      if (matchesQuery(c.name)) return true;
+      if (matchesQuery(c.bio)) return true;
+      if (c.aliases?.any(matchesQuery) ?? false) return true;
+      if (matchesQuery(c.occupation)) return true;
+      if (matchesQuery(c.gender)) return true;
+      if (matchesQuery(c.customGender)) return true;
+      if (matchesQuery(c.residence)) return true;
+      if (matchesQuery(c.religion)) return true;
+      if (matchesQuery(c.affiliation)) return true;
+      if (matchesQuery(c.species)) return true;
+
+      // Search in current iteration fields
+      if (c.iterations.isNotEmpty) {
+        final currentIteration = c.iterations.last;
+        if (matchesQuery(currentIteration.name)) return true;
+        if (matchesQuery(currentIteration.bio)) return true;
+        if (currentIteration.aliases?.any(matchesQuery) ?? false) return true;
+        if (matchesQuery(currentIteration.occupation)) return true;
+        if (matchesQuery(currentIteration.gender)) return true;
+        if (matchesQuery(currentIteration.customGender)) return true;
+        if (matchesQuery(currentIteration.originCountry)) return true;
+        if (currentIteration.traits?.any(matchesQuery) ?? false) return true;
+        if (currentIteration.congenitalTraits.any(matchesQuery)) return true;
+        if (currentIteration.leveledTraits.keys.any(matchesQuery)) return true;
+        if (currentIteration.personalityTraits.keys.any(matchesQuery)) {
+          return true;
+        }
+
+        // Search in custom field values
+        if (currentIteration.customFieldValues.values.any(matchesQuery)) {
+          return true;
+        }
+
+        // Search in custom panels
+        for (final panel in currentIteration.customPanels) {
+          if (matchesQuery(panel.name)) return true;
+          if (matchesQuery(panel.content)) return true;
+          if (panel.items.any(matchesQuery)) return true;
+        }
+      }
+
+      return false;
+    }).toList();
   }
 
   void setFilterText(String text) {
