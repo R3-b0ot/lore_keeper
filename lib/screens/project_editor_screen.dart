@@ -4,10 +4,7 @@ import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart'; // Import the new module
 import 'package:lore_keeper/modules/character_module.dart'; // Import the new module
-import 'package:lore_keeper/modules/map_module.dart'; // Import the map module
-import 'package:lore_keeper/providers/map_list_provider.dart'; // Import map list provider
-import 'package:lore_keeper/widgets/map_list_pane.dart'; // Import map list pane
-// Import the new module
+import 'package:lore_keeper/modules/map_module.dart'; // Import the new module
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
@@ -37,7 +34,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
   String _selectedChapterKey = '';
   String _selectedCharacterKey = '';
-  String _selectedMapKey = '';
 
   bool _isSidebarExpanded = false;
   bool _isHistoryPanelVisible = false;
@@ -56,13 +52,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   ChapterListProvider? _chapterListProvider;
   CharacterListProvider? _characterListProvider;
   LinkProvider? _linkProvider;
-  MapListProvider? _mapListProvider;
 
   final List<Map<String, dynamic>> _moduleItems = const <Map<String, dynamic>>[
     {'label': 'Manuscript', 'icon': Icons.menu_book},
     {'label': 'Characters', 'icon': Icons.person}, // Changed icon
+    {'label': 'Maps', 'icon': Icons.map},
     {'label': 'Timeline', 'icon': Icons.timeline},
-    {'label': 'Maps', 'icon': Icons.map}, // Replaced 'World'
     {'label': 'Calendar', 'icon': Icons.calendar_today},
     {'label': 'Encyclopedia', 'icon': Icons.library_books},
     {'label': 'Magic', 'icon': Icons.auto_awesome},
@@ -85,7 +80,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _chapterListProvider = ChapterListProvider(widget.project.key);
     _characterListProvider = CharacterListProvider(widget.project.key);
     _linkProvider = LinkProvider();
-    _mapListProvider = MapListProvider(projectId: widget.project.key);
     _chapterListProvider!.addListener(() {
       // Also check for initial character selection here, in case chapters load first
       if (mounted &&
@@ -230,7 +224,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _chapterListProvider?.dispose();
     _characterListProvider?.dispose();
     _linkProvider?.dispose();
-    _mapListProvider?.dispose();
     super.dispose();
   }
 
@@ -381,15 +374,9 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onCharacterEdit: _showEditNameDialog,
         isMobile: _isMobile,
       );
-    } else if (_moduleIndex == 3) {
-      // Maps module
-      return MapListPane(
-        mapProvider: _mapListProvider!,
-        selectedMapKey: _selectedMapKey,
-        onMapSelected: (mapKey) {
-          setState(() => _selectedMapKey = mapKey);
-        },
-      );
+    } else if (_moduleIndex == 2) {
+      // Maps module - no second column needed, handled in main content
+      return const SizedBox.shrink();
     }
     return const SizedBox.shrink();
   }
@@ -421,13 +408,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               key: _characterModuleKey, // Assign the key here
               onReload: _handleRevert,
             );
-    } else if (_moduleIndex == 3) {
-      // Maps module
-      return MapModule(
-        projectId: widget.project.key,
-        selectedMapKey: _selectedMapKey.isNotEmpty ? _selectedMapKey : null,
-        mapListProvider: _mapListProvider,
-      );
+    } else if (_moduleIndex == 2) {
+      return MapModule(projectId: widget.project.key, onReload: _handleRevert);
     }
     return _ModulePlaceholder(
       moduleName: currentModuleName,
@@ -653,7 +635,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           ),
 
           // Vertical divider between Second Column and Editor
-          (_moduleIndex == 0 || _moduleIndex == 1 || _moduleIndex == 3)
+          (_moduleIndex == 0 || _moduleIndex == 1)
               ? const VerticalDivider(
                   width: 1,
                   thickness: 1,

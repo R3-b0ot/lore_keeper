@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/models/project.dart';
-import 'package:lore_keeper/main.dart'; // Import main to access projectBox
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart'; // ⭐️ NEW IMPORT
 
@@ -70,6 +71,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
       );
 
       // Save the new project to the global Hive box
+      final projectBox = Hive.box<Project>('projects');
       await projectBox.add(newProject);
 
       // Close the dialog and confirm creation

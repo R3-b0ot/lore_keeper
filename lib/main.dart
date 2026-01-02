@@ -68,14 +68,40 @@ Future<void> initializeHive() async {
   Hive.registerAdapter(MapModelAdapter());
   Hive.registerAdapter(HistoryEntryAdapter()); // Register the History adapter
 
-  projectBox = await Hive.openBox<Project>('projects');
-  sectionBox = await Hive.openBox<Section>('sections');
-  chapterBox = await Hive.openBox<Chapter>('chapters');
-  characterBox = await Hive.openBox<Character>('characters');
-  mapBox = await Hive.openBox<MapModel>('maps');
-  await Hive.openBox<Link>('links'); // 3. Open the 'links' box
-  await Hive.openBox<HistoryEntry>('history');
-  await Hive.openBox<SimpleTrait>('custom_traits');
+  try {
+    projectBox = await Hive.openBox<Project>('projects');
+    sectionBox = await Hive.openBox<Section>('sections');
+    chapterBox = await Hive.openBox<Chapter>('chapters');
+    characterBox = await Hive.openBox<Character>('characters');
+    mapBox = await Hive.openBox<MapModel>('maps');
+    await Hive.openBox<Link>('links'); // 3. Open the 'links' box
+    await Hive.openBox<HistoryEntry>('history');
+    await Hive.openBox<SimpleTrait>('custom_traits');
+  } catch (e) {
+    // If there's an adapter mismatch (e.g., old data with unknown typeId),
+    // clear all boxes and reopen them
+    if (e.toString().contains('unknown typeId')) {
+      await Hive.deleteBoxFromDisk('projects');
+      await Hive.deleteBoxFromDisk('sections');
+      await Hive.deleteBoxFromDisk('chapters');
+      await Hive.deleteBoxFromDisk('characters');
+      await Hive.deleteBoxFromDisk('maps');
+      await Hive.deleteBoxFromDisk('links');
+      await Hive.deleteBoxFromDisk('history');
+      await Hive.deleteBoxFromDisk('custom_traits');
+
+      projectBox = await Hive.openBox<Project>('projects');
+      sectionBox = await Hive.openBox<Section>('sections');
+      chapterBox = await Hive.openBox<Chapter>('chapters');
+      characterBox = await Hive.openBox<Character>('characters');
+      mapBox = await Hive.openBox<MapModel>('maps');
+      await Hive.openBox<Link>('links'); // 3. Open the 'links' box
+      await Hive.openBox<HistoryEntry>('history');
+      await Hive.openBox<SimpleTrait>('custom_traits');
+    } else {
+      rethrow;
+    }
+  }
 }
 
 // ... (Rest of the file is unchanged) ...

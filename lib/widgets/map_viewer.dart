@@ -1,135 +1,118 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lore_keeper/models/map_model.dart';
 
-class MapViewer extends StatelessWidget {
-  final Map<String, dynamic> mapData;
+class MapViewer extends StatefulWidget {
+  final MapModel map;
 
-  const MapViewer({super.key, required this.mapData});
+  const MapViewer({super.key, required this.map});
+
+  @override
+  State<MapViewer> createState() => _MapViewerState();
+}
+
+class _MapViewerState extends State<MapViewer> {
+  bool _showLayers = true;
+  final TransformationController _transformationController =
+      TransformationController();
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(mapData['name'] ?? 'Map Viewer'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info),
-            onPressed: () => _showMapInfo(context),
-            tooltip: 'Map Information',
+    return Container(
+      color: Colors.grey[200],
+      child: Column(
+        children: [
+          // Toolbar for SVG controls
+          if (widget.map.fileType.toLowerCase() == 'svg' ||
+              widget.map.fileType.toLowerCase() == 'eps')
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              color: Theme.of(context).colorScheme.surface,
+              child: Row(
+                children: [
+                  const Text(
+                    'Layers:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  FilterChip(
+                    label: const Text('Show All'),
+                    selected: _showLayers,
+                    onSelected: (selected) {
+                      setState(() {
+                        _showLayers = selected;
+                      });
+                    },
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.zoom_in),
+                    onPressed: () {
+                      // Zoom in functionality would be implemented here
+                      // For now, just reset to fit
+                      _transformationController.value = Matrix4.identity();
+                    },
+                    tooltip: 'Fit to Screen',
+                  ),
+                ],
+              ),
+            ),
+          // Main viewer area
+          Expanded(
+            child: Center(
+              child: widget.map.filePath.isNotEmpty
+                  ? _buildMapContent()
+                  : const Text('No map image available'),
+            ),
           ),
         ],
-      ),
-      body: Center(
-        child: Container(
-          width: 800,
-          height: 600,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            color: Colors.lightBlue[50],
-          ),
-          child: Stack(children: _buildLayers()),
-        ),
       ),
     );
   }
 
-  List<Widget> _buildLayers() {
-    final layers = mapData['layers'] as List<dynamic>? ?? [];
-    return layers.map((layer) {
-      final layerMap = layer as Map<String, dynamic>;
-      if (!layerMap['visible']) return const SizedBox.shrink();
-      return Opacity(
-        opacity: layerMap['opacity'] ?? 1.0,
-        child: _buildLayerContent(layerMap),
+  Widget _buildMapContent() {
+    final fileType = widget.map.fileType.toLowerCase();
+
+    if (fileType == 'svg' || fileType == 'eps') {
+      // SVG/EPS viewer with layer controls
+      return InteractiveViewer(
+        transformationController: _transformationController,
+        boundaryMargin: const EdgeInsets.all(20.0),
+        minScale: 0.1,
+        maxScale: 5.0,
+        child: SvgPicture.file(
+          File(widget.map.filePath),
+          fit: BoxFit.contain,
+          placeholderBuilder: (BuildContext context) => Container(
+            padding: const EdgeInsets.all(30.0),
+            child: const CircularProgressIndicator(),
+          ),
+        ),
       );
-    }).toList();
-  }
-
-  Widget _buildLayerContent(Map<String, dynamic> layer) {
-    switch (layer['type']) {
-      case 'texture':
-        return Container(color: Colors.blue[100]);
-      case 'grid':
-        return CustomPaint(
-          painter: GridPainter(
-            gridType: layer['gridType'] ?? 'square',
-            columns: layer['columns'] ?? 20,
-            rows: layer['rows'] ?? 20,
-            lineWidth: layer['lineWidth'] ?? 1.0,
-            color: layer['color'] ?? Colors.grey,
-          ),
-        );
-      case 'objects':
-        return const SizedBox();
-      default:
-        return const SizedBox();
-    }
-  }
-
-  void _showMapInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Map Information'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Name: ${mapData['name'] ?? 'Unknown'}'),
-            Text('Style: ${mapData['style'] ?? 'Unknown'}'),
-            Text('Resolution: ${mapData['resolution'] ?? 'Unknown'}'),
-            Text('Aspect Ratio: ${mapData['aspectRatio'] ?? 'Unknown'}'),
-            Text('Layers: ${(mapData['layers'] as List?)?.length ?? 0}'),
-          ],
+    } else if (fileType == 'jpg' || fileType == 'jpeg' || fileType == 'png') {
+      // Flat image viewer with zoom
+      return InteractiveViewer(
+        transformationController: _transformationController,
+        boundaryMargin: const EdgeInsets.all(20.0),
+        minScale: 0.1,
+        maxScale: 5.0,
+        child: Image.file(
+          File(widget.map.filePath),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const Text('Error loading map image');
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class GridPainter extends CustomPainter {
-  final String gridType;
-  final int columns;
-  final int rows;
-  final double lineWidth;
-  final dynamic color;
-
-  GridPainter({
-    required this.gridType,
-    required this.columns,
-    required this.rows,
-    required this.lineWidth,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color is Color ? color : Colors.grey
-      ..strokeWidth = lineWidth
-      ..style = PaintingStyle.stroke;
-
-    final columnWidth = size.width / columns;
-    final rowHeight = size.height / rows;
-
-    // Draw vertical lines
-    for (int i = 0; i <= columns; i++) {
-      final x = i * columnWidth;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-
-    // Draw horizontal lines
-    for (int i = 0; i <= rows; i++) {
-      final y = i * rowHeight;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      );
+    } else {
+      return const Text('Unsupported file type');
     }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

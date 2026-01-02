@@ -1,207 +1,178 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:lore_keeper/models/map_model.dart';
 import 'package:lore_keeper/providers/map_list_provider.dart';
-import 'package:lore_keeper/widgets/map_editor.dart';
+import 'package:lore_keeper/providers/map_display_provider.dart';
+import 'package:lore_keeper/widgets/map_list_pane.dart';
+import 'package:lore_keeper/widgets/map_display.dart';
 
 class MapModule extends StatefulWidget {
   final int projectId;
-  final String? selectedMapKey;
-  final MapListProvider? mapListProvider;
+  final VoidCallback onReload;
 
-  const MapModule({
-    super.key,
-    required this.projectId,
-    this.selectedMapKey,
-    this.mapListProvider,
-  });
+  const MapModule({super.key, required this.projectId, required this.onReload});
 
   @override
-  State<MapModule> createState() => _MapModuleState();
+  State<MapModule> createState() => MapModuleState();
 }
 
-class _MapModuleState extends State<MapModule> {
-  late MapListProvider _mapListProvider;
-  String? _selectedMapKey;
-  Map<String, dynamic>? _currentMapData;
-  bool _ownsProvider = false;
+class MapModuleState extends State<MapModule> {
+  late MapListProvider _mapProvider;
+  late MapDisplayProvider _displayProvider;
+  String _selectedMapKey = '';
+  bool _isMobile = false;
 
   @override
   void initState() {
     super.initState();
-    // Use provided provider or create a new one
-    if (widget.mapListProvider != null) {
-      _mapListProvider = widget.mapListProvider!;
-      _ownsProvider = false;
-    } else {
-      _mapListProvider = MapListProvider(projectId: widget.projectId);
-      _ownsProvider = true;
-    }
-    _selectedMapKey = widget.selectedMapKey;
-    _loadMapData();
+    _mapProvider = MapListProvider(widget.projectId);
+    _displayProvider = MapDisplayProvider();
   }
 
   @override
   void dispose() {
-    // Only dispose if we own the provider
-    if (_ownsProvider) {
-      _mapListProvider.dispose();
-    }
+    _mapProvider.dispose();
+    _displayProvider.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMapData() async {
-    if (_selectedMapKey != null && _selectedMapKey!.isNotEmpty) {
-      // Wait for provider to initialize if needed
-      if (!_mapListProvider.isInitialized) {
-        // Wait a bit for initialization
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-
-      try {
-        // Find the map in the provider
-        final map = _mapListProvider.maps.firstWhere(
-          (m) => m.id.toString() == _selectedMapKey,
-        );
-        _currentMapData = _mapToMapData(map);
-        if (mounted) setState(() {});
-      } catch (e) {
-        // Map not found - clear current map data
-        if (mounted) {
-          setState(() {
-            _currentMapData = null;
-          });
-        }
-        debugPrint('Error loading map: $e');
-      }
-    } else {
-      // No map selected - clear current map data
-      if (mounted) {
-        setState(() {
-          _currentMapData = null;
-        });
-      }
-    }
-  }
-
-  Map<String, dynamic> _mapToMapData(dynamic map) {
-    return {
-      'id': map.id.toString(),
-      'name': map.name,
-      'style': map.style,
-      'resolution': map.resolution,
-      'aspectRatio': map.aspectRatio,
-      'gridType': map.gridType,
-      'created': map.created,
-      'lastModified': map.lastModified,
-      'layers': [
-        {
-          'id': 'base_texture',
-          'name': 'Base Texture',
-          'type': 'texture',
-          'visible': true,
-          'opacity': 1.0,
-        },
-        {
-          'id': 'grid',
-          'name': 'Grid',
-          'type': 'grid',
-          'visible': true,
-          'opacity': 0.5,
-          'gridType': map.gridType ?? 'square',
-          'columns': 20,
-          'rows': 20,
-          'lineWidth': 1.0,
-          'color': Colors.grey,
-        },
-        {
-          'id': 'objects',
-          'name': 'Objects',
-          'type': 'objects',
-          'visible': true,
-          'opacity': 1.0,
-        },
-      ],
-    };
-  }
-
-  List<Map<String, dynamic>> _getMapsList() {
-    return _mapListProvider.maps.map((map) => _mapToMapData(map)).toList();
-  }
-
-  @override
-  void didUpdateWidget(MapModule oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Update selected map key if it changed from parent
-    if (widget.selectedMapKey != oldWidget.selectedMapKey) {
-      _selectedMapKey = widget.selectedMapKey;
-      _loadMapData();
-    }
+  void _onMapSelected(String key) {
+    setState(() {
+      _selectedMapKey = key;
+    });
+    final map = _mapProvider.getMap(int.tryParse(key) ?? -1);
+    _displayProvider.setCurrentMap(map);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _mapListProvider,
-      builder: (context, child) {
-        // Update selected map key from widget prop
-        final newSelectedKey = widget.selectedMapKey;
-        if (newSelectedKey != _selectedMapKey) {
-          _selectedMapKey = newSelectedKey;
-          // Load map data immediately
-          _loadMapData();
-        }
-
-        // Try to load map if we have a selected key but no current data
-        if (_selectedMapKey != null &&
-            _selectedMapKey!.isNotEmpty &&
-            _currentMapData == null &&
-            _mapListProvider.isInitialized) {
-          // Try to find and load the map
-          try {
-            final map = _mapListProvider.maps.firstWhere(
-              (m) => m.id.toString() == _selectedMapKey,
-            );
-            _currentMapData = _mapToMapData(map);
-          } catch (e) {
-            // Map not found yet, will be loaded by _loadMapData
-            debugPrint('Map not found in build: $e');
-          }
-        }
-
-        final maps = _getMapsList();
-        final currentMap = _currentMapData;
-
-        if (currentMap == null) {
-          return const Center(
-            child: Text(
-              'No map selected. Select a map from the list to edit.',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      child: Column(
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                _isMobile = constraints.maxWidth < 800;
+                return _isMobile ? _buildMobileLayout() : _buildDesktopLayout();
+              },
             ),
-          );
-        }
-
-        return MapEditor(
-          mapData: currentMap,
-          maps: maps,
-          onMapSelected: _onMapSelected,
-          onMapCreated: _onMapCreated,
-        );
-      },
+          ),
+          _buildBottomStatusBar(),
+        ],
+      ),
     );
   }
 
-  void _onMapSelected(Map<String, dynamic> map) {
-    setState(() {
-      _selectedMapKey = map['id']?.toString();
-      _currentMapData = map;
-    });
+  Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        // Top bar with map selection
+        SizedBox(
+          height: kToolbarHeight,
+          child: Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: DropdownButton<String>(
+                    value: _selectedMapKey.isEmpty ? null : _selectedMapKey,
+                    hint: const Text('Select a map'),
+                    isExpanded: true,
+                    items: _mapProvider.maps.map((map) {
+                      return DropdownMenuItem<String>(
+                        value: map.key.toString(),
+                        child: Text(map.name),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        _onMapSelected(value);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Map viewer
+        Expanded(
+          child: _selectedMapKey.isEmpty
+              ? const Center(child: Text('Select a map to view'))
+              : ListenableBuilder(
+                  listenable: _displayProvider,
+                  builder: (context, child) {
+                    final map = _displayProvider.currentMap;
+                    return map != null
+                        ? MapDisplay(map: map)
+                        : const Center(child: Text('Map not found'));
+                  },
+                ),
+        ),
+      ],
+    );
   }
 
-  void _onMapCreated(Map<String, dynamic> map) {
-    // The map is already added to the provider via MapListPane
-    // Just select it
-    setState(() {
-      _selectedMapKey = map['id']?.toString();
-      _currentMapData = map;
-    });
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        // Left sidebar with map list
+        SizedBox(
+          width: 250,
+          child: MapListPane(
+            mapProvider: _mapProvider,
+            selectedMapKey: _selectedMapKey,
+            onMapSelected: _onMapSelected,
+            isMobile: false,
+          ),
+        ),
+        // Vertical divider
+        const VerticalDivider(width: 1),
+        // Main content area
+        Expanded(
+          child: _selectedMapKey.isEmpty
+              ? const Center(child: Text('Select a map to view'))
+              : ListenableBuilder(
+                  listenable: _displayProvider,
+                  builder: (context, child) {
+                    final map = _displayProvider.currentMap;
+                    return map != null
+                        ? MapDisplay(map: map)
+                        : const Center(child: Text('Map not found'));
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomStatusBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      height: 35,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      color: colorScheme.surfaceContainer,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Status indicator (placeholder for future saving status)
+          Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green.shade600, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                'Ready',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
