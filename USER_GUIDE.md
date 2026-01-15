@@ -1,20 +1,29 @@
 # Lore Keeper User Guide
 
-Welcome to the Lore Keeper User Guide! This guide will walk you through the various features of the application and help you get started with building your own fictional worlds.
+Welcome to the Lore Keeper User Guide! This guide will walk you through the various features of the application and help you get started with building your own fictional worlds and writing your novel.
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
+- [Manuscript Module](#manuscript-module)
+- [Character Management](#character-management)
 - [The Map Creator](#the-map-creator)
   - [Layers](#layers)
   - [Tools](#tools)
 - [World Generation](#world-generation)
-- [Character Management](#character-management)
 - [Project Management](#project-management)
 
 ## Getting Started
 
-To get started with Lore Keeper, simply launch the application and create a new project. You'll be prompted to give your project a name and choose a location to save it. Once you've created a project, you can start building your world.
+To get started with Lore Keeper, simply launch the application and create a new project. You'll be prompted to give your project a name and choose a location to save it. Once you've created a project, you can start building your world and writing your story.
+
+## Manuscript Module
+
+The Manuscript Module is where you will write, edit, and organize your novel. This module is designed to provide a seamless writing experience, allowing you to focus on your story while keeping your notes and lore just a click away. You can structure your manuscript into chapters and scenes, rearrange them as needed, and track your progress.
+
+## Character Management
+
+The Character Management module is a powerful tool for creating and managing your characters. Here, you can create detailed character profiles, including their backstories, relationships, physical attributes, and personality traits. You can also track their development and story arcs as your novel progresses, ensuring consistency and depth in your characterizations.
 
 ## The Map Creator
 
@@ -47,10 +56,6 @@ The Map Creator provides a variety of tools to help you create your maps:
 ## World Generation
 
 The World Generation module allows you to procedurally generate worlds with customizable parameters. To access the World Generation module, open a project and click on the "World" tab.
-
-## Character Management
-
-The Character Management module allows you to create and manage characters, including their backstories, relationships, and attributes. To access the Character Management module, open a project and click on the "Characters" tab.
 
 ## Project Management
 
