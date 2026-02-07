@@ -101,6 +101,52 @@ class CustomPanelAdapter extends TypeAdapter<CustomPanel> {
           typeId == other.typeId;
 }
 
+class CharacterImageAdapter extends TypeAdapter<CharacterImage> {
+  @override
+  final int typeId = 13;
+
+  @override
+  CharacterImage read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return CharacterImage(
+      imageData: fields[0] as Uint8List,
+      caption: fields[1] as String,
+      imageIteration: fields[2] as String,
+      characterIteration: fields[3] as int,
+      aspectRatio: fields[4] as double?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, CharacterImage obj) {
+    writer
+      ..writeByte(5)
+      ..writeByte(0)
+      ..write(obj.imageData)
+      ..writeByte(1)
+      ..write(obj.caption)
+      ..writeByte(2)
+      ..write(obj.imageIteration)
+      ..writeByte(3)
+      ..write(obj.characterIteration)
+      ..writeByte(4)
+      ..write(obj.aspectRatio);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CharacterImageAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
   @override
   final int typeId = 10;
@@ -112,28 +158,29 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return CharacterIteration(
-      iterationName: fields[0] as String,
-      name: fields[1] as String?,
-      aliases: (fields[2] as List?)?.cast<String>(),
-      occupation: fields[3] as String?,
-      gender: fields[4] as String?,
-      customGender: fields[5] as String?,
-      bio: fields[6] as String?,
-      originCountry: fields[7] as String?,
-      traits: (fields[8] as List?)?.cast<String>(),
-      congenitalTraits: fields[9] as dynamic,
-      leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
-      personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
-    )
+        iterationName: fields[0] as String,
+        name: fields[1] as String?,
+        aliases: (fields[2] as List?)?.cast<String>(),
+        occupation: fields[3] as String?,
+        gender: fields[4] as String?,
+        customGender: fields[5] as String?,
+        bio: fields[6] as String?,
+        originCountry: fields[7] as String?,
+        traits: (fields[8] as List?)?.cast<String>(),
+        congenitalTraits: fields[9] as dynamic,
+        leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
+        personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
+      )
       .._customFieldValues = (fields[12] as Map?)?.cast<String, String>()
       .._customPanels = (fields[13] as List?)?.cast<CustomPanel>()
-      .._panelOrders = (fields[14] as Map?)?.cast<String, int>();
+      .._panelOrders = (fields[14] as Map?)?.cast<String, int>()
+      .._images = (fields[15] as List?)?.cast<CharacterImage>();
   }
 
   @override
   void write(BinaryWriter writer, CharacterIteration obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.iterationName)
       ..writeByte(1)
@@ -163,7 +210,9 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       ..writeByte(13)
       ..write(obj._customPanels)
       ..writeByte(14)
-      ..write(obj._panelOrders);
+      ..write(obj._panelOrders)
+      ..writeByte(15)
+      ..write(obj._images);
   }
 
   @override
@@ -188,14 +237,16 @@ class CharacterAdapter extends TypeAdapter<Character> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Character(
-      name: fields[0] as String,
-      parentProjectId: fields[1] as int,
-      aliases: (fields[2] as List?)?.cast<String>(),
-      species: fields[3] as String?,
-      relationWebLayout: (fields[15] as Map?)?.map((dynamic k, dynamic v) =>
-          MapEntry(k as dynamic, (v as Map).cast<String, double>())),
-      createdAt: fields[17] as DateTime?,
-    )
+        name: fields[0] as String,
+        parentProjectId: fields[1] as int,
+        aliases: (fields[2] as List?)?.cast<String>(),
+        species: fields[3] as String?,
+        relationWebLayout: (fields[15] as Map?)?.map(
+          (dynamic k, dynamic v) =>
+              MapEntry(k as dynamic, (v as Map).cast<String, double>()),
+        ),
+        createdAt: fields[17] as DateTime?,
+      )
       ..gender = fields[4] as String?
       ..customGender = fields[5] as String?
       ..residence = fields[7] as String?

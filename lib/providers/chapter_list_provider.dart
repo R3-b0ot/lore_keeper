@@ -140,17 +140,22 @@ class ChapterListProvider with ChangeNotifier {
       newIndex -= 1;
     }
 
-    // Create a new list based on the reordered state.
-    final List<Chapter> reorderedChapters = List.from(_chapters);
-    final Chapter movedChapter = reorderedChapters.removeAt(oldIndex);
-    reorderedChapters.insert(newIndex, movedChapter);
+    // --- OPTIMISTIC UPDATE ---
+    // Update local state and notify listeners IMMEDIATELY to prevent flicker
+    final Chapter movedChapter = _chapters.removeAt(oldIndex);
+    _chapters.insert(newIndex, movedChapter);
+    notifyListeners();
 
-    // Call the service to persist the new order indices.
-    await _manuscriptService.updateChapterOrder(reorderedChapters);
-
-    _loadData(); // Reload data to ensure UI consistency.
-
-    _isReordering = false; // Release the lock
+    // Call the service to persist the new order indices in the background.
+    try {
+      await _manuscriptService.updateChapterOrder(_chapters);
+    } catch (e) {
+      debugPrint('Error persisting chapter order: $e');
+      // If persistence fails, reload from service to restore correct state
+      _loadData();
+    } finally {
+      _isReordering = false;
+    }
   }
 
   /// Updates the content of a specific chapter.

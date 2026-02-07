@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/providers/map_list_provider.dart';
@@ -74,6 +73,7 @@ class _MapCreatorDialogState extends State<MapCreatorDialog> {
           _fileType!,
         );
         if (key != -1) {
+          if (!mounted) return;
           Navigator.of(context).pop();
         }
       }

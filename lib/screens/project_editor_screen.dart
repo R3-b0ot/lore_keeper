@@ -9,13 +9,15 @@ import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
+import 'package:lore_keeper/widgets/chapter_list_pane.dart';
 import 'package:lore_keeper/widgets/character_list_pane.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
-import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
-import 'package:lore_keeper/widgets/ai_features_dialog.dart';
+
 import 'package:lore_keeper/widgets/find_replace_dialog.dart';
+import 'package:lore_keeper/providers/map_list_provider.dart';
+import 'package:lore_keeper/widgets/map_list_pane.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -23,8 +25,19 @@ import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 
 class ProjectEditorScreen extends StatefulWidget {
   final Project project;
+  final int? initialModuleIndex;
+  final String? initialChapterKey;
+  final String? initialCharacterKey;
+  final String? initialMapKey;
 
-  const ProjectEditorScreen({super.key, required this.project});
+  const ProjectEditorScreen({
+    super.key,
+    required this.project,
+    this.initialModuleIndex,
+    this.initialChapterKey,
+    this.initialCharacterKey,
+    this.initialMapKey,
+  });
 
   @override
   State<ProjectEditorScreen> createState() => _ProjectEditorScreenState();
@@ -34,6 +47,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
   String _selectedChapterKey = '';
   String _selectedCharacterKey = '';
+  String _selectedMapKey = '';
 
   bool _isSidebarExpanded = false;
   bool _isHistoryPanelVisible = false;
@@ -43,14 +57,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     debugLabel: 'ManuscriptEditor',
   );
 
-  QuillController? _currentController;
-
   final GlobalKey<CharacterModuleState> _characterModuleKey = GlobalKey(
     debugLabel: 'CharacterModule',
   );
 
   ChapterListProvider? _chapterListProvider;
   CharacterListProvider? _characterListProvider;
+  MapListProvider? _mapListProvider;
   LinkProvider? _linkProvider;
 
   final List<Map<String, dynamic>> _moduleItems = const <Map<String, dynamic>>[
@@ -77,6 +90,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   @override
   void initState() {
     super.initState();
+    _moduleIndex = widget.initialModuleIndex ?? 0;
+    _selectedChapterKey = widget.initialChapterKey ?? '';
+    _selectedCharacterKey = widget.initialCharacterKey ?? '';
+    _selectedMapKey = widget.initialMapKey ?? '';
+
     _chapterListProvider = ChapterListProvider(widget.project.key);
     _characterListProvider = CharacterListProvider(widget.project.key);
     _linkProvider = LinkProvider();
@@ -116,6 +134,19 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                 .first
                 .key
                 .toString(),
+          );
+        }
+      }
+    });
+
+    _mapListProvider = MapListProvider(widget.project.key);
+    _mapListProvider!.addListener(() {
+      if (mounted &&
+          _mapListProvider!.isInitialized &&
+          _mapListProvider!.maps.isNotEmpty) {
+        if (_selectedMapKey.isEmpty) {
+          setState(
+            () => _selectedMapKey = _mapListProvider!.maps.first.key.toString(),
           );
         }
       }
@@ -177,23 +208,18 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   void _handleDictionaryClose() {
     // After the dictionary is closed, trigger a grammar check.
-    _projectEditorKey.currentState?.triggerGrammarCheck();
-  }
-
-  void _openAIFeatures() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return const AIFeaturesDialog();
-      },
-    );
+    final manuscriptEditor =
+        _projectEditorKey.currentWidget as ManuscriptEditor?;
+    manuscriptEditor?.triggerGrammarCheck();
   }
 
   void _openFindReplaceDialog() {
     // Only allow for manuscript module
     if (_moduleIndex != 0) return;
     // Get the controller from the manuscript module
-    final controller = _projectEditorKey.currentState?.getController();
+    final manuscriptEditor =
+        _projectEditorKey.currentWidget as ManuscriptEditor?;
+    final controller = manuscriptEditor?.getController();
     if (controller != null) {
       // Unfocus any focused widget to avoid keyboard event conflicts
       FocusScope.of(context).unfocus();
@@ -216,7 +242,9 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       _selectedChapterKey = newKey;
     });
     // FIX: No explicit cast needed. The extension method can be called directly on the State object.
-    _projectEditorKey.currentState?.loadNewChapterContent();
+    final manuscriptEditor =
+        _projectEditorKey.currentWidget as ManuscriptEditor?;
+    manuscriptEditor?.loadNewChapterContent();
   }
 
   @override
@@ -358,11 +386,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   // Helper method to build the second column based on the selected module
   Widget _buildSecondColumn() {
     if (_moduleIndex == 0) {
-      return ChapterPane(
+      return ChapterListPane(
         chapterProvider: _chapterListProvider!,
         selectedChapterKey: _selectedChapterKey,
-        onChapterSelected: _onChapterSelected,
-        onChapterCreated: _onChapterCreated,
+        onChapterSelected: (key, {bool closeDrawer = false}) =>
+            _onChapterSelected(key),
+        onChapterCreated: (key) => _onChapterCreated(key),
         isMobile: _isMobile,
       );
     } else if (_moduleIndex == 1) {
@@ -375,8 +404,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         isMobile: _isMobile,
       );
     } else if (_moduleIndex == 2) {
-      // Maps module - no second column needed, handled in main content
-      return const SizedBox.shrink();
+      return MapListPane(
+        mapProvider: _mapListProvider!,
+        selectedMapKey: _selectedMapKey,
+        onMapSelected: (key) => setState(() => _selectedMapKey = key),
+        isMobile: _isMobile,
+      );
     }
     return const SizedBox.shrink();
   }
@@ -395,7 +428,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               chapterProvider: _chapterListProvider!,
               onChapterSelected: _onChapterSelected,
               onControllerReady: (QuillController? controller) {
-                _currentController = controller;
+                // Controller ready
               },
               key: _projectEditorKey,
             );
@@ -409,7 +442,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               onReload: _handleRevert,
             );
     } else if (_moduleIndex == 2) {
-      return MapModule(projectId: widget.project.key, onReload: _handleRevert);
+      return MapModule(
+        projectId: widget.project.key,
+        mapProvider: _mapListProvider!,
+        selectedMapKey: _selectedMapKey,
+        onReload: _handleRevert,
+      );
     }
     return _ModulePlaceholder(
       moduleName: currentModuleName,
@@ -608,7 +646,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           // 1. Module Bar (Leftmost Column - Animated)
           // ------------------------------------------
           AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 100),
             width: _isSidebarExpanded ? expandedWidth : collapsedWidth,
             color: Theme.of(context).colorScheme.surface,
             child: ModuleSidebar(
@@ -629,7 +667,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           Expanded(
             flex: 1,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 80),
               child: _buildSecondColumn(),
             ),
           ),
@@ -639,7 +677,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               ? const VerticalDivider(
                   width: 1,
                   thickness: 1,
-                  color: Colors.grey,
+                  color: Colors.transparent,
                 )
               : const SizedBox.shrink(),
 
@@ -651,7 +689,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           // --- HISTORY PANEL (Conditionally visible) ---
           if (_isHistoryPanelVisible &&
               (_moduleIndex == 0 || _moduleIndex == 1)) ...[
-            const VerticalDivider(width: 1, thickness: 1),
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Colors.transparent,
+            ),
             if (_moduleIndex == 0) // Manuscript
               HistoryPanel(
                 targetKey: _selectedChapterKey.startsWith('front_matter_')
@@ -671,7 +713,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           ],
 
           // Vertical divider before the rightmost bar
-          const VerticalDivider(width: 1, thickness: 1),
+          const VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: Colors.transparent,
+          ),
 
           // ------------------------------------------
           // 4. Specific Functions Bar (Rightmost Column)
@@ -687,7 +733,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                   _moduleIndex == 0 ||
                   _moduleIndex == 1, // Manuscript or Character
               onSettingsPressed: _openSettings,
-              onAIPressed: _openAIFeatures,
+
               onFindReplacePressed: _moduleIndex == 0
                   ? _openFindReplaceDialog
                   : null,
@@ -1089,560 +1135,6 @@ class _FooterSidebarItem extends StatelessWidget {
 // --- Other Placeholder Widgets (Included for completeness)
 // -------------------------------------------------------------
 
-class ChapterPane extends StatefulWidget {
-  final ChapterListProvider chapterProvider;
-  final String selectedChapterKey;
-  final Function(String key, {bool closeDrawer}) onChapterSelected;
-  final ValueChanged<String> onChapterCreated;
-  final bool isMobile;
-
-  const ChapterPane({
-    super.key,
-    required this.chapterProvider,
-    required this.selectedChapterKey,
-    required this.onChapterSelected,
-    required this.onChapterCreated,
-    required this.isMobile,
-  });
-
-  @override
-  State<ChapterPane> createState() => _ChapterPaneState();
-}
-
-class _ChapterPaneState extends State<ChapterPane> {
-  bool _isFrontMatterExpanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      child: ListenableBuilder(
-        listenable: widget.chapterProvider,
-        builder: (context, child) {
-          final chapters = widget.chapterProvider.chapters;
-          final frontPage = widget.chapterProvider.frontPage;
-          final indexPage = widget.chapterProvider.indexPage;
-          final aboutAuthorPage = widget.chapterProvider.aboutAuthorPage;
-
-          final itemCount = chapters.isEmpty ? 2 : chapters.length + 1;
-
-          return Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: ReorderableListView.builder(
-              itemCount: itemCount,
-              buildDefaultDragHandles: false,
-              onReorder: (oldIndex, newIndex) {
-                if (oldIndex == 0 || newIndex == 0) return;
-                widget.chapterProvider.reorderChapter(
-                  oldIndex - 1,
-                  newIndex - 1,
-                );
-              },
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Container(
-                    key: const ValueKey('header'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Manuscript',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {},
-                              child: const Text('edit'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildExpandableButton(
-                          context: context,
-                          icon: _isFrontMatterExpanded
-                              ? Icons.folder_open
-                              : Icons.folder,
-                          label: 'Front Matter',
-                          isExpanded: _isFrontMatterExpanded,
-                          onPressed: () {
-                            setState(() {
-                              _isFrontMatterExpanded = !_isFrontMatterExpanded;
-                            });
-                          },
-                        ),
-                        if (_isFrontMatterExpanded)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 24.0,
-                              top: 4.0,
-                            ),
-                            child: Column(
-                              children: [
-                                if (frontPage != null)
-                                  _buildFrontMatterItem(
-                                    context,
-                                    frontPage,
-                                    widget.selectedChapterKey,
-                                    (key) => widget.onChapterSelected(
-                                      key,
-                                      closeDrawer: true,
-                                    ),
-                                  ),
-                                if (indexPage != null)
-                                  _buildFrontMatterItem(
-                                    context,
-                                    indexPage,
-                                    widget.selectedChapterKey,
-                                    (key) => widget.onChapterSelected(
-                                      key,
-                                      closeDrawer: true,
-                                    ),
-                                  ),
-                                if (aboutAuthorPage != null)
-                                  _buildFrontMatterItem(
-                                    context,
-                                    aboutAuthorPage,
-                                    widget.selectedChapterKey,
-                                    (key) => widget.onChapterSelected(
-                                      key,
-                                      closeDrawer: true,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        _buildAddButton(
-                          context,
-                          Icons.add,
-                          'New Chapter',
-                          () async {
-                            final title = await _showChapterTitleDialog(
-                              context,
-                            );
-                            if (title != null && title.isNotEmpty) {
-                              final newKey = await widget.chapterProvider
-                                  .createNewChapter(title);
-                              widget.onChapterCreated(newKey.toString());
-                            }
-                          },
-                        ),
-                        const Divider(height: 32),
-                        const Text(
-                          'Body',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                  );
-                } else if (chapters.isEmpty) {
-                  return Container(
-                    key: const ValueKey('empty'),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            const Text('No chapters found.'),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () => _createNewChapter(context),
-                              child: const Text('Create New Chapter'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                } else {
-                  final chapterIndex = index - 1;
-                  final chapter = chapters[chapterIndex];
-                  final isSelected =
-                      chapter.key.toString() == widget.selectedChapterKey;
-                  return Padding(
-                    key: ValueKey(chapter.key),
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Row(
-                      children: [
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Padding(
-                            padding: EdgeInsets.only(right: 8.0),
-                            child: Icon(
-                              Icons.drag_indicator,
-                              color: Color(0x00808080),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildButton(
-                            context,
-                            Icons.person_outline,
-                            '${chapter.orderIndex + 1}. ${chapter.title}',
-                            isSelected,
-                            onPressed: () => widget.onChapterSelected(
-                              chapter.key.toString(),
-                              closeDrawer: true,
-                            ),
-                            onRename: () async {
-                              final newTitle = await _showChapterTitleDialog(
-                                context,
-                                initialTitle: chapter.title,
-                              );
-                              if (newTitle != null &&
-                                  newTitle.isNotEmpty &&
-                                  newTitle != chapter.title) {
-                                widget.chapterProvider.updateChapterTitle(
-                                  chapter.key as int,
-                                  newTitle,
-                                );
-                              }
-                            },
-                            onDelete: () async {
-                              final confirmed = await _showDeleteConfirmDialog(
-                                context,
-                                chapter.title,
-                              );
-                              if (confirmed == true) {
-                                final currentIndex = chapters.indexOf(chapter);
-                                await widget.chapterProvider.deleteChapter(
-                                  chapter.key as int,
-                                );
-
-                                // After deletion, select a new chapter or clear the selection.
-                                if (widget
-                                    .chapterProvider
-                                    .chapters
-                                    .isNotEmpty) {
-                                  final newIndex = (currentIndex > 0)
-                                      ? currentIndex - 1
-                                      : 0;
-                                  // Ensure the index is valid for the new list length.
-                                  if (newIndex <
-                                      widget.chapterProvider.chapters.length) {
-                                    widget.onChapterSelected(
-                                      widget
-                                          .chapterProvider
-                                          .chapters[newIndex]
-                                          .key
-                                          .toString(),
-                                    );
-                                  } else {
-                                    // Fallback if index logic fails, select the first.
-                                    widget.onChapterSelected(
-                                      widget.chapterProvider.chapters.first.key
-                                          .toString(),
-                                    );
-                                  }
-                                } else {
-                                  widget.onChapterSelected(
-                                    '',
-                                  ); // No chapters left
-                                }
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _createNewChapter(BuildContext context) async {
-    final title = await _showChapterTitleDialog(context);
-    if (title != null && title.isNotEmpty) {
-      final newKey = await widget.chapterProvider.createNewChapter(title);
-      widget.onChapterCreated(newKey.toString());
-    }
-  }
-
-  Future<String?> _showChapterTitleDialog(
-    BuildContext context, {
-    String? initialTitle,
-  }) {
-    return showDialog<String>(
-      context: context, // Use the context from the build method
-      barrierDismissible: false, // Let KeyboardAwareDialog handle dismissal
-      builder: (dialogContext) =>
-          ChapterTitleDialog(initialTitle: initialTitle ?? ''),
-    );
-  }
-
-  Future<bool?> _showDeleteConfirmDialog(
-    BuildContext context,
-    String chapterTitle,
-  ) {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // Let KeyboardAwareDialog handle dismissal
-      builder: (context) => KeyboardAwareDialog(
-        onConfirm: () => Navigator.of(context).pop(true),
-        title: const Text('Delete Chapter'),
-        content: Text(
-          'Are you sure you want to delete "$chapterTitle"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(Colors.red),
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandableButton({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required bool isExpanded,
-    required VoidCallback onPressed,
-  }) {
-    final theme = Theme.of(context);
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        alignment: Alignment.centerLeft,
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
-        side: BorderSide(color: theme.colorScheme.outline),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: theme.colorScheme.onSurface),
-            const SizedBox(width: 8),
-            Expanded(child: Text(label, softWrap: true)),
-            Icon(
-              isExpanded ? Icons.expand_less : Icons.expand_more,
-              size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFrontMatterItem(
-    BuildContext context,
-    Chapter chapter,
-    String selectedChapterKey,
-    ValueChanged<String> onChapterSelected, // This is now just a key
-  ) {
-    final isSelected = chapter.key.toString() == selectedChapterKey;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: _buildButton(
-        context,
-        Icons.article_outlined,
-        chapter.title,
-        isSelected,
-        onPressed: () => onChapterSelected(chapter.key),
-        // No rename/delete for front matter pages for now
-      ),
-    );
-  }
-
-  Widget _buildButton(
-    BuildContext context,
-    IconData icon,
-    String label,
-    bool isSelected, {
-    required VoidCallback onPressed,
-    VoidCallback? onRename,
-    VoidCallback? onEdit,
-    VoidCallback? onDelete,
-  }) {
-    final theme = Theme.of(context); // Now context is available
-    final colorScheme = theme.colorScheme;
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(
-              icon,
-              size: 16,
-              color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-            ),
-            label: Text(label, softWrap: true),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              alignment: Alignment.centerLeft,
-              backgroundColor: isSelected
-                  ? colorScheme.primaryContainer
-                  : colorScheme.surface,
-              foregroundColor: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurface,
-              side: BorderSide(
-                // This was correct
-                color: isSelected ? colorScheme.primary : colorScheme.outline,
-              ),
-              shape: onRename != null
-                  ? const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(8),
-                        bottomLeft: Radius.circular(8),
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-        ),
-        if (onRename != null)
-          if (!widget.isMobile)
-            _buildKebabMenu(
-              context: context,
-              isSelected: isSelected,
-              onRename: onRename,
-              onEdit: onEdit,
-              onDelete: onDelete, // Pass the onDelete callback
-            )
-          else
-            Container(
-              width: 80,
-              height: 36,
-              margin: const EdgeInsets.only(left: 1),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surface,
-                border: Border.all(
-                  color: isSelected ? colorScheme.primary : colorScheme.outline,
-                ),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.edit,
-                        size: 18,
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.onSurface,
-                      ),
-                      onPressed: onRename,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ),
-                  if (onDelete != null)
-                    Expanded(
-                      child: IconButton(
-                        icon: Icon(Icons.delete, size: 18, color: Colors.red),
-                        onPressed: onDelete,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-      ],
-    );
-  }
-
-  Widget _buildKebabMenu({
-    required BuildContext context,
-    required bool isSelected,
-    required VoidCallback onRename,
-    required VoidCallback? onEdit,
-    required VoidCallback? onDelete,
-  }) {
-    final theme = Theme.of(context); // Now context is available
-    final colorScheme = theme.colorScheme;
-    return Container(
-      width: 40,
-      height: 36,
-      margin: const EdgeInsets.only(left: 1),
-      decoration: BoxDecoration(
-        color: isSelected ? colorScheme.primaryContainer : colorScheme.surface,
-        border: Border.all(
-          color: isSelected ? colorScheme.primary : colorScheme.outline,
-        ),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(8),
-          bottomRight: Radius.circular(8),
-        ),
-      ),
-      child: PopupMenuButton<String>(
-        onSelected: (value) {
-          if (value == 'rename') {
-            onRename();
-          } else if (value == 'edit' && onEdit != null) {
-            // This was correct
-            onEdit.call();
-          } else if (value == 'delete') {
-            onDelete?.call();
-          }
-        },
-        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-          const PopupMenuItem<String>(value: 'rename', child: Text('Rename')),
-          if (onEdit != null) // This was correct
-            const PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
-          if (onDelete != null) // This was correct
-            const PopupMenuItem<String>(
-              value: 'delete',
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-        ],
-        icon: Icon(
-          Icons.more_vert,
-          size: 18,
-          color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-        ),
-        tooltip: 'More options',
-      ),
-    );
-  }
-
-  Widget _buildAddButton(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onPressed,
-  ) {
-    final theme = Theme.of(context); // Now context is available
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 16, color: theme.colorScheme.primary),
-        label: Text(label, style: TextStyle(color: theme.colorScheme.primary)),
-      ),
-    );
-  }
-}
-
 class _ModulePlaceholder extends StatelessWidget {
   final String moduleName;
   final Color color;
@@ -1680,7 +1172,7 @@ class SpecificFunctionsBar extends StatelessWidget {
   final bool isHistoryVisible;
   final bool showHistoryButton;
   final VoidCallback? onSettingsPressed;
-  final VoidCallback? onAIPressed;
+
   final VoidCallback? onFindReplacePressed;
   final bool isMobile;
   final bool isFindReplaceAvailable;
@@ -1691,7 +1183,7 @@ class SpecificFunctionsBar extends StatelessWidget {
     required this.isHistoryVisible,
     required this.showHistoryButton,
     this.onSettingsPressed,
-    this.onAIPressed,
+
     this.onFindReplacePressed,
     required this.isMobile,
     required this.isFindReplaceAvailable,
@@ -1772,12 +1264,7 @@ class SpecificFunctionsBar extends StatelessWidget {
               onPressed: onHistoryPressed,
               tooltip: isHistoryVisible ? 'Hide History' : 'Show History',
             ),
-          if (onAIPressed != null)
-            IconButton(
-              icon: const Icon(Icons.smart_toy),
-              onPressed: onAIPressed,
-              tooltip: 'AI Features',
-            ),
+
           if (onFindReplacePressed != null)
             IconButton(
               icon: const Icon(Icons.find_replace),

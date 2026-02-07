@@ -25,14 +25,24 @@ class ProjectAdapter extends TypeAdapter<Project> {
       genre: fields[5] as String?,
       authors: fields[6] as String?,
       lastModified: fields[8] as DateTime?,
+      historyLimit: fields[9] as int?,
+      coverImagePath: fields[10] as String?,
+      showTitleOnCover: fields[11] as bool?,
+      showAuthorOnCover: fields[12] as bool?,
+      authorBio: fields[13] as String?,
+      authorEmail: fields[14] as String?,
+      authorWebsite: fields[15] as String?,
+      authorTwitter: fields[16] as String?,
+      authorInstagram: fields[17] as String?,
+      authorFacebook: fields[18] as String?,
       ignoredWords: (fields[7] as List?)?.cast<String>(),
-    )..historyLimit = fields[9] as int?;
+    );
   }
 
   @override
   void write(BinaryWriter writer, Project obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -52,7 +62,25 @@ class ProjectAdapter extends TypeAdapter<Project> {
       ..writeByte(8)
       ..write(obj.lastModified)
       ..writeByte(9)
-      ..write(obj.historyLimit);
+      ..write(obj.historyLimit)
+      ..writeByte(10)
+      ..write(obj.coverImagePath)
+      ..writeByte(11)
+      ..write(obj.showTitleOnCover)
+      ..writeByte(12)
+      ..write(obj.showAuthorOnCover)
+      ..writeByte(13)
+      ..write(obj.authorBio)
+      ..writeByte(14)
+      ..write(obj.authorEmail)
+      ..writeByte(15)
+      ..write(obj.authorWebsite)
+      ..writeByte(16)
+      ..write(obj.authorTwitter)
+      ..writeByte(17)
+      ..write(obj.authorInstagram)
+      ..writeByte(18)
+      ..write(obj.authorFacebook);
   }
 
   @override

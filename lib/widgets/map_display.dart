@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:lore_keeper/models/map_model.dart';
 
 class MapDisplay extends StatefulWidget {
@@ -37,7 +38,7 @@ class _MapDisplayState extends State<MapDisplay> {
     });
     // Apply zoom transformation
     final Matrix4 matrix = Matrix4.identity();
-    matrix.scale(_zoomLevel);
+    matrix.scaleByVector3(Vector3(_zoomLevel, _zoomLevel, _zoomLevel));
     _transformationController.value = matrix;
   }
 

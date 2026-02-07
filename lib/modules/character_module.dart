@@ -1,8 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
@@ -12,6 +18,10 @@ import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/services/global_custom_field_service.dart';
 import 'package:lore_keeper/services/global_custom_panel_service.dart';
 import 'package:lore_keeper/screens/trait_editor_screen.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
+import 'package:lore_keeper/widgets/modern_country_selection_dialog.dart';
+import 'package:lore_keeper/widgets/native_crop_dialog.dart';
+import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 
 enum PanelType { bio, links, image, traits }
 
@@ -508,82 +518,178 @@ class CharacterModuleState extends State<CharacterModule>
       return const Center(child: Text('Character not found.'));
     }
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.bgMain
+          : AppColors.bgMainLight,
       child: Column(
         children: [
-          // AppBar equivalent
-          SizedBox(
-            height: kToolbarHeight,
+          // --- REDESIGNED ITERATION SELECTOR ---
+          Container(
+            height: 90,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.5),
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                ),
+              ),
+            ),
             child: Row(
               children: [
                 Expanded(
-                  child: TabBar(
-                    controller: _tabController,
-                    onTap: (index) => _onTabTapped(index),
-                    isScrollable: true,
-                    tabs: _character!.iterations.isEmpty
-                        ? [const Tab(text: 'The First')]
-                        : _character!.iterations.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final iter = entry.value;
-                            return Tab(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _character!.iterations.length,
+                    itemBuilder: (context, index) {
+                      final iter = _character!.iterations[index];
+                      final isSelected = _currentIterationIndex == index;
+                      final colorScheme = Theme.of(context).colorScheme;
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (_tabController != null &&
+                              !_tabController!.indexIsChanging) {
+                            _tabController!.animateTo(index);
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colorScheme.primaryContainer
+                                : colorScheme.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? colorScheme.primary.withValues(alpha: 0.5)
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(iter.iterationName),
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, size: 18),
-                                    onSelected: (value) {
-                                      if (value == 'rename') {
-                                        _renameIteration(index);
-                                      } else if (value == 'delete') {
-                                        _deleteIteration(index);
-                                      }
-                                    },
-                                    itemBuilder: (BuildContext context) {
-                                      final canDelete =
-                                          _character!.iterations.length > 1;
-                                      return [
-                                        const PopupMenuItem(
-                                          value: 'rename',
-                                          child: Text('Rename'),
+                                  Text(
+                                    iter.iterationName.toUpperCase(),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          letterSpacing: 1.2,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSelected
+                                              ? colorScheme.primary
+                                              : colorScheme.onSurfaceVariant
+                                                    .withValues(alpha: 0.6),
                                         ),
-                                        PopupMenuItem(
-                                          value: 'delete',
-                                          enabled: canDelete,
-                                          child: Tooltip(
-                                            message: (canDelete
-                                                ? 'Delete this iteration'
-                                                : "The character must have at least one iteration. To remove the character entirely, use the main character list."),
-                                            child: Text(
-                                              'Delete',
-                                              style: TextStyle(
-                                                color: (canDelete
-                                                    ? Colors.red
-                                                    : Colors.grey),
-                                              ),
-                                            ),
-                                          ),
+                                  ),
+                                  Text(
+                                    iter.name ?? 'Unnamed',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? colorScheme.onPrimaryContainer
+                                              : colorScheme.onSurface,
                                         ),
-                                      ];
-                                    },
                                   ),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                    indicator: const UnderlineTabIndicator(),
+                              if (isSelected) ...[
+                                const SizedBox(width: 8),
+                                PopupMenuButton<String>(
+                                  padding: EdgeInsets.zero,
+                                  icon: Icon(
+                                    Icons.settings,
+                                    size: 16,
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
+                                  onSelected: (value) {
+                                    if (value == 'rename') {
+                                      _renameIteration(index);
+                                    } else if (value == 'delete') {
+                                      _deleteIteration(index);
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) {
+                                    final canDelete =
+                                        _character!.iterations.length > 1;
+                                    return [
+                                      const PopupMenuItem(
+                                        value: 'rename',
+                                        child: Text('Rename Iteration'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        enabled: canDelete,
+                                        child: Text(
+                                          'Delete Iteration',
+                                          style: TextStyle(
+                                            color: canDelete
+                                                ? Colors.red
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ];
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: 'New Iteration',
-                  onPressed: _showNewIterationDialog,
+                VerticalDivider(
+                  width: 1,
+                  indent: 12,
+                  endIndent: 12,
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
                 ),
-                const SizedBox(width: 8), // Some padding
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: IconButton.filledTonal(
+                    icon: const Icon(Icons.add_rounded),
+                    tooltip: 'New Iteration',
+                    onPressed: _showNewIterationDialog,
+                  ),
+                ),
               ],
             ),
           ),
+          // --- END REDESIGNED SELECTOR ---
           // Body
           Expanded(
             child: LayoutBuilder(
@@ -690,7 +796,11 @@ class CharacterModuleState extends State<CharacterModule>
         case PanelType.image:
           panelWidget = _PanelCard(
             title: 'Image',
-            content: const _ImageUploadPanel(),
+            content: _ImageUploadPanel(
+              iteration: _currentIteration,
+              characterIteration: _currentIterationIndex,
+              onChanged: _onFieldChanged,
+            ),
           );
           break;
         case PanelType.traits:
@@ -798,7 +908,12 @@ class CharacterModuleState extends State<CharacterModule>
             onReorderDown: i < singleColumnPanelOrder.length - 1
                 ? () => _reorderSingleColumnPanel(i, i + 1)
                 : null,
-            content: const _ImageUploadPanel(),
+            showHeader: false,
+            content: _ImageUploadPanel(
+              iteration: _currentIteration,
+              characterIteration: _currentIterationIndex,
+              onChanged: _onFieldChanged,
+            ),
           );
           break;
         case PanelType.links:
@@ -1405,28 +1520,31 @@ class _LinkCategoryButton extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 32, color: Colors.white),
-                const SizedBox(height: 8),
-                Text(
-                  count.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 32, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Text(
+                    count.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1440,6 +1558,7 @@ class _LinkCategoryButton extends StatelessWidget {
 class _PanelCard extends StatelessWidget {
   final String title;
   final Widget content;
+  final bool showHeader;
   final VoidCallback? onEdit;
   final IconData? editIcon;
   final String? editTooltip;
@@ -1448,6 +1567,7 @@ class _PanelCard extends StatelessWidget {
   const _PanelCard({
     required this.title,
     required this.content,
+    this.showHeader = true,
     this.onEdit,
     this.editIcon,
     this.editTooltip,
@@ -1460,44 +1580,45 @@ class _PanelCard extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Card(
-        elevation: 1,
+        elevation: 2,
+        margin: EdgeInsets.zero,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.bgPanel
+            : AppColors.bgPanelLight,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  if (onReorderUp != null || onReorderDown != null) ...[
-                    IconButton(
-                      icon: const Icon(Icons.arrow_upward, size: 18),
-                      onPressed: onReorderUp,
-                      tooltip: 'Move Up',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_downward, size: 18),
-                      onPressed: onReorderDown,
-                      tooltip: 'Move Down',
-                    ),
-                    const VerticalDivider(width: 16),
+            if (showHeader) ...[
+              Padding(
+                padding: AppColors.panelTitlePadding,
+                child: Row(
+                  children: [
+                    if (onReorderUp != null || onReorderDown != null) ...[
+                      IconButton(
+                        icon: const Icon(Icons.arrow_upward, size: 18),
+                        onPressed: onReorderUp,
+                        tooltip: 'Move Up',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        onPressed: onReorderDown,
+                        tooltip: 'Move Down',
+                      ),
+                      const VerticalDivider(width: 16),
+                    ],
+                    Text(title, style: AppColors.panelTitleStyle(context)),
+                    const Spacer(),
+                    if (onEdit != null)
+                      IconButton(
+                        icon: Icon(editIcon ?? Icons.edit_outlined),
+                        onPressed: onEdit,
+                        tooltip: editTooltip ?? 'Edit',
+                      ),
                   ],
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (onEdit != null)
-                    IconButton(
-                      icon: Icon(editIcon ?? Icons.edit_outlined),
-                      onPressed: onEdit,
-                      tooltip: editTooltip ?? 'Edit',
-                    ),
-                ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
+              const Divider(height: 1),
+            ],
             content,
           ],
         ),
@@ -1821,20 +1942,32 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
     }
   }
 
-  void _showCountrySelectionDialog() async {
-    final selectedCountry = await showDialog<String>(
+  void _showCountrySelectionDialog() {
+    showDialog(
       context: context,
-      builder: (context) => _CountrySelectionDialog(
-        initialCountry: widget.character.originCountry,
-        realWorldCountries: _realWorldCountries,
-        customLocations: const ['Gondor', 'The Shire', 'Hogwarts'],
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ModernCountrySelectionDialog(
+          initialSelection: widget.character.originCountry != null
+              ? LocationData(
+                  label: widget.character.originCountry!,
+                  isOfficial: _realWorldCountries.contains(
+                    widget.character.originCountry,
+                  ),
+                )
+              : null,
+          onSelected: (LocationData location) {
+            if (mounted) {
+              // Use the label as the country string
+              widget.character.originCountry = location.label;
+              widget.onStateChanged();
+              widget.onChanged();
+            }
+          },
+        ),
       ),
     );
-    if (selectedCountry != null && mounted) {
-      widget.character.originCountry = selectedCountry;
-      widget.onStateChanged();
-      widget.onChanged();
-    }
   }
 
   void _initializeControllers() {
@@ -1952,6 +2085,7 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
                 onSelected: (value) async {
                   final service = GlobalCustomFieldService();
                   await service.init();
+                  if (!mounted) return;
                   switch (value) {
                     case 'edit':
                       final result = await showDialog<Map<String, dynamic>>(
@@ -2075,12 +2209,14 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
               onTap: _isLoadingCountries ? null : _showCountrySelectionDialog,
               child: InputDecorator(
                 decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  hintText: 'Select or Type...',
                   suffixIcon: Icon(Icons.arrow_drop_down),
                 ),
+                isEmpty: (widget.character.originCountry ?? '').trim().isEmpty,
                 child: Text(
-                  widget.character.originCountry ?? 'Select or Type...',
+                  (widget.character.originCountry ?? '').trim().isEmpty
+                      ? 'Select or Type...'
+                      : widget.character.originCountry!,
                 ),
               ),
             ),
@@ -2159,13 +2295,14 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
     required ValueChanged<String?> onChanged,
     required String hint,
   }) {
-    // If countries are loading or the list is empty, show a placeholder.
-    if (_isLoadingCountries && items.isEmpty) {
-      return const _DropdownPlaceholder(hint: 'Select or Type...');
+    // If list is empty (or still loading), show a placeholder with the
+    // same field styling as text inputs.
+    if (items.isEmpty || _isLoadingCountries) {
+      return _DropdownPlaceholder(hint: hint);
     }
     return DropdownButtonFormField<String>(
       initialValue: value,
-      decoration: const InputDecoration(border: InputBorder.none),
+      decoration: const InputDecoration(),
       items: items.map((String item) {
         return DropdownMenuItem<String>(value: item, child: Text(item));
       }).toList(),
@@ -2197,30 +2334,62 @@ class __NewIterationDialogState extends State<_NewIterationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return AlertDialog(
-      title: const Text('New Character Iteration'),
+      title: Column(
+        children: [
+          Icon(Icons.layers_outlined, size: 48, color: colorScheme.primary),
+          const SizedBox(height: 16),
+          const Text('Create New Iteration'),
+        ],
+      ),
       content: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Capture a different phase or version of this character.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
             TextFormField(
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(
+              style: Theme.of(context).textTheme.titleLarge,
+              decoration: InputDecoration(
                 labelText: 'Iteration Name',
-                hintText: 'e.g., The Second, Alternate Self',
+                hintText: 'e.g., The Exile, Five Years Later...',
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
               validator: (value) => (value?.trim().isEmpty ?? true)
                   ? 'Name cannot be empty'
                   : null,
             ),
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              title: const Text('Import data from current iteration'),
-              value: _importData,
-              onChanged: (value) =>
-                  setState(() => _importData = value ?? false),
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.primaryContainer),
+              ),
+              child: CheckboxListTile(
+                title: const Text('Sync Initial Data'),
+                subtitle: const Text('Start with current details & traits'),
+                value: _importData,
+                onChanged: (value) =>
+                    setState(() => _importData = value ?? false),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),
@@ -2230,7 +2399,11 @@ class __NewIterationDialogState extends State<_NewIterationDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Create')),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(Icons.auto_awesome),
+          label: const Text('Create Iteration'),
+        ),
       ],
     );
   }
@@ -2262,17 +2435,17 @@ class _DropdownPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
+    return InputDecorator(
+      decoration: InputDecoration(
+        hintText: hint,
+        suffixIcon: const Icon(Icons.arrow_drop_down),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(hint, style: TextStyle(color: Colors.grey.shade600)),
-          const Icon(Icons.arrow_drop_down),
-        ],
+      isEmpty: true,
+      child: Text(
+        hint,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
       ),
     );
   }
@@ -2288,7 +2461,7 @@ class _BioPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: TextField(
         controller: controller,
         onChanged: (_) => onChanged(),
@@ -2307,155 +2480,873 @@ class _BioPanel extends StatelessWidget {
 }
 
 /// --- IMAGE UPLOAD PANEL ---
-class _ImageUploadPanel extends StatelessWidget {
-  const _ImageUploadPanel();
+class _ImageUploadPanel extends StatefulWidget {
+  final CharacterIteration iteration;
+  final int characterIteration;
+  final VoidCallback onChanged;
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Image Upload UI'));
-  }
-}
-
-/// --- COUNTRY SELECTION DIALOG ---
-class _CountrySelectionDialog extends StatefulWidget {
-  final String? initialCountry;
-  final List<String> realWorldCountries;
-  final List<String> customLocations;
-
-  const _CountrySelectionDialog({
-    this.initialCountry,
-    required this.realWorldCountries,
-    required this.customLocations,
+  const _ImageUploadPanel({
+    required this.iteration,
+    required this.characterIteration,
+    required this.onChanged,
   });
 
   @override
-  State<_CountrySelectionDialog> createState() =>
-      __CountrySelectionDialogState();
+  State<_ImageUploadPanel> createState() => _ImageUploadPanelState();
 }
 
-class __CountrySelectionDialogState extends State<_CountrySelectionDialog> {
-  late String _selectedCategory;
-  String? _selectedCountry;
-  late final ScrollController _scrollController;
-  late final Map<String, List<String>> _countrySources;
+class _ImageUploadPanelState extends State<_ImageUploadPanel>
+    with TickerProviderStateMixin {
+  List<String> _iterationOrder = [];
+  int _selectedTabIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-    _countrySources = {
-      'Real World': widget.realWorldCountries,
-      'Custom': widget.customLocations,
-    };
-    // Determine initial selection
-    if (widget.initialCountry != null) {
-      _selectedCountry = widget.initialCountry;
-      if (widget.customLocations.contains(widget.initialCountry)) {
-        _selectedCategory = 'Custom';
-      } else {
-        _selectedCategory = 'Real World';
-      }
-    } else {
-      _selectedCategory = 'Real World';
+  void didUpdateWidget(covariant _ImageUploadPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTabs();
+  }
+
+  void _syncTabs() {
+    final nextTabs = _buildTabs();
+    final nextSet = nextTabs.toSet();
+    final ordered = _iterationOrder.where(nextSet.contains).toList();
+    for (final tab in nextTabs) {
+      if (!ordered.contains(tab)) ordered.add(tab);
+    }
+    if (ordered.isEmpty) {
+      _iterationOrder = [];
+      _selectedTabIndex = 0;
+      return;
+    }
+    _iterationOrder = ordered;
+    if (_selectedTabIndex >= _iterationOrder.length) {
+      _selectedTabIndex = 0;
     }
   }
 
-  void _selectCountry(String country) {
-    Navigator.of(context).pop(country);
+  Future<void> _addImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result == null) return;
+
+    final file = result.files.single;
+    final bytes = file.bytes ?? await _readFileBytes(file.path);
+    if (bytes == null) return;
+
+    final cropResult = await _cropImage(bytes);
+    if (cropResult == null) return;
+
+    final newImage = await _showImageMetaDialog(
+      cropResult.bytes,
+      cropResult.ratio,
+    );
+    if (newImage == null) return;
+
+    setState(() {
+      widget.iteration.images = List<CharacterImage>.from(
+        widget.iteration.images,
+      )..add(newImage);
+    });
+    widget.onChanged();
+    _syncTabs();
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  Future<void> _editImage(CharacterImage image) async {
+    final updated = await _showImageMetaDialog(
+      image.imageData,
+      image.aspectRatio ?? 1.0,
+      caption: image.caption,
+      imageIteration: image.imageIteration,
+      allowDelete: true,
+      onDelete: () => _deleteImage(image),
+    );
+    if (updated == null) return;
+
+    setState(() {
+      final updatedList = List<CharacterImage>.from(widget.iteration.images);
+      final idx = updatedList.indexOf(image);
+      if (idx != -1) {
+        updatedList[idx] = updated;
+      }
+      widget.iteration.images = updatedList;
+    });
+    widget.onChanged();
+    _syncTabs();
+  }
+
+  Future<void> _deleteImage(CharacterImage image) async {
+    setState(() {
+      widget.iteration.images = List<CharacterImage>.from(
+        widget.iteration.images,
+      )..remove(image);
+    });
+    widget.onChanged();
+    _syncTabs();
+  }
+
+  Future<CharacterImage?> _showImageMetaDialog(
+    Uint8List bytes,
+    double aspectRatio, {
+    String? caption,
+    String? imageIteration,
+    bool allowDelete = false,
+    VoidCallback? onDelete,
+  }) async {
+    final captionController = TextEditingController(text: caption ?? '');
+    final iterationController = TextEditingController(
+      text: imageIteration ?? '',
+    );
+
+    final result = await showDialog<CharacterImage>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Image Details'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(bytes, height: 160, fit: BoxFit.cover),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: captionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Caption',
+                    hintText: 'Add a caption...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: iterationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Image Iteration',
+                    hintText: 'e.g., Kid, Adult, Battle',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (allowDelete)
+              TextButton(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete image?'),
+                      content: const Text(
+                        'This will permanently remove the image.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm != true) return;
+                  onDelete?.call();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(
+                  CharacterImage(
+                    imageData: bytes,
+                    caption: captionController.text.trim(),
+                    imageIteration: iterationController.text.trim(),
+                    characterIteration: widget.characterIteration,
+                    aspectRatio: aspectRatio,
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result;
+  }
+
+  Future<Uint8List?> _readFileBytes(String? path) async {
+    if (path == null || path.isEmpty) return null;
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    return file.readAsBytes();
+  }
+
+  Future<({Uint8List bytes, double ratio})?> _cropImage(Uint8List bytes) async {
+    return showNativeCropDialog(context: context, bytes: bytes);
+  }
+
+  Future<ui.Image> _decodeUiImage(Uint8List bytes) async {
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromList(bytes, completer.complete);
+    return completer.future;
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<String> currentCountries = _countrySources[_selectedCategory]!;
-    // By wrapping the AlertDialog in a Dialog and then a Builder, we get a new
-    return Dialog(
-      child: Builder(
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Select Origin Country'),
-            content: SizedBox(
-              width: 600,
-              height: 400,
+    final images = widget.iteration.images
+        .where((i) => i.characterIteration == widget.characterIteration)
+        .toList();
+    final cs = Theme.of(context).colorScheme;
+    _syncTabs();
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 32,
+            child: Row(
+              children: [
+                Expanded(child: _buildIterationTabs(cs)),
+                IconButton(
+                  onPressed: _addImage,
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Add Image',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (images.isEmpty)
+            Text(
+              'No images yet. Add photos for this character iteration.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            )
+          else
+            _buildIterationGrid(cs, _filterImages(images)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIterationGrid(ColorScheme cs, List<CharacterImage> images) {
+    if (images.isEmpty) return const SizedBox.shrink();
+    final primary = images.first;
+    final secondary = images.skip(1).toList();
+
+    return FutureBuilder<double>(
+      future: _resolveAspectRatio(primary),
+      builder: (context, snapshot) {
+        final ratio = snapshot.data ?? (primary.aspectRatio ?? 1.0);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 8.0;
+            final availableWidth = constraints.maxWidth - gap;
+            final leftWidth = availableWidth * 0.75;
+            final rightWidth = availableWidth * 0.25;
+            final height = leftWidth / ratio;
+
+            return SizedBox(
+              height: height,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left Pane: Category List
                   SizedBox(
-                    width: 180,
-                    child: ListView(
-                      children: _countrySources.keys.map((category) {
-                        final isSelected = _selectedCategory == category;
-                        return ListTile(
-                          title: Text(
-                            category,
-                            style: TextStyle(
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
-                            ),
-                          ),
-                          selected: isSelected,
-                          onTap: () {
-                            setState(() {
-                              _selectedCategory = category;
-                              _selectedCountry =
-                                  null; // Clear selection on category change
-                            });
-                          },
-                        );
-                      }).toList(),
+                    width: leftWidth,
+                    child: _buildImageCard(
+                      cs,
+                      primary,
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(12),
+                      ),
+                      fit: BoxFit.fitWidth,
+                      onTap: () => _showImageViewer(images, 0),
                     ),
                   ),
-                  const VerticalDivider(),
-                  // Right Pane: Country List
-                  Expanded(
-                    child: currentCountries.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No $_selectedCategory locations found.',
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                          )
-                        : Scrollbar(
-                            controller: _scrollController, // Provide controller
-                            child: ListView.builder(
-                              controller:
-                                  _scrollController, // Provide controller
-                              itemCount: currentCountries.length,
-                              itemBuilder: (context, index) {
-                                final country = currentCountries[index];
-                                return ListTile(
-                                  title: Text(country),
-                                  selected: _selectedCountry == country,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCountry = country;
-                                      _selectCountry(country);
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ),
+                  const SizedBox(width: gap),
+                  SizedBox(
+                    width: rightWidth,
+                    child: _buildThumbnailColumn(
+                      cs,
+                      secondary,
+                      height,
+                      rightWidth,
+                      images,
+                    ),
                   ),
                 ],
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildThumbnailColumn(
+    ColorScheme cs,
+    List<CharacterImage> images,
+    double height,
+    double width,
+    List<CharacterImage> fullImages,
+  ) {
+    if (images.isEmpty) {
+      return Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: const BorderRadius.horizontal(
+            right: Radius.circular(12),
+          ),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'No other images',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+      child: SizedBox(
+        height: height,
+        child: ListView.separated(
+          padding: EdgeInsets.zero,
+          itemCount: images.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final image = images[index];
+            final ratio = image.aspectRatio ?? 1.0;
+            return SizedBox(
+              height: width / ratio,
+              child: _buildImageCard(
+                cs,
+                image,
+                borderRadius: BorderRadius.zero,
+                fit: BoxFit.fitWidth,
+                onTap: () => _showImageViewer(fullImages, index + 1),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<double> _resolveAspectRatio(CharacterImage image) async {
+    if (image.aspectRatio != null && image.aspectRatio! > 0) {
+      return image.aspectRatio!;
+    }
+    final decoded = await _decodeUiImage(image.imageData);
+    final ratio = decoded.width / decoded.height;
+    decoded.dispose();
+    image.aspectRatio = ratio;
+    widget.onChanged();
+    return ratio;
+  }
+
+  Widget _buildImageCard(
+    ColorScheme cs,
+    CharacterImage image, {
+    BorderRadius borderRadius = BorderRadius.zero,
+    BoxFit fit = BoxFit.cover,
+    VoidCallback? onTap,
+  }) {
+    return Tooltip(
+      message: image.caption.isEmpty ? 'No caption' : image.caption,
+      child: InkWell(
+        onTap: onTap ?? () => _editImage(image),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: borderRadius,
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+          ),
+          child: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: borderRadius,
+                child: Image.memory(
+                  image.imageData,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: fit,
+                ),
+              ),
+              Positioned(
+                right: 6,
+                top: 6,
+                child: IconButton(
+                  icon: const Icon(Icons.edit),
+                  color: cs.onSurface,
+                  tooltip: 'Edit image',
+                  onPressed: () => _editImage(image),
+                ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showImageViewer(
+    List<CharacterImage> images,
+    int initialIndex,
+  ) async {
+    if (images.isEmpty) return;
+    final safeIndex = initialIndex.clamp(0, images.length - 1);
+    final characterName = widget.iteration.name?.trim().isNotEmpty == true
+        ? widget.iteration.name!.trim()
+        : 'Unknown';
+    final iterationName = widget.iteration.iterationName.trim().isNotEmpty
+        ? widget.iteration.iterationName.trim()
+        : 'Iteration';
+    final controller = TransformationController();
+    int currentIndex = safeIndex;
+    double currentScale = 1.0;
+    Offset? lastFocalPoint;
+    final viewerKey = GlobalKey();
+    const minScale = 0.5;
+    const maxScale = 4.0;
+    final zoomController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 160),
+    );
+    double zoomStart = currentScale;
+    double zoomEnd = currentScale;
+    Offset? zoomFocal;
+    StateSetter? dialogSetState;
+    bool dialogActive = true;
+
+    void applyScale(double targetScale, {Offset? focal}) {
+      final box = viewerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null) return;
+      final focalLocal =
+          focal ?? lastFocalPoint ?? box.size.center(Offset.zero);
+      lastFocalPoint = focalLocal;
+      final newScale = targetScale.clamp(minScale, maxScale);
+      final matrix = Matrix4.copy(controller.value);
+      final inverse = Matrix4.inverted(matrix);
+      final focalScene = inverse.transform3(
+        Vector3(focalLocal.dx, focalLocal.dy, 0),
+      );
+      final scaleChange = newScale / currentScale;
+      matrix
+        ..translateByVector3(Vector3(focalScene.x, focalScene.y, 0))
+        ..scaleByDouble(scaleChange, scaleChange, 1, 1)
+        ..translateByVector3(Vector3(-focalScene.x, -focalScene.y, 0));
+      controller.value = matrix;
+      currentScale = newScale;
+    }
+
+    void animateScaleTo(double targetScale, {Offset? focal}) {
+      zoomStart = currentScale;
+      zoomEnd = targetScale.clamp(minScale, maxScale);
+      zoomFocal = focal;
+      zoomController.forward(from: 0);
+    }
+
+    void zoomListener() {
+      if (!dialogActive || dialogSetState == null) return;
+      final t = Curves.easeOutCubic.transform(zoomController.value);
+      final nextScale = ui.lerpDouble(zoomStart, zoomEnd, t)!;
+      dialogSetState!(() {
+        applyScale(nextScale, focal: zoomFocal);
+      });
+    }
+
+    zoomController.addListener(zoomListener);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (context) {
+        final cs = Theme.of(context).colorScheme;
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          backgroundColor: Colors.transparent,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              dialogSetState = setState;
+              final image = images[currentIndex];
+              final caption = image.caption.trim().isNotEmpty
+                  ? image.caption.trim()
+                  : 'None';
+              final imageIteration = image.imageIteration.trim().isNotEmpty
+                  ? image.imageIteration.trim()
+                  : 'None';
+              final atStart = currentIndex == 0;
+              final atEnd = currentIndex == images.length - 1;
+
+              void resetZoom() {
+                currentScale = 1.0;
+                lastFocalPoint = null;
+                controller.value = Matrix4.identity();
+              }
+
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: Listener(
+                      onPointerSignal: (signal) {
+                        if (signal is PointerScrollEvent) {
+                          final box =
+                              viewerKey.currentContext?.findRenderObject()
+                                  as RenderBox?;
+                          if (box == null) return;
+                          final local = box.globalToLocal(signal.position);
+                          lastFocalPoint = local;
+                          final delta = -signal.scrollDelta.dy / 600;
+                          final targetScale = currentScale * (1 + delta);
+                          animateScaleTo(targetScale, focal: local);
+                        }
+                      },
+                      child: InteractiveViewer(
+                        key: viewerKey,
+                        minScale: minScale,
+                        maxScale: maxScale,
+                        transformationController: controller,
+                        onInteractionStart: (details) {
+                          final box =
+                              viewerKey.currentContext?.findRenderObject()
+                                  as RenderBox?;
+                          if (box == null) return;
+                          lastFocalPoint = box.globalToLocal(
+                            details.focalPoint,
+                          );
+                        },
+                        onInteractionUpdate: (details) {
+                          final box =
+                              viewerKey.currentContext?.findRenderObject()
+                                  as RenderBox?;
+                          if (box == null) return;
+                          lastFocalPoint = box.globalToLocal(
+                            details.focalPoint,
+                          );
+                          final newScale = controller.value.getMaxScaleOnAxis();
+                          if ((newScale - currentScale).abs() > 0.001) {
+                            setState(() {
+                              currentScale = newScale.clamp(minScale, maxScale);
+                            });
+                          }
+                        },
+                        child: Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              image.imageData,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 48,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: DefaultTextStyle(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall!.copyWith(color: cs.onSurface),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Details',
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              _detailRow('Caption', caption),
+                              const SizedBox(height: 6),
+                              _detailRow('Image Iteration', imageIteration),
+                              const SizedBox(height: 6),
+                              _detailRow('Character', characterName),
+                              const SizedBox(height: 6),
+                              _detailRow('Character Iteration', iterationName),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 16,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left),
+                              tooltip: 'Previous',
+                              onPressed: atStart
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        currentIndex -= 1;
+                                        resetZoom();
+                                      });
+                                    },
+                              color: cs.onSurface,
+                              disabledColor: cs.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 52,
+                              child: Text(
+                                '${(currentScale * 100).round()}%',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: cs.onSurface),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 140,
+                              child: Slider(
+                                min: minScale,
+                                max: maxScale,
+                                value: currentScale.clamp(minScale, maxScale),
+                                divisions: ((maxScale - minScale) / 0.1)
+                                    .round(),
+                                onChanged: (value) {
+                                  final snapped = (value * 10).round() / 10.0;
+                                  animateScaleTo(snapped);
+                                },
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh),
+                              tooltip: 'Reset zoom',
+                              onPressed: () {
+                                animateScaleTo(1.0);
+                              },
+                              color: cs.onSurface,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              tooltip: 'Next',
+                              onPressed: atEnd
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        currentIndex += 1;
+                                        resetZoom();
+                                      });
+                                    },
+                              color: cs.onSurface,
+                              disabledColor: cs.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    dialogActive = false;
+    zoomController.removeListener(zoomListener);
+    zoomController.dispose();
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(value, style: Theme.of(context).textTheme.bodySmall),
+        ),
+      ],
+    );
+  }
+
+  List<String> _buildTabs() {
+    final images = widget.iteration.images
+        .where((i) => i.characterIteration == widget.characterIteration)
+        .toList();
+    final iterations = <String>[];
+    for (final image in images) {
+      final name = image.imageIteration.trim();
+      if (name.isNotEmpty && !iterations.contains(name)) {
+        iterations.add(name);
+      }
+    }
+    return iterations;
+  }
+
+  List<CharacterImage> _filterImages(List<CharacterImage> images) {
+    if (_iterationOrder.isEmpty) return images;
+    final currentTab = _iterationOrder[_selectedTabIndex];
+    return images
+        .where((i) => i.imageIteration.trim().isNotEmpty)
+        .where((i) => i.imageIteration == currentTab)
+        .toList();
+  }
+
+  Widget _buildIterationTabs(ColorScheme cs) {
+    if (_iterationOrder.isEmpty) {
+      return Text(
+        'No image iterations',
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+      );
+    }
+
+    return SizedBox(
+      height: 32,
+      child: ReorderableListView.builder(
+        scrollDirection: Axis.horizontal,
+        buildDefaultDragHandles: false,
+        padding: EdgeInsets.zero,
+        itemCount: _iterationOrder.length,
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) newIndex -= 1;
+            final item = _iterationOrder.removeAt(oldIndex);
+            _iterationOrder.insert(newIndex, item);
+            if (_selectedTabIndex == oldIndex) {
+              _selectedTabIndex = newIndex;
+            } else if (oldIndex < _selectedTabIndex &&
+                newIndex >= _selectedTabIndex) {
+              _selectedTabIndex -= 1;
+            } else if (oldIndex > _selectedTabIndex &&
+                newIndex <= _selectedTabIndex) {
+              _selectedTabIndex += 1;
+            }
+          });
+        },
+        itemBuilder: (context, index) {
+          final tab = _iterationOrder[index];
+          final isSelected = index == _selectedTabIndex;
+          return Container(
+            key: ValueKey('imgtab_$tab'),
+            margin: const EdgeInsets.only(right: 8),
+            child: ReorderableDragStartListener(
+              index: index,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => setState(() => _selectedTabIndex = index),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? cs.primaryContainer
+                        : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? cs.primary
+                          : cs.outlineVariant.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Text(
+                    tab,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: isSelected
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           );
         },
       ),

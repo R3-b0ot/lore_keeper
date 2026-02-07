@@ -42,89 +42,112 @@ class _CharacterListPaneState extends State<CharacterListPane> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      padding: const EdgeInsets.all(12.0),
+      color: colorScheme.surface,
       child: ListenableBuilder(
         listenable: widget.characterProvider,
         builder: (context, child) {
           final characters = widget.characterProvider.filteredCharacters;
+
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Characters',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
+              // Pane Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'CHARACTERS',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        _showFilter ? Icons.search_off : Icons.search,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() {
                         _showFilter = !_showFilter;
                         if (!_showFilter) {
                           _filterController.clear();
                           widget.characterProvider.setFilterText('');
                         }
-                      });
-                    },
-                    icon: Icon(
-                      _showFilter ? Icons.search_off : Icons.search,
-                      size: 18,
+                      }),
+                      tooltip: 'Search Characters',
                     ),
-                    tooltip: _showFilter
-                        ? 'Hide Search Box'
-                        : 'Search Characters',
-                  ),
-                ],
-              ),
-              if (_showFilter) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _filterController,
-                  decoration: const InputDecoration(
-                    hintText: 'Search characters...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                    IconButton(
+                      icon: const Icon(Icons.person_add_outlined, size: 20),
+                      onPressed: widget.onCharacterCreated,
+                      tooltip: 'New Character',
                     ),
-                  ),
-                  onChanged: (value) {
-                    widget.characterProvider.setFilterText(value);
-                  },
+                  ],
                 ),
-              ],
+              ),
+
+              // Integrated Search Bar
+              if (_showFilter)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: TextField(
+                    controller: _filterController,
+                    autofocus: true,
+                    style: theme.textTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText: 'Filter by name...',
+                      prefixIcon: const Icon(Icons.filter_list, size: 18),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      fillColor: isDark
+                          ? colorScheme.surfaceContainerHighest.withValues(
+                              alpha: 0.5,
+                            )
+                          : colorScheme.surfaceContainerLowest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (val) =>
+                        widget.characterProvider.setFilterText(val),
+                  ),
+                ),
+
               const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed:
-                    widget.onCharacterCreated, // Directly call the VoidCallback
-                icon: Icon(
-                  Icons.add,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                label: Text(
-                  'New Character',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ),
-              const Divider(height: 24),
+
+              // Scrollable List
               Expanded(
                 child: ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 24),
                   itemCount: characters.length,
                   itemBuilder: (context, index) {
                     final character = characters[index];
                     final isSelected =
                         character.key.toString() == widget.selectedCharacterKey;
-                    return _buildCharacterItem(context, character, isSelected);
+                    return _buildCharacterTile(character, isSelected);
                   },
                 ),
               ),
+              if (characters.isEmpty)
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      'No characters found',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -132,50 +155,83 @@ class _CharacterListPaneState extends State<CharacterListPane> {
     );
   }
 
-  Widget _buildCharacterItem(
-    BuildContext context,
-    Character character,
-    bool isSelected,
-  ) {
+  Widget _buildCharacterTile(Character character, bool isSelected) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  widget.onCharacterSelected(character.key.toString()),
-              icon: Icon(
-                Icons.person_outline,
-                size: 16,
-                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-              ),
-              label: Text(character.name),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.centerLeft,
-                backgroundColor: isSelected
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surface,
-                foregroundColor: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.onSurface,
-                side: BorderSide(
-                  color: isSelected ? colorScheme.primary : colorScheme.outline,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: InkWell(
+        onTap: () => widget.onCharacterSelected(character.key.toString()),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colorScheme.primaryContainer
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Active Indicator
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 80),
+                width: 4,
+                height: isSelected ? 24 : 0,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: const BorderRadius.horizontal(
+                    right: Radius.circular(2),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+
+              // Icon
+              Icon(
+                Icons.person_outline,
+                size: 18,
+                color: isSelected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+
+              // Title
+              Expanded(
+                child: Text(
+                  character.name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              // Actions
+              IconButton(
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 16,
+                  color: isSelected
+                      ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                onPressed: () =>
+                    widget.onCharacterEdit?.call(character.key.toString()),
+                tooltip: 'Edit',
+              ),
+              const SizedBox(width: 4),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            onPressed: () =>
-                widget.onCharacterEdit?.call(character.key.toString()),
-            tooltip: 'Edit Character',
-          ),
-        ],
+        ),
       ),
     );
   }

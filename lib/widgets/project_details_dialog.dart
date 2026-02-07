@@ -1,9 +1,9 @@
-// lib/widgets/project_details_dialog.dart (COMPLETE FILE)
+// lib/widgets/project_details_dialog.dart
 
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/models/project.dart';
-import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 
 class ProjectDetailsDialog extends StatefulWidget {
   final Project project;
@@ -21,7 +21,6 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
   late TextEditingController _authorsController;
 
   late String _selectedGenre;
-
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -69,7 +68,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
       widget.project.bookTitle = _bookTitleController.text.trim();
       widget.project.genre = _selectedGenre;
       widget.project.authors = _authorsController.text.trim();
-
+      widget.project.lastModified = DateTime.now();
       widget.project.save();
 
       Navigator.of(context).pop(true);
@@ -79,7 +78,6 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
   void _deleteProject() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Let KeyboardAwareDialog handle dismissal
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirm Deletion'),
@@ -111,99 +109,277 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardAwareDialog(
-      onConfirm: _saveChanges,
-      title: const Text('Edit Project Details'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: ListBody(
-            children: <Widget>[
-              // Project Title Field (Internal)
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Project Title (Internal)',
-                ),
-                onFieldSubmitted: (_) => _saveChanges(),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Project title cannot be empty';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark
+        ? AppColors.bgPanel
+        : Theme.of(context).colorScheme.surface;
+    final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
 
-              // Project Description Field
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Short Description',
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 40,
+              offset: const Offset(0, 20),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 32, 32, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.edit_note,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Project',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: onSurfaceColor,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          Text(
+                            'Update your manuscript and lore details.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      style: IconButton.styleFrom(
+                        backgroundColor: onSurfaceColor.withValues(alpha: 0.05),
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: 3,
               ),
-              const SizedBox(height: 16),
 
-              // Book Title Field
-              TextFormField(
-                controller: _bookTitleController,
-                decoration: const InputDecoration(
-                  labelText: 'Book Title (Public)',
-                ),
-              ),
-              const SizedBox(height: 16),
+              const Divider(height: 48, indent: 32, endIndent: 32),
 
-              // Genre Dropdown/Button
-              InkWell(
-                onTap: _selectGenre,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Genre',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.arrow_drop_down),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildLabel('INTERNAL REFERENCE'),
+                      _buildTextField(
+                        controller: _titleController,
+                        hint: 'Project Title',
+                        icon: Icons.inventory_2_outlined,
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 24),
+
+                      _buildLabel('PUBLIC BRANDING'),
+                      _buildTextField(
+                        controller: _bookTitleController,
+                        hint: 'Official Book Title',
+                        icon: Icons.menu_book_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _authorsController,
+                        hint: 'Author(s)',
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 24),
+
+                      _buildLabel('CLASSIFICATION'),
+                      _buildGenreSelector(),
+                      const SizedBox(height: 24),
+
+                      _buildLabel('CONTEXT'),
+                      _buildTextField(
+                        controller: _descriptionController,
+                        hint: 'Short description...',
+                        icon: Icons.description_outlined,
+                        maxLines: 3,
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      // Actions
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: _deleteProject,
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            tooltip: 'Delete Project',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.red.withValues(
+                                alpha: 0.1,
+                              ),
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _saveChanges,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 8,
+                                shadowColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.5),
+                              ),
+                              child: const Text(
+                                'Save Changes',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    _selectedGenre,
-                    style: const TextStyle(fontSize: 16),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Authors Field
-              TextFormField(
-                controller: _authorsController,
-                decoration: const InputDecoration(labelText: 'Authors'),
               ),
             ],
           ),
         ),
       ),
-      actions: <Widget>[
-        // DELETE BUTTON
-        TextButton(
-          onPressed: _deleteProject,
-          child: const Text(
-            'Delete Project',
-            style: TextStyle(color: Colors.red),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      maxLines: maxLines,
+      style: const TextStyle(fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 20),
+        filled: true,
+        fillColor: Theme.of(
+          context,
+        ).colorScheme.onSurface.withValues(alpha: 0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+            width: 1,
           ),
         ),
+        contentPadding: const EdgeInsets.all(16),
+      ),
+    );
+  }
 
-        const Spacer(),
-
-        // CANCEL BUTTON
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+  Widget _buildGenreSelector() {
+    return InkWell(
+      onTap: _selectGenre,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
         ),
-
-        // SAVE BUTTON
-        FilledButton(
-          onPressed: _saveChanges,
-          child: const Text('Save Changes'),
+        child: Row(
+          children: [
+            Icon(
+              Icons.category_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(_selectedGenre, style: const TextStyle(fontSize: 14)),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -33,8 +33,35 @@ class Project extends HiveObject {
   @HiveField(8) // Use a new, unused index
   DateTime? lastModified;
 
-  @HiveField(9) // Use the next available index
+  @HiveField(9)
   int? historyLimit;
+
+  @HiveField(10)
+  String? coverImagePath;
+
+  @HiveField(11)
+  bool? showTitleOnCover;
+
+  @HiveField(12)
+  bool? showAuthorOnCover;
+
+  @HiveField(13)
+  String? authorBio;
+
+  @HiveField(14)
+  String? authorEmail;
+
+  @HiveField(15)
+  String? authorWebsite;
+
+  @HiveField(16)
+  String? authorTwitter;
+
+  @HiveField(17)
+  String? authorInstagram;
+
+  @HiveField(18)
+  String? authorFacebook;
 
   Project({
     required this.title,
@@ -45,6 +72,16 @@ class Project extends HiveObject {
     this.genre,
     this.authors,
     this.lastModified,
+    this.historyLimit,
+    this.coverImagePath,
+    this.showTitleOnCover = true,
+    this.showAuthorOnCover = true,
+    this.authorBio,
+    this.authorEmail,
+    this.authorWebsite,
+    this.authorTwitter,
+    this.authorInstagram,
+    this.authorFacebook,
     List<String>? ignoredWords,
   }) : ignoredWords = ignoredWords ?? [];
 }

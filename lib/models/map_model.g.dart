@@ -17,12 +17,12 @@ class MapModelAdapter extends TypeAdapter<MapModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return MapModel(
-      name: fields[0] as String,
-      description: fields[1] as String?,
-      filePath: fields[2] as String,
-      fileType: fields[3] as String,
-      parentProjectId: fields[6] as int,
-    )
+        name: fields[0] as String,
+        description: fields[1] as String?,
+        filePath: fields[2] as String,
+        fileType: fields[3] as String,
+        parentProjectId: fields[6] as int,
+      )
       ..createdAt = fields[4] as DateTime
       ..updatedAt = fields[5] as DateTime;
   }

@@ -1,6 +1,30 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:hive/hive.dart';
 
 part 'character.g.dart';
+
+List<dynamic> _coerceList(dynamic value) {
+  if (value is List) return value;
+  if (value is Map) return value.values.toList();
+  return const [];
+}
+
+Map<String, int> _coerceStringIntMap(dynamic value) {
+  if (value is Map) {
+    return value.map(
+      (key, val) => MapEntry(key.toString(), (val as num).toInt()),
+    );
+  }
+  return {};
+}
+
+Map<String, String> _coerceStringStringMap(dynamic value) {
+  if (value is Map) {
+    return value.map((key, val) => MapEntry(key.toString(), val.toString()));
+  }
+  return {};
+}
 
 @HiveType(typeId: 20)
 class CustomField {
@@ -95,6 +119,52 @@ class CustomPanel {
   }
 }
 
+@HiveType(typeId: 13)
+class CharacterImage extends HiveObject {
+  @HiveField(0)
+  Uint8List imageData;
+
+  @HiveField(1)
+  String caption;
+
+  @HiveField(2)
+  String imageIteration;
+
+  @HiveField(3)
+  int characterIteration;
+
+  @HiveField(4)
+  double? aspectRatio;
+
+  CharacterImage({
+    required this.imageData,
+    required this.caption,
+    required this.imageIteration,
+    required this.characterIteration,
+    this.aspectRatio,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'imageData': base64Encode(imageData),
+      'caption': caption,
+      'imageIteration': imageIteration,
+      'characterIteration': characterIteration,
+      'aspectRatio': aspectRatio ?? 1.0,
+    };
+  }
+
+  factory CharacterImage.fromJson(Map<String, dynamic> json) {
+    return CharacterImage(
+      imageData: base64Decode(json['imageData'] as String),
+      caption: json['caption'] as String? ?? '',
+      imageIteration: json['imageIteration'] as String? ?? '',
+      characterIteration: json['characterIteration'] as int? ?? 0,
+      aspectRatio: (json['aspectRatio'] as num?)?.toDouble(),
+    );
+  }
+}
+
 @HiveType(typeId: 10) // Use a new, unused typeId
 class CharacterIteration extends HiveObject {
   @HiveField(0)
@@ -155,6 +225,18 @@ class CharacterIteration extends HiveObject {
   @HiveField(14)
   Map<String, int>? _panelOrders;
 
+  @HiveField(15)
+  List<CharacterImage>? _images;
+
+  List<CharacterImage> get images {
+    _images ??= [];
+    return _images!;
+  }
+
+  set images(List<CharacterImage> value) {
+    _images = List<CharacterImage>.from(value);
+  }
+
   Map<String, int> get panelOrders {
     _panelOrders ??= {'bio': 0, 'links': 1, 'image': 2, 'traits': 3};
     return _panelOrders!;
@@ -179,13 +261,15 @@ class CharacterIteration extends HiveObject {
     Map<String, int>? personalityTraits,
     Map<String, String>? customFieldValues,
     List<CustomPanel>? customPanels,
+    List<CharacterImage>? images,
   }) : congenitalTraits = congenitalTraits is Set<String>
            ? congenitalTraits
            : Set<String>.from(congenitalTraits?.cast<String>() ?? []),
        leveledTraits = leveledTraits ?? {},
        personalityTraits = personalityTraits ?? {},
        _customFieldValues = customFieldValues ?? {},
-       _customPanels = customPanels ?? [];
+       _customPanels = customPanels ?? [],
+       _images = List<CharacterImage>.from(images ?? []);
 
   Map<String, dynamic> toJson() {
     return {
@@ -203,6 +287,7 @@ class CharacterIteration extends HiveObject {
       'personalityTraits': personalityTraits,
       'customFieldValues': customFieldValues,
       'customPanels': customPanels.map((p) => p.toJson()).toList(),
+      'images': images.map((i) => i.toJson()).toList(),
       'panelOrders': panelOrders,
     };
   }
@@ -216,11 +301,9 @@ class CharacterIteration extends HiveObject {
       );
     } else if (json.containsKey('customFields')) {
       // Migrate old customFields
-      final oldFields =
-          (json['customFields'] as List<dynamic>?)
-              ?.map((f) => CustomField.fromJson(f as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final oldFields = _coerceList(
+        json['customFields'],
+      ).map((f) => CustomField.fromJson(f as Map<String, dynamic>)).toList();
       for (final field in oldFields) {
         customFieldValues[field.name] = field.value;
       }
@@ -230,14 +313,14 @@ class CharacterIteration extends HiveObject {
         iterationName: json['iterationName'],
         name: json['name'],
         bio: json['bio'],
-        aliases: (json['aliases'] as List<dynamic>?)?.cast<String>(),
+        aliases: _coerceList(json['aliases']).cast<String>(),
         occupation: json['occupation'],
         gender: json['gender'],
         customGender: json['customGender'],
         originCountry: json['originCountry'],
-        traits: (json['traits'] as List<dynamic>?)?.cast<String>(),
+        traits: _coerceList(json['traits']).cast<String>(),
         congenitalTraits: Set<String>.from(
-          json['congenitalTraits'] as List<dynamic>? ?? [],
+          _coerceList(json['congenitalTraits']),
         ),
         leveledTraits: Map<String, int>.from(
           json['leveledTraits'] as Map<dynamic, dynamic>? ?? {},
@@ -246,11 +329,12 @@ class CharacterIteration extends HiveObject {
           json['personalityTraits'] as Map<dynamic, dynamic>? ?? {},
         ),
         customFieldValues: customFieldValues,
-        customPanels:
-            (json['customPanels'] as List<dynamic>?)
-                ?.map((p) => CustomPanel.fromJson(p as Map<String, dynamic>))
-                .toList() ??
-            [],
+        customPanels: _coerceList(
+          json['customPanels'],
+        ).map((p) => CustomPanel.fromJson(p as Map<String, dynamic>)).toList(),
+        images: _coerceList(json['images'])
+            .map((i) => CharacterImage.fromJson(i as Map<String, dynamic>))
+            .toList(),
       )
       .._customFieldValues = customFieldValues
       .._panelOrders = Map<String, int>.from(
@@ -345,7 +429,7 @@ class Character extends HiveObject {
     return Character(
         name: json['name'],
         parentProjectId: json['parentProjectId'],
-        aliases: List<String>.from(json['aliases'] ?? []),
+        aliases: _coerceList(json['aliases']).cast<String>(),
         species: json['species'],
         relationWebLayout: (json['relationWebLayout'] as Map<String, dynamic>?)
             ?.map(
@@ -362,12 +446,85 @@ class Character extends HiveObject {
       ..bio = json['bio']
       // Create deep copies of iterations to avoid HiveError when reverting.
       // Each iteration is a HiveObject and cannot be in two places at once.
-      ..iterations =
-          (json['iterations'] as List<dynamic>?)
-              ?.map(
-                (i) => CharacterIteration.fromJson(i as Map<String, dynamic>),
-              )
-              .toList() ??
-          [];
+      ..iterations = _coerceList(json['iterations'])
+          .map((i) => CharacterIteration.fromJson(i as Map<String, dynamic>))
+          .toList();
+  }
+}
+
+class CharacterIterationSafeAdapter extends TypeAdapter<CharacterIteration> {
+  @override
+  final int typeId = 10;
+
+  @override
+  CharacterIteration read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+
+    final iteration = CharacterIteration(
+      iterationName: fields[0] as String,
+      name: fields[1] as String?,
+      aliases: _coerceList(fields[2]).cast<String>(),
+      occupation: fields[3] as String?,
+      gender: fields[4] as String?,
+      customGender: fields[5] as String?,
+      bio: fields[6] as String?,
+      originCountry: fields[7] as String?,
+      traits: _coerceList(fields[8]).cast<String>(),
+      congenitalTraits: fields[9] as dynamic,
+      leveledTraits: _coerceStringIntMap(fields[10]),
+      personalityTraits: _coerceStringIntMap(fields[11]),
+      customFieldValues: _coerceStringStringMap(fields[12]),
+      customPanels: _coerceList(fields[13]).cast<CustomPanel>(),
+      images: _coerceList(fields[15]).cast<CharacterImage>(),
+    );
+
+    iteration
+      .._customFieldValues = _coerceStringStringMap(fields[12])
+      .._customPanels = _coerceList(fields[13]).cast<CustomPanel>()
+      .._panelOrders = _coerceStringIntMap(fields[14])
+      .._images = _coerceList(fields[15]).cast<CharacterImage>();
+
+    return iteration;
+  }
+
+  @override
+  void write(BinaryWriter writer, CharacterIteration obj) {
+    writer
+      ..writeByte(16)
+      ..writeByte(0)
+      ..write(obj.iterationName)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.aliases)
+      ..writeByte(3)
+      ..write(obj.occupation)
+      ..writeByte(4)
+      ..write(obj.gender)
+      ..writeByte(5)
+      ..write(obj.customGender)
+      ..writeByte(6)
+      ..write(obj.bio)
+      ..writeByte(7)
+      ..write(obj.originCountry)
+      ..writeByte(8)
+      ..write(obj.traits)
+      ..writeByte(9)
+      ..write(obj.congenitalTraits.toList())
+      ..writeByte(10)
+      ..write(obj.leveledTraits)
+      ..writeByte(11)
+      ..write(obj.personalityTraits)
+      ..writeByte(12)
+      ..write(obj._customFieldValues)
+      ..writeByte(13)
+      ..write(obj._customPanels)
+      ..writeByte(14)
+      ..write(obj._panelOrders)
+      ..writeByte(15)
+      ..write(obj._images);
   }
 }
