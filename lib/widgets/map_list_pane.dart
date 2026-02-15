@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/providers/map_list_provider.dart';
 import 'package:lore_keeper/models/map_model.dart';
 import 'package:lore_keeper/widgets/map_creator_dialog.dart';
@@ -80,7 +81,7 @@ class _MapListPaneState extends State<MapListPane> {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        _showFilter ? Icons.search_off : Icons.search,
+                        _showFilter ? LucideIcons.searchX : LucideIcons.search,
                         size: 20,
                       ),
                       onPressed: () => setState(() {
@@ -90,10 +91,7 @@ class _MapListPaneState extends State<MapListPane> {
                       tooltip: 'Search Maps',
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.add_location_alt_outlined,
-                        size: 20,
-                      ),
+                      icon: const Icon(LucideIcons.mapPinPlus, size: 20),
                       onPressed: _showMapCreatorDialog,
                       tooltip: 'Create Map',
                     ),
@@ -114,7 +112,7 @@ class _MapListPaneState extends State<MapListPane> {
                     style: theme.textTheme.bodyMedium,
                     decoration: InputDecoration(
                       hintText: 'Filter by name...',
-                      prefixIcon: const Icon(Icons.filter_list, size: 18),
+                      prefixIcon: const Icon(LucideIcons.listFilter, size: 18),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       fillColor: isDark
@@ -234,13 +232,13 @@ class _MapListPaneState extends State<MapListPane> {
       case 'jpeg':
       case 'jpg':
       case 'png':
-        return Icons.image;
+        return LucideIcons.image;
       case 'svg':
-        return Icons.code;
+        return LucideIcons.code;
       case 'eps':
-        return Icons.picture_as_pdf;
+        return LucideIcons.fileType;
       default:
-        return Icons.insert_drive_file;
+        return LucideIcons.file;
     }
   }
 }

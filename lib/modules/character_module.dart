@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -368,7 +369,10 @@ class CharacterModuleState extends State<CharacterModule>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete'),
           ),
@@ -628,7 +632,7 @@ class CharacterModuleState extends State<CharacterModule>
                                 PopupMenuButton<String>(
                                   padding: EdgeInsets.zero,
                                   icon: Icon(
-                                    Icons.settings,
+                                    LucideIcons.settings,
                                     size: 16,
                                     color: colorScheme.primary.withValues(
                                       alpha: 0.7,
@@ -656,8 +660,10 @@ class CharacterModuleState extends State<CharacterModule>
                                           'Delete Iteration',
                                           style: TextStyle(
                                             color: canDelete
-                                                ? Colors.red
-                                                : Colors.grey,
+                                                ? AppColors.getError(context)
+                                                : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
                                           ),
                                         ),
                                       ),
@@ -681,7 +687,7 @@ class CharacterModuleState extends State<CharacterModule>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: IconButton.filledTonal(
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(LucideIcons.plus),
                     tooltip: 'New Iteration',
                     onPressed: _showNewIterationDialog,
                   ),
@@ -733,7 +739,7 @@ class CharacterModuleState extends State<CharacterModule>
           child: _PanelCard(
             title: 'Basic Information',
             onEdit: _showAddCustomFieldDialog,
-            editIcon: Icons.add,
+            editIcon: LucideIcons.plus,
             editTooltip: 'Add Custom Field',
             content: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -807,7 +813,7 @@ class CharacterModuleState extends State<CharacterModule>
           panelWidget = _PanelCard(
             title: 'Traits',
             onEdit: _showTraitEditor,
-            editIcon: Icons.edit,
+            editIcon: LucideIcons.pencil,
             editTooltip: 'Edit Traits',
             content: _TraitsPanel(iteration: _currentIteration),
           );
@@ -848,7 +854,7 @@ class CharacterModuleState extends State<CharacterModule>
       Center(
         child: ElevatedButton.icon(
           onPressed: _showAddCustomPanelDialog,
-          icon: const Icon(Icons.add),
+          icon: const Icon(LucideIcons.plus),
           label: const Text('Add Custom Panel'),
         ),
       ),
@@ -976,7 +982,11 @@ class CharacterModuleState extends State<CharacterModule>
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                Icon(Icons.check_circle, color: Colors.green[600], size: 14),
+                Icon(
+                  LucideIcons.circleCheck,
+                  color: AppColors.getSuccess(context),
+                  size: 14,
+                ),
               const SizedBox(width: 4),
               Text(
                 _isSaving ? 'Saving...' : 'Saved',
@@ -1238,14 +1248,14 @@ class _LinkCreationDialogState extends State<_LinkCreationDialog> {
                                 decoration: InputDecoration(
                                   hintText: 'Search...',
                                   prefixIcon: const Icon(
-                                    Icons.search,
+                                    LucideIcons.search,
                                     size: 20,
                                   ),
                                   isDense: true,
                                   suffixIcon: _searchQuery.isNotEmpty
                                       ? IconButton(
                                           icon: const Icon(
-                                            Icons.clear,
+                                            LucideIcons.x,
                                             size: 20,
                                           ),
                                           onPressed: () =>
@@ -1342,7 +1352,7 @@ class _LinkCreationDialogState extends State<_LinkCreationDialog> {
               children: [
                 Expanded(child: Text(char.name)),
                 if (char.iterations.length > 1)
-                  const Icon(Icons.layers, size: 16, color: Colors.grey),
+                  const Icon(LucideIcons.layers, size: 16, color: Colors.grey),
               ],
             ),
             selected: _selectedEntityKey == char.key,
@@ -1446,7 +1456,7 @@ class _LinkPanel extends StatelessWidget {
               Expanded(
                 child: _LinkCategoryButton(
                   label: 'Characters',
-                  icon: Icons.person_outline,
+                  icon: LucideIcons.user,
                   color: Colors.green,
                   count: characterCount,
                   onTap: () => onViewChart(character.key),
@@ -1456,7 +1466,7 @@ class _LinkPanel extends StatelessWidget {
               Expanded(
                 child: _LinkCategoryButton(
                   label: 'Locations',
-                  icon: Icons.map_outlined,
+                  icon: LucideIcons.map,
                   color: Colors.blue,
                   count: locationCount,
                   onTap: null,
@@ -1466,7 +1476,7 @@ class _LinkPanel extends StatelessWidget {
               Expanded(
                 child: _LinkCategoryButton(
                   label: 'Items',
-                  icon: Icons.category_outlined,
+                  icon: LucideIcons.tag,
                   color: Colors.orange,
                   count: itemCount,
                   onTap: null,
@@ -1476,7 +1486,7 @@ class _LinkPanel extends StatelessWidget {
               Expanded(
                 child: _LinkCategoryButton(
                   label: 'Organizations',
-                  icon: Icons.group_work_outlined,
+                  icon: LucideIcons.usersRound,
                   color: Colors.purple,
                   count: organizationCount,
                 ),
@@ -1595,12 +1605,12 @@ class _PanelCard extends StatelessWidget {
                   children: [
                     if (onReorderUp != null || onReorderDown != null) ...[
                       IconButton(
-                        icon: const Icon(Icons.arrow_upward, size: 18),
+                        icon: const Icon(LucideIcons.arrowUp, size: 18),
                         onPressed: onReorderUp,
                         tooltip: 'Move Up',
                       ),
                       IconButton(
-                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        icon: const Icon(LucideIcons.arrowDown, size: 18),
                         onPressed: onReorderDown,
                         tooltip: 'Move Down',
                       ),
@@ -1610,7 +1620,7 @@ class _PanelCard extends StatelessWidget {
                     const Spacer(),
                     if (onEdit != null)
                       IconButton(
-                        icon: Icon(editIcon ?? Icons.edit_outlined),
+                        icon: Icon(editIcon ?? LucideIcons.pencil),
                         onPressed: onEdit,
                         tooltip: editTooltip ?? 'Edit',
                       ),
@@ -2081,7 +2091,7 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
               Text(field.name, style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
+                icon: const Icon(LucideIcons.ellipsisVertical),
                 onSelected: (value) async {
                   final service = GlobalCustomFieldService();
                   await service.init();
@@ -2119,7 +2129,12 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(
-                                backgroundColor: Colors.red,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.error,
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.onError,
                               ),
                               onPressed: () => Navigator.of(context).pop(true),
                               child: const Text('Delete'),
@@ -2210,7 +2225,7 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
               child: InputDecorator(
                 decoration: const InputDecoration(
                   hintText: 'Select or Type...',
-                  suffixIcon: Icon(Icons.arrow_drop_down),
+                  suffixIcon: Icon(LucideIcons.chevronDown),
                 ),
                 isEmpty: (widget.character.originCountry ?? '').trim().isEmpty,
                 child: Text(
@@ -2338,7 +2353,7 @@ class __NewIterationDialogState extends State<_NewIterationDialog> {
     return AlertDialog(
       title: Column(
         children: [
-          Icon(Icons.layers_outlined, size: 48, color: colorScheme.primary),
+          Icon(LucideIcons.layers, size: 48, color: colorScheme.primary),
           const SizedBox(height: 16),
           const Text('Create New Iteration'),
         ],
@@ -2401,7 +2416,7 @@ class __NewIterationDialogState extends State<_NewIterationDialog> {
         ),
         FilledButton.icon(
           onPressed: _submit,
-          icon: const Icon(Icons.auto_awesome),
+          icon: const Icon(LucideIcons.sparkles),
           label: const Text('Create Iteration'),
         ),
       ],
@@ -2438,7 +2453,7 @@ class _DropdownPlaceholder extends StatelessWidget {
     return InputDecorator(
       decoration: InputDecoration(
         hintText: hint,
-        suffixIcon: const Icon(Icons.arrow_drop_down),
+        suffixIcon: const Icon(LucideIcons.chevronDown),
       ),
       isEmpty: true,
       child: Text(
@@ -2728,7 +2743,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                 Expanded(child: _buildIterationTabs(cs)),
                 IconButton(
                   onPressed: _addImage,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(LucideIcons.plus),
                   tooltip: 'Add Image',
                 ),
               ],
@@ -2902,7 +2917,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                 right: 6,
                 top: 6,
                 child: IconButton(
-                  icon: const Icon(Icons.edit),
+                  icon: const Icon(LucideIcons.pencil),
                   color: cs.onSurface,
                   tooltip: 'Edit image',
                   onPressed: () => _editImage(image),
@@ -3143,7 +3158,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.chevron_left),
+                              icon: const Icon(LucideIcons.chevronLeft),
                               tooltip: 'Previous',
                               onPressed: atStart
                                   ? null
@@ -3182,7 +3197,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.refresh),
+                              icon: const Icon(LucideIcons.refreshCw),
                               tooltip: 'Reset zoom',
                               onPressed: () {
                                 animateScaleTo(1.0);
@@ -3190,7 +3205,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                               color: cs.onSurface,
                             ),
                             IconButton(
-                              icon: const Icon(Icons.chevron_right),
+                              icon: const Icon(LucideIcons.chevronRight),
                               tooltip: 'Next',
                               onPressed: atEnd
                                   ? null
@@ -3216,7 +3231,7 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
                     child: IconButton(
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(LucideIcons.x),
                       color: Colors.white,
                     ),
                   ),
@@ -3751,7 +3766,10 @@ class __EditCustomPanelDialogState extends State<_EditCustomPanelDialog> {
                     child: const Text('Cancel'),
                   ),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                    ),
                     onPressed: () => Navigator.of(context).pop(true),
                     child: const Text('Delete'),
                   ),
@@ -3760,7 +3778,9 @@ class __EditCustomPanelDialogState extends State<_EditCustomPanelDialog> {
             );
             if (confirmed == true) _delete();
           },
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
           child: const Text('Delete Panel'),
         ),
         const Spacer(),
@@ -3914,7 +3934,7 @@ class _CustomPanelWidgetState extends State<_CustomPanelWidget> {
       onReorderUp: widget.onReorderUp,
       onReorderDown: widget.onReorderDown,
       onEdit: widget.onEdit,
-      editIcon: Icons.edit,
+      editIcon: LucideIcons.pencil,
       editTooltip: 'Edit Panel',
     );
   }

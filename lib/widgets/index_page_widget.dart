@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 
 class IndexPageWidget extends StatefulWidget {
@@ -59,11 +60,11 @@ class _IndexPageWidgetState extends State<IndexPageWidget> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   labelText: 'Search Chapters',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const Icon(LucideIcons.search),
                   border: const OutlineInputBorder(),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: const Icon(LucideIcons.x),
                           onPressed: () => _searchController.clear(),
                         )
                       : null,

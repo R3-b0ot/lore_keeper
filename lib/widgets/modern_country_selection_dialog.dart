@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/country_data.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 
@@ -129,7 +130,7 @@ class _ModernCountrySelectionDialogState
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(LucideIcons.x),
                   style: IconButton.styleFrom(
                     backgroundColor: isDark
                         ? AppColors.bgMain
@@ -178,7 +179,7 @@ class _ModernCountrySelectionDialogState
                   color: mutedTextColor.withValues(alpha: 0.4),
                   fontSize: 12,
                 ),
-                prefixIcon: Icon(Icons.search, color: mutedTextColor),
+                prefixIcon: Icon(LucideIcons.search, color: mutedTextColor),
                 filled: true,
                 fillColor: isDark
                     ? AppColors.bgMain
@@ -335,7 +336,7 @@ class LocationTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    item.icon ?? Icons.map,
+                    item.icon ?? LucideIcons.map,
                     color: isSelected ? AppColors.primaryLight : Colors.white,
                     size: 20,
                   ),
@@ -369,7 +370,7 @@ class LocationTile extends StatelessWidget {
                 const Spacer(),
                 if (isSelected)
                   const Icon(
-                    Icons.check_circle,
+                    LucideIcons.circleCheck,
                     color: AppColors.primary,
                     size: 20,
                   ),

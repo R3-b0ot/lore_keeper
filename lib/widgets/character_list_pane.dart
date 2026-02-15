@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 
@@ -72,7 +73,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        _showFilter ? Icons.search_off : Icons.search,
+                        _showFilter ? LucideIcons.searchX : LucideIcons.search,
                         size: 20,
                       ),
                       onPressed: () => setState(() {
@@ -85,7 +86,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                       tooltip: 'Search Characters',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.person_add_outlined, size: 20),
+                      icon: const Icon(LucideIcons.userPlus, size: 20),
                       onPressed: widget.onCharacterCreated,
                       tooltip: 'New Character',
                     ),
@@ -106,7 +107,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                     style: theme.textTheme.bodyMedium,
                     decoration: InputDecoration(
                       hintText: 'Filter by name...',
-                      prefixIcon: const Icon(Icons.filter_list, size: 18),
+                      prefixIcon: const Icon(LucideIcons.listFilter, size: 18),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       fillColor: isDark
@@ -140,11 +141,14 @@ class _CharacterListPaneState extends State<CharacterListPane> {
                 ),
               ),
               if (characters.isEmpty)
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: Text(
                       'No characters found',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -190,7 +194,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
 
               // Icon
               Icon(
-                Icons.person_outline,
+                LucideIcons.user,
                 size: 18,
                 color: isSelected
                     ? colorScheme.onPrimaryContainer
@@ -218,7 +222,7 @@ class _CharacterListPaneState extends State<CharacterListPane> {
               // Actions
               IconButton(
                 icon: Icon(
-                  Icons.edit_outlined,
+                  LucideIcons.pencil,
                   size: 16,
                   color: isSelected
                       ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)

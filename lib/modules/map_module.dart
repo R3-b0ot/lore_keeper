@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/providers/map_list_provider.dart';
 import 'package:lore_keeper/providers/map_display_provider.dart';
 import 'package:lore_keeper/widgets/map_display.dart';
@@ -102,7 +104,11 @@ class MapModuleState extends State<MapModule> {
         children: [
           Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green.shade600, size: 14),
+              Icon(
+                LucideIcons.circleCheck,
+                color: AppColors.getSuccess(context),
+                size: 14,
+              ),
               const SizedBox(width: 4),
               Text(
                 'Ready',

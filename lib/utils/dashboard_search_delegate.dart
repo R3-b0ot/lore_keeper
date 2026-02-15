@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/character.dart';
@@ -46,14 +47,17 @@ class DashboardSearchDelegate extends SearchDelegate {
   List<Widget>? buildActions(BuildContext context) {
     return [
       if (query.isNotEmpty)
-        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
+        IconButton(
+          icon: const Icon(LucideIcons.x),
+          onPressed: () => query = '',
+        ),
     ];
   }
 
   @override
   Widget? buildLeading(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(LucideIcons.arrowLeft),
       onPressed: () => close(context, null),
     );
   }
@@ -85,7 +89,7 @@ class DashboardSearchDelegate extends SearchDelegate {
             ...projects.map(
               (p) => ListTile(
                 leading: Icon(
-                  Icons.book,
+                  LucideIcons.book,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 title: Text(
@@ -113,11 +117,11 @@ class DashboardSearchDelegate extends SearchDelegate {
 
           ..._searchBox<Chapter>(context, 'chapters', (c) => c.title, (c) {
             // Navigate lookup needed for chapters
-          }, icon: Icons.description),
+          }, icon: LucideIcons.fileText),
 
           ..._searchBox<MapModel>(context, 'maps', (m) => m.name, (m) {
             // Navigate lookup needed for maps
-          }, icon: Icons.map),
+          }, icon: LucideIcons.map),
 
           ..._searchCharacters(context),
         ],
@@ -183,7 +187,7 @@ class DashboardSearchDelegate extends SearchDelegate {
         .map(
           (c) => ListTile(
             leading: Icon(
-              Icons.person,
+              LucideIcons.user,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             title: Text(

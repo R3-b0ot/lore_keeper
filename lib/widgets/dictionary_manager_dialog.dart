@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 
@@ -40,11 +42,13 @@ class _DictionaryManagerDialogState extends State<DictionaryManagerDialog> {
       content: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 400, maxHeight: 500),
         child: _ignoredWords.isEmpty
-            ? const Center(
+            ? Center(
                 child: Text(
                   'Your custom dictionary is empty.\nUse the "Add to Dictionary" option in the proofing tool.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               )
             : Scrollbar(
@@ -58,9 +62,9 @@ class _DictionaryManagerDialogState extends State<DictionaryManagerDialog> {
                       child: ListTile(
                         title: Text(word),
                         trailing: IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
+                          icon: Icon(
+                            LucideIcons.trash2,
+                            color: AppColors.getError(context),
                           ),
                           tooltip: 'Remove from dictionary',
                           onPressed: () async {
@@ -79,7 +83,12 @@ class _DictionaryManagerDialogState extends State<DictionaryManagerDialog> {
                                   ),
                                   FilledButton(
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.red,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      foregroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.onError,
                                     ),
                                     onPressed: () =>
                                         Navigator.of(context).pop(true),

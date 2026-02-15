@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lore_keeper/models/history_entry.dart';
@@ -82,7 +84,7 @@ class _HistoryPanelState extends State<HistoryPanel> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(LucideIcons.x),
                   onPressed: widget.onClose,
                   tooltip: 'Close History',
                 ),
@@ -132,9 +134,12 @@ class _HistoryPanelState extends State<HistoryPanel> {
                           DateFormat.yMMMd().add_jm().format(entry.timestamp),
                         ),
                         subtitle: const Text('Version snapshot'),
-                        leading: const Icon(Icons.history_toggle_off),
+                        leading: const Icon(LucideIcons.history),
                         trailing: IconButton(
-                          icon: const Icon(Icons.restore, color: Colors.orange),
+                          icon: Icon(
+                            LucideIcons.rotateCcw,
+                            color: AppColors.getWarning(context),
+                          ),
                           tooltip: 'Revert to this version',
                           onPressed: () => _showDiffAndRevert(entry),
                         ),

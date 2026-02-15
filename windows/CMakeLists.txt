@@ -9,6 +9,13 @@ set(BINARY_NAME "lore_keeper")
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
+if(POLICY CMP0175)
+  # Plugins still use add_custom_command(TARGET) with DEPENDS, which is
+  # rejected under CMP0175 NEW. Keep OLD to avoid dev warnings.
+  cmake_policy(SET CMP0175 OLD)
+  # Ensure subprojects that reset policies still default to OLD for CMP0175.
+  set(CMAKE_POLICY_DEFAULT_CMP0175 OLD)
+endif()
 
 # Define build configuration option.
 get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
@@ -56,6 +63,15 @@ add_subdirectory("runner")
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+# Suppress noisy warnings from third-party Windows plugins and SDK headers.
+if(MSVC)
+  foreach(plugin ${FLUTTER_PLUGIN_LIST})
+    if(TARGET ${plugin}_plugin)
+      target_compile_options(${plugin}_plugin PRIVATE /wd4244 /wd4458)
+    endif()
+  endforeach()
+endif()
 
 
 # === Installation ===

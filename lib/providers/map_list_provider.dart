@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/map_model.dart';
+import 'package:lore_keeper/shared/svg_style_inliner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MapListProvider extends ChangeNotifier {
   final int _projectId;
@@ -23,6 +25,7 @@ class MapListProvider extends ChangeNotifier {
   Future<void> _initialize() async {
     _mapBox = await Hive.openBox<MapModel>('maps');
     _isInitialized = true;
+    await _runSvgInlineMigrationOnce();
     notifyListeners();
   }
 
@@ -33,9 +36,14 @@ class MapListProvider extends ChangeNotifier {
   ) async {
     if (!_isInitialized) return -1;
 
+    var resolvedPath = filePath;
+    if (fileType.toLowerCase() == 'svg') {
+      resolvedPath = await SvgStyleInliner.inlineFile(filePath);
+    }
+
     final newMap = MapModel(
       name: name,
-      filePath: filePath,
+      filePath: resolvedPath,
       fileType: fileType,
       parentProjectId: _projectId,
     );
@@ -73,5 +81,36 @@ class MapListProvider extends ChangeNotifier {
   void dispose() {
     _mapBox.close();
     super.dispose();
+  }
+
+  Future<void> _runSvgInlineMigrationOnce() async {
+    const migrationKey = 'svg_inline_migration_v1_done';
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(migrationKey) ?? false) return;
+
+    var updated = false;
+    final maps = _mapBox.values
+        .where((map) => map.fileType.toLowerCase() == 'svg')
+        .toList();
+
+    for (final map in maps) {
+      final currentPath = map.filePath;
+      if (currentPath.toLowerCase().endsWith('_inline.svg')) {
+        continue;
+      }
+      final newPath = await SvgStyleInliner.inlineFile(currentPath);
+      if (newPath != currentPath) {
+        map.filePath = newPath;
+        map.updateTimestamp();
+        await map.save();
+        updated = true;
+      }
+    }
+
+    await prefs.setBool(migrationKey, true);
+
+    if (updated) {
+      notifyListeners();
+    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
 
 class AboutAuthorForm extends StatefulWidget {
@@ -106,7 +107,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _emailController,
                       label: 'Contact Email',
                       hint: 'author@example.com',
-                      icon: Icons.email_outlined,
+                      icon: LucideIcons.mail,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -115,7 +116,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _websiteController,
                       label: 'Website',
                       hint: 'https://yourwebsite.com',
-                      icon: Icons.language_outlined,
+                      icon: LucideIcons.globe,
                     ),
                   ),
                 ],
@@ -130,7 +131,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _twitterController,
                       label: 'Twitter / X',
                       hint: '@username',
-                      icon: Icons.alternate_email,
+                      icon: LucideIcons.atSign,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -139,7 +140,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _instagramController,
                       label: 'Instagram',
                       hint: 'username',
-                      icon: Icons.camera_alt_outlined,
+                      icon: LucideIcons.camera,
                     ),
                   ),
                 ],
@@ -149,14 +150,14 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                 controller: _facebookController,
                 label: 'Facebook',
                 hint: 'facebook.com/username',
-                icon: Icons.facebook_outlined,
+                icon: LucideIcons.facebook,
               ),
 
               const SizedBox(height: 48),
               Center(
                 child: FilledButton.icon(
                   onPressed: _save,
-                  icon: const Icon(Icons.save_outlined),
+                  icon: const Icon(LucideIcons.save),
                   label: const Text('Save Author Details'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(

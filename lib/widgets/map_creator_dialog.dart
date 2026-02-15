@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/providers/map_list_provider.dart';
 
 enum MapCreationType { flat, layered, import }
@@ -114,7 +115,7 @@ class _MapCreatorDialogState extends State<MapCreatorDialog> {
                   child: ElevatedButton.icon(
                     onPressed: () =>
                         setState(() => _selectedType = MapCreationType.flat),
-                    icon: const Icon(Icons.image),
+                    icon: const Icon(LucideIcons.image),
                     label: const Text('Flat Map\n(JPEG/PNG)'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _selectedType == MapCreationType.flat
@@ -131,7 +132,7 @@ class _MapCreatorDialogState extends State<MapCreatorDialog> {
                   child: ElevatedButton.icon(
                     onPressed: () =>
                         setState(() => _selectedType = MapCreationType.layered),
-                    icon: const Icon(Icons.layers),
+                    icon: const Icon(LucideIcons.layers),
                     label: const Text('Layered Map\n(SVG/EPS)'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _selectedType == MapCreationType.layered
@@ -148,7 +149,7 @@ class _MapCreatorDialogState extends State<MapCreatorDialog> {
                   child: ElevatedButton.icon(
                     onPressed: () =>
                         setState(() => _selectedType = MapCreationType.import),
-                    icon: const Icon(Icons.cloud_download),
+                    icon: const Icon(LucideIcons.cloudDownload),
                     label: const Text('Import from\nRealm Keeper'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _selectedType == MapCreationType.import

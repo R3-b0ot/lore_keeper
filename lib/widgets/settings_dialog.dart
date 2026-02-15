@@ -2,6 +2,8 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'dart:async'; // For debounce timer
 import 'package:intl/intl.dart'; // Import for DateFormat
@@ -164,8 +166,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Delete Permanently'),
           ),
@@ -286,7 +289,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _openDictionaryManager,
-                icon: const Icon(Icons.book_outlined),
+                icon: const Icon(LucideIcons.book),
                 label: const Text('Manage Dictionary'),
               ),
             ],
@@ -446,7 +449,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ListTile(
             title: const Text('Genre'),
             subtitle: Text(_selectedGenre),
-            trailing: const Icon(Icons.edit),
+            trailing: const Icon(LucideIcons.pencil),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(color: Theme.of(context).colorScheme.outline),
@@ -469,10 +472,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
           const Divider(),
           const SizedBox(height: 16),
           ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text(
+            leading: Icon(
+              LucideIcons.trash2,
+              color: AppColors.getError(context),
+            ),
+            title: Text(
               'Delete Project',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: AppColors.getError(context)),
             ),
             subtitle: const Text(
               'This will permanently delete the project and all its contents.',
@@ -662,7 +668,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 message:
                     'In the Flesch reading-ease test, higher scores indicate material that is easier to read.',
                 child: Icon(
-                  Icons.info_outline,
+                  LucideIcons.info,
                   size: 16,
                   color: Theme.of(context).colorScheme.secondary,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
@@ -34,14 +35,17 @@ class GlobalSearchDelegate extends SearchDelegate {
   List<Widget>? buildActions(BuildContext context) {
     return [
       if (query.isNotEmpty)
-        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
+        IconButton(
+          icon: const Icon(LucideIcons.x),
+          onPressed: () => query = '',
+        ),
     ];
   }
 
   @override
   Widget? buildLeading(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(LucideIcons.arrowLeft),
       onPressed: () => close(context, null),
     );
   }
@@ -59,7 +63,7 @@ class GlobalSearchDelegate extends SearchDelegate {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.search,
+              LucideIcons.search,
               size: 64,
               color: Theme.of(
                 context,
@@ -143,7 +147,7 @@ class GlobalSearchDelegate extends SearchDelegate {
 
   Widget _buildProjectTile(BuildContext context, Project project) {
     return ListTile(
-      leading: const Icon(Icons.inventory_2_outlined),
+      leading: const Icon(LucideIcons.package),
       title: Text(project.title),
       subtitle: Text(
         'Project • Created ${project.createdAt.day}/${project.createdAt.month}/${project.createdAt.year}',
@@ -162,7 +166,7 @@ class GlobalSearchDelegate extends SearchDelegate {
   Widget _buildChapterTile(BuildContext context, Chapter chapter) {
     final project = Hive.box<Project>('projects').get(chapter.parentProjectId);
     return ListTile(
-      leading: const Icon(Icons.description_outlined),
+      leading: const Icon(LucideIcons.fileText),
       title: Text(chapter.title),
       subtitle: Text('Chapter • In ${project?.title ?? 'Unknown Project'}'),
       onTap: () {
@@ -186,7 +190,7 @@ class GlobalSearchDelegate extends SearchDelegate {
       'projects',
     ).get(character.parentProjectId);
     return ListTile(
-      leading: const Icon(Icons.person_outline),
+      leading: const Icon(LucideIcons.user),
       title: Text(character.name),
       subtitle: Text('Character • In ${project?.title ?? 'Unknown Project'}'),
       onTap: () {
@@ -208,7 +212,7 @@ class GlobalSearchDelegate extends SearchDelegate {
   Widget _buildMapTile(BuildContext context, MapModel map) {
     final project = Hive.box<Project>('projects').get(map.parentProjectId);
     return ListTile(
-      leading: const Icon(Icons.map_outlined),
+      leading: const Icon(LucideIcons.map),
       title: Text(map.name),
       subtitle: Text('Map • In ${project?.title ?? 'Unknown Project'}'),
       onTap: () {

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:lore_keeper/models/character.dart';
@@ -76,10 +78,12 @@ class DiffViewDialog extends StatelessWidget {
           child: const Text('Cancel'),
         ),
         FilledButton.icon(
-          icon: const Icon(Icons.restore),
+          icon: const Icon(LucideIcons.rotateCcw),
           label: const Text('Revert to this Version'),
           style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(Colors.orange.shade700),
+            backgroundColor: WidgetStateProperty.all(
+              AppColors.getWarning(context),
+            ),
           ),
           onPressed: () async {
             await characterBox.put(historyEntry.targetKey, historicalCharacter);
@@ -114,24 +118,28 @@ class DiffViewDialog extends StatelessWidget {
           Text(title, style: Theme.of(context).textTheme.titleLarge),
           const Divider(),
           _buildDiffRow(
+            context,
             'Name',
             iteration?.name,
             historicalIteration?.name,
             isHistorical: isHistorical,
           ),
           _buildDiffRow(
+            context,
             'Aliases',
             (iteration?.aliases ?? []).join(', '),
             (historicalIteration?.aliases ?? []).join(', '),
             isHistorical: isHistorical,
           ),
           _buildDiffRow(
+            context,
             'Occupation',
             iteration?.occupation,
             historicalIteration?.occupation,
             isHistorical: isHistorical,
           ),
           _buildDiffRow(
+            context,
             'Bio',
             iteration?.bio,
             historicalIteration?.bio,
@@ -150,6 +158,7 @@ class DiffViewDialog extends StatelessWidget {
   }
 
   Widget _buildDiffRow(
+    BuildContext context,
     String label,
     String? currentValue,
     String? historicalValue, {
@@ -170,7 +179,9 @@ class DiffViewDialog extends StatelessWidget {
             value ?? 'N/A',
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: hasChanged ? Colors.orange.shade700 : null),
+            style: TextStyle(
+              color: hasChanged ? AppColors.getWarning(context) : null,
+            ),
           ),
         ],
       ),
@@ -219,7 +230,7 @@ class DiffViewDialog extends StatelessWidget {
                     panel.name,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: hasChanged ? Colors.orange.shade700 : null,
+                      color: hasChanged ? AppColors.getWarning(context) : null,
                     ),
                   ),
                   if (panel.type == 'large_text')
@@ -228,7 +239,9 @@ class DiffViewDialog extends StatelessWidget {
                       maxLines: 5,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: hasChanged ? Colors.orange.shade700 : null,
+                        color: hasChanged
+                            ? AppColors.getWarning(context)
+                            : null,
                       ),
                     )
                   else

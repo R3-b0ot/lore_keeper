@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
@@ -1155,10 +1156,10 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Search all traits...',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(LucideIcons.search),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: const Icon(LucideIcons.x),
                   onPressed: () {
                     _searchController.clear();
                   },
@@ -1412,7 +1413,10 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
             onPressed: () {
               Navigator.of(context).pop(true);
             },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -1440,7 +1444,7 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Center(
         child: OutlinedButton.icon(
-          icon: const Icon(Icons.add),
+          icon: const Icon(LucideIcons.plus),
           label: Text(
             'Create Custom ${type.replaceFirst(type[0], type[0].toUpperCase())} Trait',
           ),
@@ -2176,22 +2180,27 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
                   const PopupMenuItem<String>(
                     value: 'edit',
                     child: ListTile(
-                      leading: Icon(Icons.edit_outlined),
+                      leading: Icon(LucideIcons.pencil),
                       title: Text('Edit'),
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'delete',
                     child: ListTile(
-                      leading: Icon(Icons.delete_outline, color: Colors.red),
+                      leading: Icon(
+                        LucideIcons.trash2,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       title: Text(
                         'Delete',
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                   ),
                 ],
-                icon: Icon(Icons.more_vert, color: titleColor),
+                icon: Icon(LucideIcons.ellipsisVertical, color: titleColor),
               ),
           ],
         ),

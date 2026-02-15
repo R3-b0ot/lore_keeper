@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
@@ -89,7 +90,7 @@ class DashboardHero extends StatelessWidget {
             left: 24,
             child: IconButton(
               icon: Icon(
-                Icons.settings_outlined,
+                LucideIcons.settings,
                 color: Theme.of(context).colorScheme.onSurface,
                 size: 28,
               ),
@@ -138,7 +139,7 @@ class HeroSearchBar extends StatelessWidget {
         children: [
           const SizedBox(width: 12),
           Icon(
-            Icons.search,
+            LucideIcons.search,
             color: Theme.of(context).colorScheme.primary,
             size: 24,
             semanticLabel: 'Search',

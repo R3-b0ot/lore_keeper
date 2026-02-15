@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:lore_keeper/models/chapter.dart';
@@ -42,6 +44,7 @@ class ChapterDiffViewDialog extends StatelessWidget {
             children: [
               // Chapter Title
               _buildDiffRow(
+                context,
                 'Title',
                 currentChapter.title,
                 historicalChapter.title,
@@ -49,6 +52,7 @@ class ChapterDiffViewDialog extends StatelessWidget {
               const SizedBox(height: 16),
               // Order Index
               _buildDiffRow(
+                context,
                 'Order Index',
                 currentChapter.orderIndex.toString(),
                 historicalChapter.orderIndex.toString(),
@@ -61,6 +65,7 @@ class ChapterDiffViewDialog extends StatelessWidget {
               ),
               const Divider(),
               _buildTextDiff(
+                context,
                 currentChapter.richTextJson ?? '',
                 historicalChapter.richTextJson ?? '',
               ),
@@ -74,10 +79,12 @@ class ChapterDiffViewDialog extends StatelessWidget {
           child: const Text('Cancel'),
         ),
         FilledButton.icon(
-          icon: const Icon(Icons.restore),
+          icon: const Icon(LucideIcons.rotateCcw),
           label: const Text('Revert to this Version'),
           style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(Colors.orange.shade700),
+            backgroundColor: WidgetStateProperty.all(
+              AppColors.getWarning(context),
+            ),
           ),
           onPressed: () async {
             await chapterBox.put(historyEntry.targetKey, historicalChapter);
@@ -92,6 +99,7 @@ class ChapterDiffViewDialog extends StatelessWidget {
   }
 
   Widget _buildDiffRow(
+    BuildContext context,
     String label,
     String? currentValue,
     String? historicalValue,
@@ -105,18 +113,27 @@ class ChapterDiffViewDialog extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           currentValue ?? 'N/A',
-          style: TextStyle(color: hasChanged ? Colors.orange.shade700 : null),
+          style: TextStyle(
+            color: hasChanged ? AppColors.getWarning(context) : null,
+          ),
         ),
         if (hasChanged)
           Text(
             'Previous: ${historicalValue ?? 'N/A'}',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildTextDiff(String currentText, String historicalText) {
+  Widget _buildTextDiff(
+    BuildContext context,
+    String currentText,
+    String historicalText,
+  ) {
     final dmp = DiffMatchPatch();
     final diffs = dmp.diff(currentText, historicalText);
 
@@ -135,13 +152,13 @@ class ChapterDiffViewDialog extends StatelessWidget {
         Color color;
         String prefix;
         if (diff.operation == DIFF_INSERT) {
-          color = Colors.green;
+          color = AppColors.getSuccess(context);
           prefix = '+ ';
         } else if (diff.operation == DIFF_DELETE) {
-          color = Colors.red;
+          color = AppColors.getError(context);
           prefix = '- ';
         } else {
-          color = Colors.black;
+          color = Theme.of(context).colorScheme.onSurface;
           prefix = '';
         }
         return Text(

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 
 class CoverPageForm extends StatefulWidget {
   final Project project;
@@ -91,7 +93,7 @@ class _CoverPageFormState extends State<CoverPageForm> {
                 Center(
                   child: FilledButton.icon(
                     onPressed: _save,
-                    icon: const Icon(Icons.save_outlined),
+                    icon: const Icon(LucideIcons.save),
                     label: const Text('Save Cover Settings'),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -122,7 +124,7 @@ class _CoverPageFormState extends State<CoverPageForm> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: colorScheme.scrim.withValues(alpha: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -137,11 +139,11 @@ class _CoverPageFormState extends State<CoverPageForm> {
                           File(_imagePath!),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return _buildPlaceholder();
+                            return _buildPlaceholder(colorScheme);
                           },
                         )
                       else
-                        _buildPlaceholder(),
+                        _buildPlaceholder(colorScheme),
 
                       // Overlay Content
                       Container(
@@ -150,10 +152,10 @@ class _CoverPageFormState extends State<CoverPageForm> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withValues(alpha: 0.4),
+                              colorScheme.scrim.withValues(alpha: 0.4),
                               Colors.transparent,
                               Colors.transparent,
-                              Colors.black.withValues(alpha: 0.6),
+                              colorScheme.scrim.withValues(alpha: 0.6),
                             ],
                             stops: const [0.0, 0.2, 0.7, 1.0],
                           ),
@@ -168,8 +170,8 @@ class _CoverPageFormState extends State<CoverPageForm> {
                                   widget.project.bookTitle ??
                                       widget.project.title,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
                                     fontSize: 32,
                                     fontWeight: FontWeight.w900,
                                     fontFamily:
@@ -177,8 +179,8 @@ class _CoverPageFormState extends State<CoverPageForm> {
                                     shadows: [
                                       Shadow(
                                         blurRadius: 10,
-                                        color: Colors.black,
-                                        offset: Offset(0, 2),
+                                        color: colorScheme.onSurface,
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
@@ -190,16 +192,16 @@ class _CoverPageFormState extends State<CoverPageForm> {
                                 Text(
                                   widget.project.authors ?? 'Unknown Author',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
                                     fontSize: 18,
                                     fontWeight: FontWeight.w500,
                                     letterSpacing: 2,
                                     shadows: [
                                       Shadow(
                                         blurRadius: 5,
-                                        color: Colors.black,
-                                        offset: Offset(0, 1),
+                                        color: colorScheme.onSurface,
+                                        offset: const Offset(0, 1),
                                       ),
                                     ],
                                   ),
@@ -240,6 +242,7 @@ class _CoverPageFormState extends State<CoverPageForm> {
   }
 
   Widget _buildImagePicker() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -253,7 +256,7 @@ class _CoverPageFormState extends State<CoverPageForm> {
       child: Column(
         children: [
           Icon(
-            Icons.image_outlined,
+            LucideIcons.image,
             size: 48,
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           ),
@@ -263,10 +266,10 @@ class _CoverPageFormState extends State<CoverPageForm> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'High resolution portrait images (2:3 aspect ratio) work best.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           Row(
@@ -278,17 +281,20 @@ class _CoverPageFormState extends State<CoverPageForm> {
                   // For this mock/demo environment, we'll allow manual path entry or just simulate selection.
                   _showImagePathDialog();
                 },
-                icon: const Icon(Icons.add_photo_alternate_outlined),
+                icon: const Icon(LucideIcons.imagePlus),
                 label: const Text('Select Image'),
               ),
               if (_imagePath != null) ...[
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => setState(() => _imagePath = null),
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  label: const Text(
+                  icon: Icon(
+                    LucideIcons.trash2,
+                    color: AppColors.getError(context),
+                  ),
+                  label: Text(
                     'Remove',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: AppColors.getError(context)),
                   ),
                 ),
               ],
@@ -299,18 +305,22 @@ class _CoverPageFormState extends State<CoverPageForm> {
     );
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder(ColorScheme colorScheme) {
     return Container(
-      color: Colors.grey[300],
+      color: colorScheme.surfaceContainerHighest,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.book, size: 64, color: Colors.grey[400]),
+            Icon(
+              LucideIcons.book,
+              size: 64,
+              color: colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
             Text(
               'No artwork selected',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ],
         ),

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:native_image_cropper/native_image_cropper.dart';
 
 const List<double> _cropRatios = [
@@ -395,7 +396,7 @@ class _DialogHeader extends StatelessWidget {
         IconButton(
           tooltip: 'Close',
           onPressed: onClose,
-          icon: const Icon(Icons.close),
+          icon: const Icon(LucideIcons.x),
         ),
       ],
     );

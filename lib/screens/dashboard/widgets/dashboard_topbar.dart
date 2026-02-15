@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
 import 'package:lore_keeper/theme/app_colors.dart';
@@ -60,7 +61,7 @@ class DashboardTopbar extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: Icon(
-                            Icons.settings_outlined,
+                            LucideIcons.settings,
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,
@@ -98,7 +99,7 @@ class DashboardTopbar extends StatelessWidget {
                             children: [
                               const SizedBox(width: 8),
                               Icon(
-                                Icons.search,
+                                LucideIcons.search,
                                 color: Theme.of(
                                   context,
                                 ).colorScheme.primary.withValues(alpha: 0.7),

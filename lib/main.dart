@@ -8,12 +8,15 @@ import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/map_model.dart';
+import 'package:lore_keeper/models/magic_system.dart';
+import 'package:lore_keeper/models/magic_node.dart';
 import 'package:lore_keeper/models/section.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/models/history_entry.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
+import 'package:lore_keeper/utils/inappwebview_platform.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/screens/dashboard/dashboard_screen.dart';
 import 'package:lore_keeper/screens/trait_editor_screen.dart';
@@ -30,6 +33,7 @@ late Box<MapModel> mapBox;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ensureInAppWebViewPlatform();
   await initializeHive();
   await RelationshipService().initialize();
   runApp(
@@ -61,6 +65,10 @@ Future<void> initializeHive() async {
   Hive.registerAdapter(CustomPanelAdapter());
   Hive.registerAdapter(CustomTraitAdapter());
   Hive.registerAdapter(MapModelAdapter());
+  Hive.registerAdapter(MagicSystemAdapter());
+  Hive.registerAdapter(MagicNodeAdapter());
+  Hive.registerAdapter(MagicImageAdapter());
+  Hive.registerAdapter(MagicAttributeAdapter());
   Hive.registerAdapter(HistoryEntryAdapter());
 
   try {
@@ -69,6 +77,8 @@ Future<void> initializeHive() async {
     chapterBox = await Hive.openBox<Chapter>('chapters');
     characterBox = await Hive.openBox<Character>('characters');
     mapBox = await Hive.openBox<MapModel>('maps');
+    await Hive.openBox<MagicSystem>('magic_systems');
+    await Hive.openBox<MagicNode>('magic_nodes');
     await Hive.openBox<Link>('links');
     await Hive.openBox<HistoryEntry>('history');
     await Hive.openBox<SimpleTrait>('custom_traits');
@@ -79,6 +89,8 @@ Future<void> initializeHive() async {
       await Hive.deleteBoxFromDisk('chapters');
       await Hive.deleteBoxFromDisk('characters');
       await Hive.deleteBoxFromDisk('maps');
+      await Hive.deleteBoxFromDisk('magic_systems');
+      await Hive.deleteBoxFromDisk('magic_nodes');
       await Hive.deleteBoxFromDisk('links');
       await Hive.deleteBoxFromDisk('history');
       await Hive.deleteBoxFromDisk('custom_traits');
@@ -88,6 +100,8 @@ Future<void> initializeHive() async {
       chapterBox = await Hive.openBox<Chapter>('chapters');
       characterBox = await Hive.openBox<Character>('characters');
       mapBox = await Hive.openBox<MapModel>('maps');
+      await Hive.openBox<MagicSystem>('magic_systems');
+      await Hive.openBox<MagicNode>('magic_nodes');
       await Hive.openBox<Link>('links');
       await Hive.openBox<HistoryEntry>('history');
       await Hive.openBox<SimpleTrait>('custom_traits');

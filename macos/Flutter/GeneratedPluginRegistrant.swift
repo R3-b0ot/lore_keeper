@@ -7,6 +7,7 @@ import Foundation
 
 import file_picker
 import file_selector_macos
+import flutter_inappwebview_macos
 import native_image_cropper_macos
 import path_provider_foundation
 import quill_native_bridge_macos
@@ -17,6 +18,7 @@ import video_player_avfoundation
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
+  InAppWebViewFlutterPlugin.register(with: registry.registrar(forPlugin: "InAppWebViewFlutterPlugin"))
   NativeImageCropperPlugin.register(with: registry.registrar(forPlugin: "NativeImageCropperPlugin"))
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
   QuillNativeBridgePlugin.register(with: registry.registrar(forPlugin: "QuillNativeBridgePlugin"))

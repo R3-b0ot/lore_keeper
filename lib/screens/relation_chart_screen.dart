@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/character.dart';
@@ -366,7 +367,10 @@ class _RelationChartScreenState extends State<RelationChartScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete'),
           ),
@@ -399,7 +403,10 @@ class _RelationChartScreenState extends State<RelationChartScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete All'),
           ),
@@ -711,11 +718,13 @@ class _RelationChartScreenState extends State<RelationChartScreen>
                       value: 'delete',
                       child: Text(
                         isCenter ? 'Delete All Links' : 'Delete Link',
-                        style: const TextStyle(color: Colors.red),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                   ],
-                  icon: const Icon(Icons.more_vert),
+                  icon: const Icon(LucideIcons.ellipsisVertical),
                   tooltip: 'More options',
                 ),
               ),
@@ -748,42 +757,42 @@ class _RelationChartScreenState extends State<RelationChartScreen>
         // This was correct
         'type': 'Parent',
         'color': Colors.purple,
-        'icon': Icons.arrow_upward, // Kept for directional clarity
+        'icon': LucideIcons.arrowUp, // Kept for directional clarity
       },
       'top-left': {
         'type': 'Rival',
         'color': Colors.red,
-        'icon': Icons.bolt, // Thematic icon for Rival
+        'icon': LucideIcons.bolt, // Thematic icon for Rival
       },
       'top-right': {
         'type': 'Sibling',
         'color': Colors.amber,
-        'icon': Icons.groups, // Thematic icon for Sibling
+        'icon': LucideIcons.users, // Thematic icon for Sibling
       },
       'left': {
         'type': 'Friend',
         'color': Colors.teal,
-        'icon': Icons.handshake, // Thematic icon for Friend
+        'icon': LucideIcons.handshake, // Thematic icon for Friend
       },
       'right': {
         'type': 'Spouse',
         'color': Colors.pink,
-        'icon': Icons.favorite, // Thematic icon for Spouse
+        'icon': LucideIcons.heart, // Thematic icon for Spouse
       },
       'bottom-left': {
         'type': 'Mentor',
         'color': Colors.blue,
-        'icon': Icons.school, // This is a good thematic icon
+        'icon': LucideIcons.school, // This is a good thematic icon
       },
       'bottom': {
         'type': 'Child',
         'color': Colors.indigo,
-        'icon': Icons.arrow_downward, // Kept for directional clarity
+        'icon': LucideIcons.arrowDown, // Kept for directional clarity
       },
       'bottom-right': {
         'type': 'Mentee',
         'color': Colors.orange,
-        'icon': Icons.face, // Thematic icon for Mentee
+        'icon': LucideIcons.smile, // Thematic icon for Mentee
       },
     };
 
@@ -877,14 +886,14 @@ class _RelationChartScreenState extends State<RelationChartScreen>
         leading: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(LucideIcons.x),
               onPressed: () => Navigator.of(context).pop(),
               tooltip: 'Close',
             ),
             // Only show the back button if there is history
             if (widget.history.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(LucideIcons.arrowLeft),
                 onPressed: () {
                   final previousKey = widget.history.last;
                   final newHistory = List<dynamic>.from(widget.history)
@@ -913,7 +922,7 @@ class _RelationChartScreenState extends State<RelationChartScreen>
               message: 'Arrange nodes in their default positions',
               child: ElevatedButton.icon(
                 onPressed: _autoLayout,
-                icon: const Icon(Icons.auto_fix_high),
+                icon: const Icon(LucideIcons.wand),
                 label: const Text('Auto-Sort Layout'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade600,
@@ -1158,11 +1167,13 @@ class _RelationChartScreenState extends State<RelationChartScreen>
                   value: 'delete',
                   child: Text(
                     isCenter ? 'Delete All Links' : 'Delete Link',
-                    style: const TextStyle(color: Colors.red),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               ],
-              icon: const Icon(Icons.more_vert),
+              icon: const Icon(LucideIcons.ellipsisVertical),
               tooltip: 'More options',
             ),
           ),
@@ -1258,7 +1269,7 @@ class _RelationChartScreenState extends State<RelationChartScreen>
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.center_focus_strong),
+              icon: const Icon(LucideIcons.focus),
               tooltip: 'Center View (Reset Position and Zoom)',
               onPressed: _resetAndCenterView,
             ),
@@ -1361,7 +1372,7 @@ class _AddRelationDialogState extends State<_AddRelationDialog> {
               children: [
                 Expanded(child: Text(char.name)),
                 if (char.iterations.length > 1)
-                  const Icon(Icons.layers, size: 16, color: Colors.grey),
+                  const Icon(LucideIcons.layers, size: 16, color: Colors.grey),
               ],
             ),
             subtitle: Text(char.iterations.first.occupation ?? 'No occupation'),
@@ -1398,7 +1409,7 @@ class _AddRelationDialogState extends State<_AddRelationDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.arrow_back),
+            leading: const Icon(LucideIcons.arrowLeft),
             title: const Text('Back to Character List'),
             onTap: () {
               setState(() {
@@ -1481,38 +1492,38 @@ class RelationPainter extends CustomPainter {
 
       switch (getRelationDescription(rel, center.key)) {
         case 'Spouse':
-          iconData = Icons.favorite_border_rounded;
+          iconData = LucideIcons.heart;
           lineColor = Colors.pink.shade700;
           break;
         case 'Friend':
-          iconData = Icons.handshake_rounded;
+          iconData = LucideIcons.handshake;
           lineColor = Colors.teal.shade500;
           break;
         case 'Sibling':
-          iconData = Icons.groups_rounded;
+          iconData = LucideIcons.usersRound;
           lineColor = Colors.amber.shade600;
           break;
         case 'Parent':
-          iconData = Icons.arrow_upward_rounded;
+          iconData = LucideIcons.arrowUp;
           lineColor = Colors.purple.shade600;
           break;
         case 'Child':
-          iconData = Icons.arrow_downward_rounded;
+          iconData = LucideIcons.arrowDown;
           lineColor = Colors.indigo.shade600;
           break;
         case 'Mentor':
-          iconData = Icons.school_rounded;
+          iconData = LucideIcons.school;
           lineColor = Colors.blue.shade600;
           break;
         case 'Rival':
-          iconData = Icons.bolt_rounded;
+          iconData = LucideIcons.bolt;
           lineColor = Colors.red.shade800;
           break;
         case 'Colleague':
           lineColor = Colors.green.shade600;
           break;
         case 'Mentee':
-          iconData = Icons.face_rounded;
+          iconData = LucideIcons.smile;
           lineColor = Colors.orange.shade600;
           break;
         default:

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
@@ -88,7 +90,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        _showFilter ? Icons.search_off : Icons.search,
+                        _showFilter ? LucideIcons.searchX : LucideIcons.search,
                         size: 20,
                       ),
                       onPressed: () => setState(() {
@@ -98,7 +100,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                       tooltip: 'Search Chapters',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline, size: 20),
+                      icon: const Icon(LucideIcons.circlePlus, size: 20),
                       onPressed: () async {
                         final title = await _showChapterTitleDialog(context);
                         if (title != null && title.isNotEmpty) {
@@ -126,7 +128,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                     style: theme.textTheme.bodyMedium,
                     decoration: InputDecoration(
                       hintText: 'Filter by title...',
-                      prefixIcon: const Icon(Icons.filter_list, size: 18),
+                      prefixIcon: const Icon(LucideIcons.listFilter, size: 18),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       fillColor: isDark
@@ -283,7 +285,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
             ),
             const SizedBox(width: 4),
             Icon(
-              isExpanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+              isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
               size: 14,
               color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             ),
@@ -357,7 +359,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4),
                     child: Icon(
-                      Icons.drag_indicator,
+                      LucideIcons.gripVertical,
                       size: 14,
                       color: isSelected
                           ? colorScheme.onPrimaryContainer.withValues(
@@ -384,9 +386,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
 
               // Icon
               Icon(
-                isFrontMatter
-                    ? Icons.article_outlined
-                    : Icons.menu_book_outlined,
+                isFrontMatter ? LucideIcons.fileText : LucideIcons.bookOpen,
                 size: 18,
                 color: isSelected
                     ? colorScheme.onPrimaryContainer
@@ -415,7 +415,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
               if (!isFrontMatter)
                 PopupMenuButton<String>(
                   icon: Icon(
-                    Icons.edit_outlined,
+                    LucideIcons.pencil,
                     size: 16,
                     color: isSelected
                         ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
@@ -431,23 +431,28 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                       value: 'rename',
                       child: Row(
                         children: [
-                          Icon(Icons.edit_outlined, size: 18),
+                          Icon(LucideIcons.pencil, size: 18),
                           SizedBox(width: 12),
                           Text('Rename'),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
                           Icon(
-                            Icons.delete_outline,
+                            LucideIcons.trash2,
                             size: 18,
-                            color: Colors.red,
+                            color: AppColors.getError(context),
                           ),
                           SizedBox(width: 12),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
+                          Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: AppColors.getError(context),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -483,7 +488,10 @@ class _ChapterListPaneState extends State<ChapterListPane> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),

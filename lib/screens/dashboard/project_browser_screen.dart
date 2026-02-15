@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
@@ -96,7 +97,7 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.folder_open_outlined,
+                          LucideIcons.folderOpen,
                           size: 64,
                           color: Theme.of(
                             context,
@@ -242,7 +243,7 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search projects...',
-                prefixIcon: const Icon(Icons.search, size: 20),
+                prefixIcon: const Icon(LucideIcons.search, size: 20),
                 filled: true,
                 fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
@@ -281,7 +282,7 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<ProjectSort>(
                 value: _sortBy,
-                icon: const Icon(Icons.sort, size: 20),
+                icon: const Icon(LucideIcons.arrowUpDown, size: 20),
                 onChanged: (ProjectSort? newValue) {
                   if (newValue != null) {
                     setState(() {

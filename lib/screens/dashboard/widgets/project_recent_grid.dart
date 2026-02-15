@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
@@ -121,7 +122,7 @@ class ProjectRecentGrid extends StatelessWidget {
               child: Column(
                 children: [
                   Icon(
-                    Icons.auto_stories_outlined,
+                    LucideIcons.bookOpen,
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
@@ -303,7 +304,7 @@ class _ProjectCardState extends State<ProjectCard> {
                       // Decorative Element
                       Center(
                         child: Icon(
-                          Icons.auto_stories,
+                          LucideIcons.bookOpen,
                           color: Colors.white.withValues(alpha: 0.15),
                           size: 64,
                         ),
@@ -335,7 +336,7 @@ class _ProjectCardState extends State<ProjectCard> {
                       Row(
                         children: [
                           Icon(
-                            Icons.edit_note,
+                            LucideIcons.penLine,
                             size: 14,
                             color: Theme.of(context).colorScheme.primary,
                           ),
@@ -367,13 +368,13 @@ class _ProjectCardState extends State<ProjectCard> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _buildCardAction(
-                            icon: Icons.settings_outlined,
+                            icon: LucideIcons.settings,
                             onTap: widget.onSettingsTap,
                             tooltip: 'Settings',
                           ),
                           const SizedBox(width: 8),
                           _buildCardAction(
-                            icon: Icons.open_in_new,
+                            icon: LucideIcons.externalLink,
                             onTap: widget.onTap,
                             tooltip: 'Open',
                             isPrimary: true,

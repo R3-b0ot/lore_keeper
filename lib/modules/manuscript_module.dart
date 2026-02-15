@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/chapter.dart';
@@ -431,7 +432,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       showRedo: true,
       customButtons: [
         QuillToolbarCustomButtonOptions(
-          icon: const Icon(Icons.search),
+          icon: const Icon(LucideIcons.search),
           onPressed: _openFindReplaceDialog,
         ),
       ],
@@ -602,8 +603,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                 ),
                 icon: Icon(
                   _grammarIssueCount == 0
-                      ? Icons.check_circle_outline
-                      : Icons.warning_amber_rounded,
+                      ? LucideIcons.circleCheck
+                      : LucideIcons.triangleAlert,
                   size: 16,
                   color: _grammarIssueCount == 0
                       ? cs.primary
@@ -625,7 +626,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                       },
               ),
               IconButton(
-                icon: const Icon(Icons.auto_fix_high, size: 16),
+                icon: const Icon(LucideIcons.wand, size: 16),
                 tooltip: 'Auto-correct with LanguageTool',
                 onPressed: _isCheckingGrammar ? null : _runAutoCorrect,
               ),
@@ -646,13 +647,13 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                 style: const TextStyle(fontSize: 12),
               ),
               IconButton(
-                icon: const Icon(Icons.remove, size: 16),
+                icon: const Icon(LucideIcons.minus, size: 16),
                 onPressed: () => setState(
                   () => _zoomFactor = (_zoomFactor - 0.1).clamp(0.5, 2.0),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.add, size: 16),
+                icon: const Icon(LucideIcons.plus, size: 16),
                 onPressed: () => setState(
                   () => _zoomFactor = (_zoomFactor + 0.1).clamp(0.5, 2.0),
                 ),
@@ -885,7 +886,7 @@ class _GrammarPanel extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(LucideIcons.x),
                 onPressed: onClose,
                 tooltip: 'Close',
               ),
@@ -943,7 +944,7 @@ class _GrammarPanel extends StatelessWidget {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.shield_outlined,
+                                    LucideIcons.shield,
                                     size: 16,
                                     color: cs.primary,
                                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Country data model matching the HTML JavaScript structure
 class Country {
@@ -322,29 +323,29 @@ class CountryData {
   static IconData getIconData(String iconName) {
     switch (iconName) {
       case 'anchor':
-        return Icons.anchor;
+        return LucideIcons.anchor;
       case 'sparkles':
-        return Icons.auto_awesome;
+        return LucideIcons.sparkles;
       case 'mountain':
-        return Icons.terrain;
+        return LucideIcons.mountain;
       case 'moon':
-        return Icons.nights_stay;
+        return LucideIcons.moon;
       case 'zap':
-        return Icons.flash_on;
+        return LucideIcons.bolt;
       case 'sword':
-        return Icons.gavel;
+        return LucideIcons.gavel;
       case 'castle':
-        return Icons.location_city;
+        return LucideIcons.building;
       case 'building':
-        return Icons.business;
+        return LucideIcons.building2;
       case 'ghost':
-        return Icons.face;
+        return LucideIcons.smile;
       case 'trees':
-        return Icons.forest;
+        return LucideIcons.trees;
       case 'compass':
-        return Icons.explore;
+        return LucideIcons.compass;
       default:
-        return Icons.place;
+        return LucideIcons.mapPin;
     }
   }
 }

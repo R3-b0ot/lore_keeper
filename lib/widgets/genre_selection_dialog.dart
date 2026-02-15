@@ -1,6 +1,7 @@
 // lib/widgets/genre_selection_dialog.dart
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 
 const Map<String, List<String>> _allGenres = {
@@ -107,7 +108,7 @@ class _GenreSelectionDialogState extends State<GenreSelectionDialog> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.4),
               blurRadius: 40,
               offset: const Offset(0, 20),
             ),
@@ -132,7 +133,7 @@ class _GenreSelectionDialogState extends State<GenreSelectionDialog> {
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(LucideIcons.x),
                     style: IconButton.styleFrom(
                       backgroundColor: onSurfaceColor.withValues(alpha: 0.05),
                     ),
@@ -286,7 +287,7 @@ class _GenreSelectionDialogState extends State<GenreSelectionDialog> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: onSurfaceColor.withValues(alpha: 0.1),
                       child: Icon(
-                        Icons.image_not_supported,
+                        LucideIcons.imageOff,
                         color: onSurfaceColor.withValues(alpha: 0.2),
                       ),
                     ),
@@ -300,7 +301,9 @@ class _GenreSelectionDialogState extends State<GenreSelectionDialog> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.8),
+                          Theme.of(
+                            context,
+                          ).colorScheme.scrim.withValues(alpha: 0.8),
                         ],
                         stops: const [0.5, 1.0],
                       ),
@@ -329,16 +332,16 @@ class _GenreSelectionDialogState extends State<GenreSelectionDialog> {
                       children: [
                         Text(
                           genre,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             letterSpacing: -0.2,
                             shadows: [
                               Shadow(
-                                color: Colors.black,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 blurRadius: 4,
-                                offset: Offset(0, 2),
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),

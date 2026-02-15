@@ -1,6 +1,7 @@
 // lib/widgets/create_project_dialog.dart (COMPLETE FILE)
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -96,7 +97,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.4),
               blurRadius: 40,
               offset: const Offset(0, 20),
             ),
@@ -121,7 +122,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Icons.auto_awesome,
+                        LucideIcons.sparkles,
                         color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       ),
@@ -155,7 +156,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(LucideIcons.x),
                       style: IconButton.styleFrom(
                         backgroundColor: onSurfaceColor.withValues(alpha: 0.05),
                       ),
@@ -177,7 +178,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                       _buildTextField(
                         controller: _titleController,
                         hint: 'Project Title (e.g. "Project Starlight")',
-                        icon: Icons.inventory_2_outlined,
+                        icon: LucideIcons.package,
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
@@ -187,13 +188,13 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                       _buildTextField(
                         controller: _bookTitleController,
                         hint: 'Official Book Title (Optional)',
-                        icon: Icons.menu_book_outlined,
+                        icon: LucideIcons.bookOpen,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _authorsController,
                         hint: 'Author(s)',
-                        icon: Icons.person_outline,
+                        icon: LucideIcons.user,
                       ),
                       const SizedBox(height: 24),
 
@@ -205,7 +206,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                       _buildTextField(
                         controller: _descriptionController,
                         hint: 'Brief world description...',
-                        icon: Icons.description_outlined,
+                        icon: LucideIcons.fileText,
                         maxLines: 3,
                       ),
 
@@ -333,7 +334,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
         child: Row(
           children: [
             Icon(
-              Icons.category_outlined,
+              LucideIcons.tag,
               size: 20,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -342,7 +343,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
               child: Text(_selectedGenre, style: const TextStyle(fontSize: 14)),
             ),
             Icon(
-              Icons.chevron_right,
+              LucideIcons.chevronRight,
               size: 20,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),

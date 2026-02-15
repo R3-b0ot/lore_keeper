@@ -1,6 +1,7 @@
 // lib/widgets/project_details_dialog.dart
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
@@ -90,16 +91,16 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               onPressed: () {
                 widget.project.delete();
                 Navigator.of(context).pop();
                 Navigator.of(this.context).pop(false);
               },
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -153,7 +154,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Icons.edit_note,
+                        LucideIcons.penLine,
                         color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       ),
@@ -187,7 +188,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(LucideIcons.x),
                       style: IconButton.styleFrom(
                         backgroundColor: onSurfaceColor.withValues(alpha: 0.05),
                       ),
@@ -209,7 +210,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                       _buildTextField(
                         controller: _titleController,
                         hint: 'Project Title',
-                        icon: Icons.inventory_2_outlined,
+                        icon: LucideIcons.package,
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
@@ -219,13 +220,13 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                       _buildTextField(
                         controller: _bookTitleController,
                         hint: 'Official Book Title',
-                        icon: Icons.menu_book_outlined,
+                        icon: LucideIcons.bookOpen,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _authorsController,
                         hint: 'Author(s)',
-                        icon: Icons.person_outline,
+                        icon: LucideIcons.user,
                       ),
                       const SizedBox(height: 24),
 
@@ -237,7 +238,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                       _buildTextField(
                         controller: _descriptionController,
                         hint: 'Short description...',
-                        icon: Icons.description_outlined,
+                        icon: LucideIcons.fileText,
                         maxLines: 3,
                       ),
 
@@ -248,15 +249,15 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
                         children: [
                           IconButton(
                             onPressed: _deleteProject,
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
+                            icon: Icon(
+                              LucideIcons.trash2,
+                              color: AppColors.getError(context),
                             ),
                             tooltip: 'Delete Project',
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.red.withValues(
-                                alpha: 0.1,
-                              ),
+                              backgroundColor: AppColors.getError(
+                                context,
+                              ).withValues(alpha: 0.1),
                               padding: const EdgeInsets.all(16),
                             ),
                           ),
@@ -364,7 +365,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
         child: Row(
           children: [
             Icon(
-              Icons.category_outlined,
+              LucideIcons.tag,
               size: 20,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -373,7 +374,7 @@ class _ProjectDetailsDialogState extends State<ProjectDetailsDialog> {
               child: Text(_selectedGenre, style: const TextStyle(fontSize: 14)),
             ),
             Icon(
-              Icons.chevron_right,
+              LucideIcons.chevronRight,
               size: 20,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
