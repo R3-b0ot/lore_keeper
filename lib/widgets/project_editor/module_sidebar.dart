@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
 
 /// Keeps project editor navigation cohesive while isolating layout concerns
 /// from the main screen implementation.
 class ModuleSidebar extends StatelessWidget {
   final bool isExpanded;
-  final List<Map<String, dynamic>> moduleItems;
+  final List<ProjectEditorModuleItem> moduleItems;
   final int selectedIndex;
   final ValueChanged<int> onModuleTapped;
   final VoidCallback onToggleExpanded;
@@ -80,7 +81,7 @@ class ModuleSidebar extends StatelessWidget {
           child: ListView.builder(
             itemCount: moduleItems.length,
             itemBuilder: (context, index) {
-              Map<String, dynamic> item = moduleItems[index];
+              final item = moduleItems[index];
               return _ModuleSidebarItem(
                 index: index,
                 item: item,
@@ -112,7 +113,7 @@ class ModuleSidebar extends StatelessWidget {
 
 class _ModuleSidebarItem extends StatelessWidget {
   final int index;
-  final Map<String, dynamic> item;
+  final ProjectEditorModuleItem item;
   final bool isSelected;
   final bool isExpanded;
   final ValueChanged<int> onTap;
@@ -149,25 +150,27 @@ class _ModuleSidebarItem extends StatelessWidget {
         child: isExpanded
             ? Row(
                 children: [
-                  Icon(item['icon'] as IconData, color: iconColor, size: 24),
+                  Icon(item.icon, color: iconColor, size: 24),
                   const SizedBox(width: 12),
-                  Text(
-                    item['label'].toString(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: textColor,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
               )
             : Tooltip(
-                message: item['label'],
+                message: item.label,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(item['icon'] as IconData, color: iconColor, size: 20),
-                  ],
+                  children: [Icon(item.icon, color: iconColor, size: 20)],
                 ),
               ),
       ),
@@ -205,12 +208,16 @@ class _FooterSidebarItem extends StatelessWidget {
                 children: [
                   Icon(icon, color: iconColor, size: 24),
                   const SizedBox(width: 12),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: iconColor,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: iconColor,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],

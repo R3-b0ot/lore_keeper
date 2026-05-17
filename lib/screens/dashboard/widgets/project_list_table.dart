@@ -73,47 +73,53 @@ class ProjectListTable extends StatelessWidget {
             return const SizedBox.shrink();
           }
 
-          return Table(
-            columnWidths: const {
-              0: FlexColumnWidth(40),
-              1: FlexColumnWidth(20),
-              2: FlexColumnWidth(20),
-              3: FlexColumnWidth(20),
-            },
-            children: [
-              // Header
-              TableRow(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withValues(alpha: 0.2)
-                      : Theme.of(context).colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.3),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withValues(alpha: 0.1),
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 720),
+              child: Table(
+                columnWidths: const {
+                  0: FlexColumnWidth(40),
+                  1: FlexColumnWidth(20),
+                  2: FlexColumnWidth(20),
+                  3: FlexColumnWidth(20),
+                },
+                children: [
+                  TableRow(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.2)
+                          : Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.3),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ),
+                    children: [
+                      _buildHeaderCell(context, 'Title'),
+                      _buildHeaderCell(context, 'Words'),
+                      _buildHeaderCell(context, 'Characters'),
+                      _buildHeaderCell(context, 'Modified'),
+                    ],
+                  ),
+                  ...projects.map(
+                    (project) => _buildRow(
+                      context,
+                      project.title,
+                      '${_getProjectWordCount(project)}',
+                      '${_getProjectCharacterCount(project)}',
+                      _formatDate(project.lastModified ?? project.createdAt),
                     ),
                   ),
-                ),
-                children: [
-                  _buildHeaderCell(context, 'Title'),
-                  _buildHeaderCell(context, 'Words'),
-                  _buildHeaderCell(context, 'Characters'),
-                  _buildHeaderCell(context, 'Modified'),
                 ],
               ),
-              // Rows
-              ...projects.map(
-                (project) => _buildRow(
-                  context,
-                  project.title,
-                  '${_getProjectWordCount(project)}',
-                  '${_getProjectCharacterCount(project)}',
-                  _formatDate(project.lastModified ?? project.createdAt),
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
@@ -170,6 +176,8 @@ class ProjectListTable extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: isPrimary
               ? Theme.of(context).colorScheme.onSurface

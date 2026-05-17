@@ -1,0 +1,898 @@
+[
+  {
+    "id": "TC001",
+    "title": "Create and open a new project from the dashboard",
+    "description": "Verifies a user can create a named project from the dashboard and land in the project editor with that project loaded.",
+    "category": "Project Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Aether Atlas\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to open the newly created project"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the project editor with an active project loaded"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Require a project name before saving a new project",
+    "description": "Verifies the user cannot save a new project with a blank name and can save successfully after providing a valid name.",
+    "category": "Project Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Stormglass\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the project editor with an active project loaded"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Reopen a recent project from the dashboard after returning from editor",
+    "description": "Verifies a created project appears in the recent list and can be reopened from the dashboard, loading into the editor.",
+    "category": "Project Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Iron Vale\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the recent project entry for \"Iron Vale\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the project editor with an active project loaded"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Add two characters, assign a trait, create a relationship, and save",
+    "description": "Verifies a user can create two characters, assign a trait, define a relationship between them, and save so both the characters and relationship are listed in the project.",
+    "category": "Character Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Relations Test\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Arin\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Bela\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Open the trait editor flow for character \"Arin\""
+      },
+      {
+        "type": "action",
+        "description": "Add a new trait"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Brave\" into the trait name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the trait"
+      },
+      {
+        "type": "action",
+        "description": "Return to the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Create a relationship between \"Arin\" and \"Bela\""
+      },
+      {
+        "type": "action",
+        "description": "Select a relationship label"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the project shows both characters and at least one relationship in the project listing"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Switch between two projects and keep the active project scoped correctly",
+    "description": "Verifies a user can create two projects and switching between them loads the correct active project in the editor.",
+    "category": "Project Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Project One\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Project Two\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the recent project entry for \"Project One\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the project editor with an active project loaded"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Switch projects and verify characters/relationships remain scoped to the correct project",
+    "description": "Verifies that after creating characters and a relationship in one project, switching to another project and back preserves the original project data and does not leak it across projects.",
+    "category": "Character Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Scoped A\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Kai\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Mira\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Create a relationship between \"Kai\" and \"Mira\""
+      },
+      {
+        "type": "action",
+        "description": "Select a relationship label"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Scoped B\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the recent project entry for \"Scoped A\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the project listing shows the previously created characters and relationship for the reopened project"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Recent projects list shows newly created project on dashboard",
+    "description": "Verifies that after creating a project, it is visible in the dashboard recent projects list for quick reopening.",
+    "category": "Project Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Silver Steppe\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the newly created project appears in the recent projects list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "View relationship chart for an active project and inspect a node",
+    "description": "Verifies the relationship chart renders the active project's characters and labeled connection and allows inspecting a node's connections.",
+    "category": "Relationship Visualization",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Chart Project\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Eli\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Rin\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Create a relationship between \"Eli\" and \"Rin\""
+      },
+      {
+        "type": "action",
+        "description": "Select a relationship label"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the relationship chart"
+      },
+      {
+        "type": "action",
+        "description": "Click the node for \"Eli\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the relationship graph displays both character nodes and a labeled connection for the active project"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC009",
+    "title": "Save a generated and edited map to the active project",
+    "description": "Ensures a user can generate terrain, edit rivers/lakes, save the map, and later see the same map reloaded for the active project.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "action",
+        "description": "Edit rivers on the map using the available map editing controls"
+      },
+      {
+        "type": "action",
+        "description": "Edit lakes on the map using the available map editing controls"
+      },
+      {
+        "type": "action",
+        "description": "Save the map to the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to leave the map view"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved map is loaded for the active project"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC010",
+    "title": "Prevent duplicate character names and allow rename to proceed",
+    "description": "Verifies a user sees a duplicate-name validation warning when attempting to save a character with an existing name, and can rename uniquely and save successfully.",
+    "category": "Character Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Duplicate Names\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Nova\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Nova\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Nova Prime\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the character list includes two distinct characters"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Map is scoped to the active project when switching projects",
+    "description": "Ensures map data is saved per project and does not appear when switching to a different project.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "action",
+        "description": "Edit rivers or lakes on the map using the available map editing controls"
+      },
+      {
+        "type": "action",
+        "description": "Save the map to the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Create a second new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a different unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the map view shows an empty state or requires generation for the new active project"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Show empty state on relationship chart when no relationships exist then update after adding one",
+    "description": "Verifies the relationship chart shows an empty state for a project with no relationships and updates to a graph after a relationship is added.",
+    "category": "Relationship Visualization",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new project"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Empty Chart\" into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the project"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Solo\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the relationship chart"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to return to the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new character"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Partner\" into the character name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the character"
+      },
+      {
+        "type": "action",
+        "description": "Create a relationship between \"Solo\" and \"Partner\""
+      },
+      {
+        "type": "action",
+        "description": "Select a relationship label"
+      },
+      {
+        "type": "action",
+        "description": "Save changes in the project editor"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the relationship chart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the relationship graph is displayed for the active project"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Map view handles a new project with no map by offering generation",
+    "description": "Ensures that when a project has no map yet, the map view presents an appropriate empty state and allows terrain generation to start mapping.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the map view indicates no map is present yet or that terrain needs to be generated"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generated map is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC014",
+    "title": "Prevent saving a map before terrain generation and recover by generating and saving",
+    "description": "Ensures attempting to save before generating terrain shows a prompt, and after generating and editing, the map can be saved successfully.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a prompt is shown indicating terrain must be generated before saving"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "action",
+        "description": "Edit rivers or lakes on the map using the available map editing controls"
+      },
+      {
+        "type": "action",
+        "description": "Save the map to the project"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved map is loaded for the active project"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC015",
+    "title": "Unsaved map edits are not persisted when leaving without saving",
+    "description": "Ensures leaving the map view without saving does not persist map edits for the project.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "action",
+        "description": "Edit rivers or lakes on the map using the available map editing controls"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to leave the map view without saving"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the map does not include the unsaved edits"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC016",
+    "title": "Generate terrain multiple times and save the latest result",
+    "description": "Ensures a user can regenerate terrain and save, and the latest generated map is what reloads afterward.",
+    "category": "Fantasy Map Generation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project from the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique project name into the project name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the new project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map"
+      },
+      {
+        "type": "action",
+        "description": "Generate terrain for the map again"
+      },
+      {
+        "type": "action",
+        "description": "Save the map to the project"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to leave the map view"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control to open the map view again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generated map is loaded for the active project"
+      }
+    ],
+    "priority": "Low"
+  }
+]

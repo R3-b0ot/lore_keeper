@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 /// Presents chapter selection with search and front matter support.
 class ChapterSelectionDialog extends StatefulWidget {
@@ -53,9 +54,8 @@ class _ChapterSelectionDialogState extends State<ChapterSelectionDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Select Chapter'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 400,
+      content: ConstrainedBox(
+        constraints: adaptiveDialogConstraints(context, maxWidth: 560),
         child: Column(
           children: [
             TextField(

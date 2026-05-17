@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/widgets/project_editor/module_sidebar.dart';
+import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
 
 /// Mobile layout for the project editor with drawer navigation.
 class ProjectEditorMobileLayout extends StatelessWidget {
@@ -17,7 +18,7 @@ class ProjectEditorMobileLayout extends StatelessWidget {
   final VoidCallback onFloatingAction;
   final Widget moduleContent;
   final Widget? historyPanel;
-  final List<Map<String, dynamic>> moduleItems;
+  final List<ProjectEditorModuleItem> moduleItems;
   final int selectedModuleIndex;
   final ValueChanged<int> onModuleTapped;
   final String projectTitle;

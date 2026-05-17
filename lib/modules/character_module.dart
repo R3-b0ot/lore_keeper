@@ -22,6 +22,7 @@ import 'package:lore_keeper/screens/trait_editor_screen.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/modern_country_selection_dialog.dart';
 import 'package:lore_keeper/widgets/native_crop_dialog.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 
 enum PanelType { bio, links, image, traits }
@@ -599,6 +600,8 @@ class CharacterModuleState extends State<CharacterModule>
                                 children: [
                                   Text(
                                     iter.iterationName.toUpperCase(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
@@ -613,6 +616,8 @@ class CharacterModuleState extends State<CharacterModule>
                                   ),
                                   Text(
                                     iter.name ?? 'Unnamed',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
@@ -965,40 +970,29 @@ class CharacterModuleState extends State<CharacterModule>
   Widget _buildBottomStatusBar() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    return Container(
-      height: 35,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+    return ResponsiveStatusBar(
       color: colorScheme.surfaceContainer,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // Saving Status Indicator
-          Row(
-            children: [
-              if (_isSaving)
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                Icon(
-                  LucideIcons.circleCheck,
-                  color: AppColors.getSuccess(context),
-                  size: 14,
-                ),
-              const SizedBox(width: 4),
-              Text(
-                _isSaving ? 'Saving...' : 'Saved',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
-              ),
-            ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      leading: const [],
+      trailing: [
+        if (_isSaving)
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Icon(
+            LucideIcons.circleCheck,
+            color: AppColors.getSuccess(context),
+            size: 14,
           ),
-        ],
-      ),
+        const SizedBox(width: 4),
+        Text(
+          _isSaving ? 'Saving...' : 'Saved',
+          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+        ),
+      ],
     );
   }
 
@@ -1189,129 +1183,154 @@ class _LinkCreationDialogState extends State<_LinkCreationDialog> {
       title: Text(isEditing ? 'Edit Link' : 'Add New Link'),
       content: Form(
         key: _formKey,
-        child: SizedBox(
-          width: 600, // Give the dialog a fixed width
-          height: 400, // and height
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Linked To (Character, Location, Etc)'),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      // Left Panel: Categories
-                      Expanded(
-                        flex: 2, // Give categories a bit less space
-                        child: SizedBox(
-                          width: 180,
-                          child: ListView(
-                            children:
-                                [
-                                      'Character',
-                                      'Location',
-                                      'Item',
-                                      'Organization',
-                                    ]
-                                    .map(
-                                      (type) => ListTile(
-                                        title: Text(type),
-                                        selected: _selectedEntityType == type,
-                                        onTap: () => setState(() {
-                                          _selectedEntityType = type;
-                                          _selectedEntityKey = null;
-                                          _selectedEntityIterationIndex = null;
-                                          _selectedRelationship = null;
-                                        }),
-                                      ),
-                                    )
-                                    .toList(),
-                          ),
-                        ),
+        child: ConstrainedBox(
+          constraints: adaptiveDialogConstraints(
+            context,
+            maxWidth: 600,
+            maxHeightFactor: 0.7,
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Linked To (Character, Location, Etc)'),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const VerticalDivider(width: 1),
-                      // Right Panel: Items
-                      Expanded(
-                        flex: 3, // Give items a bit more space
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: 'Search...',
-                                  prefixIcon: const Icon(
-                                    LucideIcons.search,
-                                    size: 20,
-                                  ),
-                                  isDense: true,
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(
-                                            LucideIcons.x,
-                                            size: 20,
+                      child: Flex(
+                        direction: compact ? Axis.vertical : Axis.horizontal,
+                        children: [
+                          Flexible(
+                            flex: compact ? 0 : 2,
+                            child: SizedBox(
+                              height: compact ? 116 : null,
+                              child: ListView(
+                                children:
+                                    [
+                                          'Character',
+                                          'Location',
+                                          'Item',
+                                          'Organization',
+                                        ]
+                                        .map(
+                                          (type) => ListTile(
+                                            title: Text(
+                                              type,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            selected:
+                                                _selectedEntityType == type,
+                                            onTap: () => setState(() {
+                                              _selectedEntityType = type;
+                                              _selectedEntityKey = null;
+                                              _selectedEntityIterationIndex =
+                                                  null;
+                                              _selectedRelationship = null;
+                                            }),
                                           ),
-                                          onPressed: () =>
-                                              _searchController.clear(),
                                         )
-                                      : null,
-                                ),
+                                        .toList(),
                               ),
                             ),
-                            const Divider(height: 1),
-                            Expanded(child: _buildEntityList()),
-                          ],
+                          ),
+                          if (compact)
+                            const Divider(height: 1)
+                          else
+                            const VerticalDivider(width: 1),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search...',
+                                      prefixIcon: const Icon(
+                                        LucideIcons.search,
+                                        size: 20,
+                                      ),
+                                      isDense: true,
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                LucideIcons.x,
+                                                size: 20,
+                                              ),
+                                              onPressed: () =>
+                                                  _searchController.clear(),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(child: _buildEntityList()),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Flex(
+                    direction: compact ? Axis.vertical : Axis.horizontal,
+                    crossAxisAlignment: compact
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _selectedRelationship,
+                          items: relationshipOptions
+                              .map(
+                                (r) =>
+                                    DropdownMenuItem(value: r, child: Text(r)),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedRelationship = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Relationship',
+                          ),
+                          validator: (value) => (value?.trim().isEmpty ?? true)
+                              ? 'Description cannot be empty'
+                              : null,
+                        ),
+                      ),
+                      SizedBox(
+                        width: compact ? 0 : 16,
+                        height: compact ? 12 : 0,
+                      ),
+                      Flexible(
+                        child: TextFormField(
+                          controller: _dateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Date of Link',
+                            hintText:
+                                'e.g., "Since childhood" or a specific date',
+                          ),
+                          onFieldSubmitted: (_) => _submit(),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedRelationship,
-                      items: relationshipOptions
-                          .map(
-                            (r) => DropdownMenuItem(value: r, child: Text(r)),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRelationship = value;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Relationship',
-                      ),
-                      validator: (value) => (value?.trim().isEmpty ?? true)
-                          ? 'Description cannot be empty'
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _dateController,
-                      decoration: const InputDecoration(
-                        labelText: 'Date of Link',
-                        hintText: 'e.g., "Since childhood" or a specific date',
-                      ),
-                      onFieldSubmitted: (_) => _submit(),
-                    ),
-                  ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),

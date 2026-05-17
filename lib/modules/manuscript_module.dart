@@ -18,13 +18,15 @@ import 'package:lore_keeper/widgets/index_page_widget.dart';
 import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
   final ValueChanged<String> onChapterSelected;
-  final Function(QuillController?) onControllerReady;
+  final ValueChanged<QuillController?> onControllerReady;
+  final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
 
   const ManuscriptModule({
     super.key,
@@ -33,6 +35,7 @@ class ManuscriptModule extends StatelessWidget {
     required this.chapterProvider,
     required this.onChapterSelected,
     required this.onControllerReady,
+    required this.onGrammarCheckReady,
   });
 
   @override
@@ -43,6 +46,7 @@ class ManuscriptModule extends StatelessWidget {
       chapterProvider: chapterProvider,
       onChapterSelected: onChapterSelected,
       onControllerReady: onControllerReady,
+      onGrammarCheckReady: onGrammarCheckReady,
     );
   }
 }
@@ -52,7 +56,8 @@ class ManuscriptEditor extends StatefulWidget {
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
   final ValueChanged<String> onChapterSelected;
-  final Function(QuillController?) onControllerReady;
+  final ValueChanged<QuillController?> onControllerReady;
+  final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
 
   const ManuscriptEditor({
     super.key,
@@ -61,36 +66,11 @@ class ManuscriptEditor extends StatefulWidget {
     required this.chapterProvider,
     required this.onChapterSelected,
     required this.onControllerReady,
+    required this.onGrammarCheckReady,
   });
 
   @override
   State<ManuscriptEditor> createState() => _ManuscriptEditorState();
-
-  // Public methods to access state methods
-
-  QuillController? getController() {
-    final state = key as GlobalKey<State<ManuscriptEditor>>?;
-    return (state?.currentState as _ManuscriptEditorState?)?.getController();
-  }
-
-  void loadNewChapterContent() {
-    final state = key as GlobalKey<State<ManuscriptEditor>>?;
-    (state?.currentState as _ManuscriptEditorState?)?.loadNewChapterContent();
-  }
-
-  Future<void> triggerGrammarCheck() {
-    final state = key as GlobalKey<State<ManuscriptEditor>>?;
-    return (state?.currentState as _ManuscriptEditorState?)
-            ?._runGrammarCheck() ??
-        Future.value();
-  }
-
-  Future<void> autoCorrect() {
-    final state = key as GlobalKey<State<ManuscriptEditor>>?;
-    return (state?.currentState as _ManuscriptEditorState?)
-            ?._runAutoCorrect() ??
-        Future.value();
-  }
 }
 
 enum _EditorType { title, manuscript }
@@ -119,6 +99,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   double _zoomFactor = 1.0;
   bool _isCheckingGrammar = false;
   int _grammarIssueCount = 0;
+  bool _hasExternalProofingConsent = false;
   Size? _lastEditorSize;
   final List<_GrammarIssue> _issues = [];
   bool _showGrammarPanel = false;
@@ -130,6 +111,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _controller = QuillController.basic();
     _titleController = QuillController.basic();
     widget.onControllerReady(_controller);
+    widget.onGrammarCheckReady(_runGrammarCheck);
     _titleFocusNode = FocusNode();
 
     _loadProject();
@@ -224,7 +206,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         (text.endsWith(' ') || text.endsWith('\t') || text.endsWith('\n'))) {
       _grammarDebounce?.cancel();
       _grammarDebounce = Timer(_grammarDelay, () {
-        if (!_isCheckingGrammar) {
+        if (_hasExternalProofingConsent && !_isCheckingGrammar) {
           _runGrammarCheck();
         }
       });
@@ -365,6 +347,16 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _titleAutosaveTimer?.cancel();
     _grammarDebounce?.cancel();
 
+    widget.onControllerReady(null);
+    widget.onGrammarCheckReady(null);
+
+    _titleController.removeListener(_onTitleChanged);
+    _controller.removeListener(_onTextChanged);
+    _titleFocusNode.removeListener(_onFocusChange);
+    _focusNode.removeListener(_onFocusChange);
+
+    _controller.document = Document();
+    _titleController.document = Document();
     _controller.dispose();
     _titleController.dispose();
     _focusNode.dispose();
@@ -405,37 +397,43 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     );
   }
 
-  Widget _buildTitleToolbar() => QuillSimpleToolbar(
-    controller: _titleController,
-    config: const QuillSimpleToolbarConfig(
-      showUndo: false,
-      showRedo: false,
-      showFontFamily: false,
-      showFontSize: false,
-      showHeaderStyle: false,
-      showInlineCode: false,
-      showClearFormat: false,
+  Widget _buildTitleToolbar() => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: QuillSimpleToolbar(
+      controller: _titleController,
+      config: const QuillSimpleToolbarConfig(
+        showUndo: false,
+        showRedo: false,
+        showFontFamily: false,
+        showFontSize: false,
+        showHeaderStyle: false,
+        showInlineCode: false,
+        showClearFormat: false,
+      ),
     ),
   );
 
-  Widget _buildMainToolbar() => QuillSimpleToolbar(
-    controller: _controller,
-    config: QuillSimpleToolbarConfig(
-      showBoldButton: true,
-      showItalicButton: true,
-      showUnderLineButton: true,
-      showStrikeThrough: true,
-      showAlignmentButtons: true,
-      showHeaderStyle: true,
-      showQuote: true,
-      showUndo: true,
-      showRedo: true,
-      customButtons: [
-        QuillToolbarCustomButtonOptions(
-          icon: const Icon(LucideIcons.search),
-          onPressed: _openFindReplaceDialog,
-        ),
-      ],
+  Widget _buildMainToolbar() => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: QuillSimpleToolbar(
+      controller: _controller,
+      config: QuillSimpleToolbarConfig(
+        showBoldButton: true,
+        showItalicButton: true,
+        showUnderLineButton: true,
+        showStrikeThrough: true,
+        showAlignmentButtons: true,
+        showHeaderStyle: true,
+        showQuote: true,
+        showUndo: true,
+        showRedo: true,
+        customButtons: [
+          QuillToolbarCustomButtonOptions(
+            icon: const Icon(LucideIcons.search),
+            onPressed: _openFindReplaceDialog,
+          ),
+        ],
+      ),
     ),
   );
 
@@ -444,17 +442,31 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       decoration: BoxDecoration(color: bgColor),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: _showGrammarPanel ? 7 : 10,
-              child: _buildEditorCard(),
-            ),
-            if (_showGrammarPanel) const SizedBox(width: 12),
-            if (_showGrammarPanel)
-              Expanded(flex: 3, child: _buildProofingCard()),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (_showGrammarPanel && constraints.maxWidth < 820) {
+              return Column(
+                children: [
+                  Expanded(flex: 3, child: _buildEditorCard()),
+                  const SizedBox(height: 12),
+                  Expanded(flex: 2, child: _buildProofingCard()),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: _showGrammarPanel ? 7 : 10,
+                  child: _buildEditorCard(),
+                ),
+                if (_showGrammarPanel) const SizedBox(width: 12),
+                if (_showGrammarPanel)
+                  Expanded(flex: 3, child: _buildProofingCard()),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -582,95 +594,73 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   Widget _buildBottomStatusBar() {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 35,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return ResponsiveStatusBar(
       color: cs.surfaceContainer,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Words: $_wordCount',
-                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
-              ),
-              const VerticalDivider(),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 28),
-                ),
-                icon: Icon(
-                  _grammarIssueCount == 0
-                      ? LucideIcons.circleCheck
-                      : LucideIcons.triangleAlert,
-                  size: 16,
-                  color: _grammarIssueCount == 0
-                      ? cs.primary
-                      : cs.errorContainer,
-                ),
-                label: Text(
-                  _isCheckingGrammar
-                      ? 'Checking…'
-                      : _grammarIssueCount == 0
-                      ? 'Grammar'
-                      : 'Issues: $_grammarIssueCount',
-                  style: TextStyle(fontSize: 12, color: cs.onSurface),
-                ),
-                onPressed: _isCheckingGrammar
-                    ? null
-                    : () {
-                        setState(() => _showGrammarPanel = true);
-                        _runGrammarCheck();
-                      },
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.wand, size: 16),
-                tooltip: 'Auto-correct with LanguageTool',
-                onPressed: _isCheckingGrammar ? null : _runAutoCorrect,
-              ),
-            ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: [
+        Text(
+          'Words: $_wordCount',
+          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+        ),
+        const SizedBox(width: 8),
+        TextButton.icon(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 28),
           ),
-          Row(
-            children: [
-              if (_isSaving)
-                const Padding(
-                  padding: EdgeInsets.only(right: 16),
-                  child: Text(
-                    'Saving...',
-                    style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
-                  ),
-                ),
-              Text(
-                'Zoom: ${(_zoomFactor * 100).toInt()}%',
-                style: const TextStyle(fontSize: 12),
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.minus, size: 16),
-                onPressed: () => setState(
-                  () => _zoomFactor = (_zoomFactor - 0.1).clamp(0.5, 2.0),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.plus, size: 16),
-                onPressed: () => setState(
-                  () => _zoomFactor = (_zoomFactor + 0.1).clamp(0.5, 2.0),
-                ),
-              ),
-            ],
+          icon: Icon(
+            _grammarIssueCount == 0
+                ? LucideIcons.circleCheck
+                : LucideIcons.triangleAlert,
+            size: 16,
+            color: _grammarIssueCount == 0 ? cs.primary : cs.errorContainer,
           ),
-        ],
-      ),
+          label: Text(
+            _isCheckingGrammar
+                ? 'Checking…'
+                : _grammarIssueCount == 0
+                ? 'Grammar'
+                : 'Issues: $_grammarIssueCount',
+            style: TextStyle(fontSize: 12, color: cs.onSurface),
+          ),
+          onPressed: _isCheckingGrammar
+              ? null
+              : () {
+                  setState(() => _showGrammarPanel = true);
+                  _runGrammarCheck();
+                },
+        ),
+        IconButton(
+          icon: const Icon(LucideIcons.wand, size: 16),
+          tooltip: 'Auto-correct with LanguageTool',
+          onPressed: _isCheckingGrammar ? null : _runAutoCorrect,
+        ),
+      ],
+      trailing: [
+        if (_isSaving)
+          const Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Text(
+              'Saving...',
+              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+            ),
+          ),
+        Text(
+          'Zoom: ${(_zoomFactor * 100).toInt()}%',
+          style: const TextStyle(fontSize: 12),
+        ),
+        IconButton(
+          icon: const Icon(LucideIcons.minus, size: 16),
+          onPressed: () =>
+              setState(() => _zoomFactor = (_zoomFactor - 0.1).clamp(0.5, 2.0)),
+        ),
+        IconButton(
+          icon: const Icon(LucideIcons.plus, size: 16),
+          onPressed: () =>
+              setState(() => _zoomFactor = (_zoomFactor + 0.1).clamp(0.5, 2.0)),
+        ),
+      ],
     );
-  }
-
-  QuillController? getController() {
-    return _controller;
-  }
-
-  void loadNewChapterContent() {
-    _loadContent();
   }
 
   void _buildIssues(List<WritingMistake> issues, String text) {
@@ -709,6 +699,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       if (!mounted) return;
       return;
     }
+    if (!await _ensureExternalProofingConsent()) return;
+
+    if (!mounted) return;
 
     setState(() {
       _isCheckingGrammar = true;
@@ -745,6 +738,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       if (!mounted) return;
       return;
     }
+    if (!await _ensureExternalProofingConsent()) return;
+
+    if (!mounted) return;
 
     setState(() => _isCheckingGrammar = true);
     try {
@@ -782,6 +778,35 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         setState(() => _isCheckingGrammar = false);
       }
     }
+  }
+
+  Future<bool> _ensureExternalProofingConsent() async {
+    if (_hasExternalProofingConsent) return true;
+    if (!mounted) return false;
+
+    final consent = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Use External Proofing?'),
+        content: const Text(
+          'Grammar and auto-correct send manuscript text to LanguageTool over HTTPS for analysis.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || consent != true) return false;
+    setState(() => _hasExternalProofingConsent = true);
+    return true;
   }
 
   List<_GrammarIssue> get _filteredIssues {

@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8080",
+  "executionArgs": {
+    "projectName": "lore_keeper",
+    "projectPath": "e:/lore_keeper",
+    "testIds": [],
+    "additionalInstruction": "Run all tests from plan",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-6YYYuqWYeAMr_DFz4itnEoq40-BoQwluxJcegJK4kFNwUKXjQOtQFK_mrU3QcjC5SvWyjBamV3x7iBUzWMZF8rUwmqDleRuW2hpPWNaO64ow_DcTxS42E0QZzYWnbkKfBas"
+    }
+  }
+}

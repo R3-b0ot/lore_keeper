@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/chapter.dart';
-import 'package:lore_keeper/models/map_model.dart';
 import 'package:lore_keeper/screens/project_editor_screen.dart';
 
 class DashboardSearchDelegate extends SearchDelegate {
@@ -118,10 +117,6 @@ class DashboardSearchDelegate extends SearchDelegate {
           ..._searchBox<Chapter>(context, 'chapters', (c) => c.title, (c) {
             // Navigate lookup needed for chapters
           }, icon: LucideIcons.fileText),
-
-          ..._searchBox<MapModel>(context, 'maps', (m) => m.name, (m) {
-            // Navigate lookup needed for maps
-          }, icon: LucideIcons.map),
 
           ..._searchCharacters(context),
         ],

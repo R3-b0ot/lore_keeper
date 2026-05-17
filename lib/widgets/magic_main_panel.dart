@@ -11,6 +11,7 @@ import 'package:lore_keeper/models/magic_node.dart';
 import 'package:lore_keeper/providers/magic_tree_provider.dart';
 import 'package:lore_keeper/utils/magic_icons.dart';
 import 'package:lore_keeper/utils/magic_type_specs.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 class MagicMainPanel extends StatelessWidget {
   final MagicTreeProvider provider;
@@ -69,39 +70,61 @@ class MagicMainPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < AppBreakpoints.medium;
+                final content = Column(
+                  children: [
+                    _ImageCard(
+                      node: node,
+                      provider: provider,
+                      panelColor: panelColor,
+                      panelLighter: panelLighter,
+                    ),
+                    const SizedBox(height: 16),
+                    _ContentCard(
+                      node: node,
+                      provider: provider,
+                      panelColor: panelColor,
+                      panelLighter: panelLighter,
+                    ),
+                  ],
+                );
+
+                if (compact) {
+                  return Column(
                     children: [
-                      _ImageCard(
-                        node: node,
-                        provider: provider,
-                        panelColor: panelColor,
-                        panelLighter: panelLighter,
-                      ),
+                      Expanded(child: content),
                       const SizedBox(height: 16),
-                      _ContentCard(
-                        node: node,
-                        provider: provider,
-                        panelColor: panelColor,
-                        panelLighter: panelLighter,
+                      SizedBox(
+                        height: 260,
+                        child: _AttributesCard(
+                          node: node,
+                          provider: provider,
+                          panelColor: panelColor,
+                          panelLighter: panelLighter,
+                        ),
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 1,
-                  child: _AttributesCard(
-                    node: node,
-                    provider: provider,
-                    panelColor: panelColor,
-                    panelLighter: panelLighter,
-                  ),
-                ),
-              ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(flex: 2, child: content),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 1,
+                      child: _AttributesCard(
+                        node: node,
+                        provider: provider,
+                        panelColor: panelColor,
+                        panelLighter: panelLighter,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -176,8 +199,10 @@ class _HeaderRow extends StatelessWidget {
       });
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         InkWell(
           onTap: () => _showIconPicker(context),
@@ -195,8 +220,8 @@ class _HeaderRow extends StatelessWidget {
             child: Icon(iconData, color: Color(node.colorValue), size: 28),
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 220, maxWidth: 640),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -738,29 +763,32 @@ class _ContentCardState extends State<_ContentCard> {
                 color: widget.panelLighter,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: QuillSimpleToolbar(
-                controller: _controller,
-                config: const QuillSimpleToolbarConfig(
-                  showFontFamily: false,
-                  showFontSize: false,
-                  showBoldButton: true,
-                  showItalicButton: true,
-                  showUnderLineButton: true,
-                  showStrikeThrough: true,
-                  showInlineCode: true,
-                  showClearFormat: true,
-                  showAlignmentButtons: true,
-                  showHeaderStyle: true,
-                  showListNumbers: true,
-                  showListBullets: true,
-                  showListCheck: true,
-                  showCodeBlock: true,
-                  showQuote: true,
-                  showIndent: true,
-                  showLink: true,
-                  showUndo: true,
-                  showRedo: true,
-                  showSearchButton: true,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: QuillSimpleToolbar(
+                  controller: _controller,
+                  config: const QuillSimpleToolbarConfig(
+                    showFontFamily: false,
+                    showFontSize: false,
+                    showBoldButton: true,
+                    showItalicButton: true,
+                    showUnderLineButton: true,
+                    showStrikeThrough: true,
+                    showInlineCode: true,
+                    showClearFormat: true,
+                    showAlignmentButtons: true,
+                    showHeaderStyle: true,
+                    showListNumbers: true,
+                    showListBullets: true,
+                    showListCheck: true,
+                    showCodeBlock: true,
+                    showQuote: true,
+                    showIndent: true,
+                    showLink: true,
+                    showUndo: true,
+                    showRedo: true,
+                    showSearchButton: true,
+                  ),
                 ),
               ),
             ),

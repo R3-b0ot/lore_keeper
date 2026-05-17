@@ -4,11 +4,15 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart'; // Import the new module
 import 'package:lore_keeper/modules/character_module.dart'; // Import the new module
-import 'package:lore_keeper/modules/map_module.dart'; // Import the new module
+import 'package:lore_keeper/modules/calendar_module.dart';
+import 'package:lore_keeper/modules/timeline_module.dart';
+
 import 'package:lore_keeper/modules/magic_module.dart';
+import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/providers/magic_tree_provider.dart';
+import 'package:lore_keeper/providers/timeline_event_provider.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/widgets/chapter_list_pane.dart';
 import 'package:lore_keeper/widgets/character_list_pane.dart';
@@ -20,11 +24,12 @@ import 'package:lore_keeper/widgets/project_editor/project_editor_actions.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_dialogs.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_desktop_layout.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_mobile_layout.dart';
+import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_module_resolver.dart';
 
 import 'package:lore_keeper/widgets/find_replace_dialog.dart';
-import 'package:lore_keeper/providers/map_list_provider.dart';
-import 'package:lore_keeper/widgets/map_list_pane.dart';
+
+import 'package:lore_keeper/widgets/calendar_list_pane.dart';
 import 'package:lore_keeper/widgets/magic_list_pane.dart';
 
 // -----------------------------------------------------------------
@@ -36,7 +41,6 @@ class ProjectEditorScreen extends StatefulWidget {
   final int? initialModuleIndex;
   final String? initialChapterKey;
   final String? initialCharacterKey;
-  final String? initialMapKey;
 
   const ProjectEditorScreen({
     super.key,
@@ -44,7 +48,6 @@ class ProjectEditorScreen extends StatefulWidget {
     this.initialModuleIndex,
     this.initialChapterKey,
     this.initialCharacterKey,
-    this.initialMapKey,
   });
 
   @override
@@ -55,15 +58,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
   String _selectedChapterKey = '';
   String _selectedCharacterKey = '';
-  String _selectedMapKey = '';
 
   bool _isSidebarExpanded = false;
+  bool _isListPaneCollapsed = false;
   bool _isHistoryPanelVisible = false;
-  bool _isMobile = false;
 
-  final GlobalKey<State<ManuscriptEditor>> _projectEditorKey = GlobalKey(
-    debugLabel: 'ManuscriptEditor',
-  );
+  QuillController? _manuscriptController;
+  Future<void> Function()? _runManuscriptGrammarCheck;
 
   final GlobalKey<CharacterModuleState> _characterModuleKey = GlobalKey(
     debugLabel: 'CharacterModule',
@@ -71,52 +72,43 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   ChapterListProvider? _chapterListProvider;
   CharacterListProvider? _characterListProvider;
-  MapListProvider? _mapListProvider;
+
   MagicTreeProvider? _magicTreeProvider;
+  CalendarTreeProvider? _calendarTreeProvider;
+  TimelineEventProvider? _timelineEventProvider;
   LinkProvider? _linkProvider;
 
-  final List<Map<String, dynamic>> _moduleItems = const <Map<String, dynamic>>[
-    {'label': 'Manuscript', 'icon': LucideIcons.bookOpen},
-    {'label': 'Characters', 'icon': LucideIcons.user}, // Changed icon
-    {'label': 'Maps', 'icon': LucideIcons.map},
-    {'label': 'Timeline', 'icon': LucideIcons.chartLine},
-    {'label': 'Calendar', 'icon': LucideIcons.calendar},
-    {'label': 'Encyclopedia', 'icon': LucideIcons.library},
-    {'label': 'Magic', 'icon': LucideIcons.sparkles},
-    {'label': 'Languages', 'icon': LucideIcons.languages},
-    {'label': 'Research', 'icon': LucideIcons.flaskConical}, // Changed icon
-    {'label': 'Locations', 'icon': LucideIcons.mapPin},
-    {'label': 'Arcs', 'icon': LucideIcons.chartLine},
-    {'label': 'Relationships', 'icon': LucideIcons.link}, // Changed icon
-    {'label': 'Items', 'icon': LucideIcons.tag},
-    {'label': 'Species', 'icon': LucideIcons.pawPrint},
-    {'label': 'Cultures', 'icon': LucideIcons.usersRound},
-    {'label': 'Philosophies', 'icon': LucideIcons.brain},
-    {'label': 'Religions', 'icon': LucideIcons.church},
-    {'label': 'Systems', 'icon': LucideIcons.chartNetwork},
+  final List<ProjectEditorModuleItem>
+  _moduleItems = const <ProjectEditorModuleItem>[
+    ProjectEditorModuleItem(label: 'Manuscript', icon: LucideIcons.bookOpen),
+    ProjectEditorModuleItem(label: 'Characters', icon: LucideIcons.user),
+    ProjectEditorModuleItem(label: 'Map', icon: LucideIcons.map),
+    ProjectEditorModuleItem(label: 'Timeline', icon: LucideIcons.chartLine),
+    ProjectEditorModuleItem(label: 'Calendar', icon: LucideIcons.calendar),
+    ProjectEditorModuleItem(label: 'Languages', icon: LucideIcons.languages),
+    ProjectEditorModuleItem(label: 'Magic', icon: LucideIcons.sparkles),
+    ProjectEditorModuleItem(label: 'Research', icon: LucideIcons.flaskConical),
+    ProjectEditorModuleItem(label: 'Arcs', icon: LucideIcons.chartLine),
+    ProjectEditorModuleItem(label: 'Relationships', icon: LucideIcons.link),
+    ProjectEditorModuleItem(label: 'Items', icon: LucideIcons.tag),
+    ProjectEditorModuleItem(label: 'Species', icon: LucideIcons.pawPrint),
+    ProjectEditorModuleItem(label: 'Cultures', icon: LucideIcons.usersRound),
+    ProjectEditorModuleItem(label: 'Philosophies', icon: LucideIcons.brain),
+    ProjectEditorModuleItem(label: 'Religions', icon: LucideIcons.church),
+    ProjectEditorModuleItem(label: 'Systems', icon: LucideIcons.chartNetwork),
   ];
 
   @override
   void initState() {
     super.initState();
-    _moduleIndex = widget.initialModuleIndex ?? 0;
+    _moduleIndex = _normalizeModuleIndex(widget.initialModuleIndex);
     _selectedChapterKey = widget.initialChapterKey ?? '';
     _selectedCharacterKey = widget.initialCharacterKey ?? '';
-    _selectedMapKey = widget.initialMapKey ?? '';
 
     _chapterListProvider = ChapterListProvider(widget.project.key);
     _characterListProvider = CharacterListProvider(widget.project.key);
     _linkProvider = LinkProvider();
     _chapterListProvider!.addListener(() {
-      // Also check for initial character selection here, in case chapters load first
-      if (mounted &&
-          _characterListProvider!.isInitialized &&
-          _characterListProvider!.characters.isNotEmpty &&
-          _selectedCharacterKey.isEmpty) {
-        _onCharacterSelected(
-          _characterListProvider!.characters.first.key.toString(),
-        );
-      }
       if (mounted &&
           _chapterListProvider!.isInitialized &&
           _chapterListProvider!.chapters.isNotEmpty) {
@@ -132,36 +124,32 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       }
     });
 
-    _characterListProvider!.addListener(() {
-      if (mounted &&
-          _characterListProvider!.isInitialized &&
-          _characterListProvider!.characters.isNotEmpty) {
-        if (_selectedCharacterKey.isEmpty) {
-          setState(
-            () => _selectedCharacterKey = _characterListProvider!
-                .characters
-                .first
-                .key
-                .toString(),
-          );
-        }
-      }
-    });
-
-    _mapListProvider = MapListProvider(widget.project.key);
-    _mapListProvider!.addListener(() {
-      if (mounted &&
-          _mapListProvider!.isInitialized &&
-          _mapListProvider!.maps.isNotEmpty) {
-        if (_selectedMapKey.isEmpty) {
-          setState(
-            () => _selectedMapKey = _mapListProvider!.maps.first.key.toString(),
-          );
-        }
-      }
-    });
+    _characterListProvider!.addListener(_selectInitialCharacterIfNeeded);
 
     _magicTreeProvider = MagicTreeProvider(widget.project.key);
+    _calendarTreeProvider = CalendarTreeProvider(widget.project.key);
+    _timelineEventProvider = TimelineEventProvider(widget.project.key);
+  }
+
+  int _normalizeModuleIndex(int? index) {
+    if (index == null) return 0;
+    if (index < 0 || index >= _moduleItems.length) return 0;
+    return index;
+  }
+
+  void _selectInitialCharacterIfNeeded() {
+    final provider = _characterListProvider;
+    if (!mounted ||
+        provider == null ||
+        !provider.isInitialized ||
+        provider.characters.isEmpty ||
+        _selectedCharacterKey.isNotEmpty) {
+      return;
+    }
+
+    setState(() {
+      _selectedCharacterKey = provider.characters.first.key.toString();
+    });
   }
 
   void _toggleSidebar() {
@@ -171,15 +159,27 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   void _onModuleTapped(int index) {
+    if (_moduleIndex == index || index < 0 || index >= _moduleItems.length) {
+      return;
+    }
     setState(() {
       _moduleIndex = index;
+      _isListPaneCollapsed = false;
     });
   }
 
-  void _onChapterSelected(String key, {bool closeDrawer = false}) {
+  void _toggleListPane() {
     setState(() {
-      _selectedChapterKey = key;
+      _isListPaneCollapsed = !_isListPaneCollapsed;
     });
+  }
+
+  void _onChapterSelected(String key) {
+    if (_selectedChapterKey != key) {
+      setState(() {
+        _selectedChapterKey = key;
+      });
+    }
 
     // If the key is cleared, it means no chapters are left.
     if (key.isEmpty) {
@@ -188,6 +188,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   void _onCharacterSelected(String key) {
+    if (_selectedCharacterKey == key) return;
     setState(() {
       _selectedCharacterKey = key;
     });
@@ -209,19 +210,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   void _handleDictionaryClose() {
-    // After the dictionary is closed, trigger a grammar check.
-    final manuscriptEditor =
-        _projectEditorKey.currentWidget as ManuscriptEditor?;
-    manuscriptEditor?.triggerGrammarCheck();
+    _runManuscriptGrammarCheck?.call();
   }
 
   void _openFindReplaceDialog() {
     // Only allow for manuscript module
     if (_moduleIndex != 0) return;
-    // Get the controller from the manuscript module
-    final manuscriptEditor =
-        _projectEditorKey.currentWidget as ManuscriptEditor?;
-    final controller = manuscriptEditor?.getController();
+    final controller = _manuscriptController;
     if (controller != null) {
       // Unfocus any focused widget to avoid keyboard event conflicts
       FocusScope.of(context).unfocus();
@@ -243,18 +238,17 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     setState(() {
       _selectedChapterKey = newKey;
     });
-    // FIX: No explicit cast needed. The extension method can be called directly on the State object.
-    final manuscriptEditor =
-        _projectEditorKey.currentWidget as ManuscriptEditor?;
-    manuscriptEditor?.loadNewChapterContent();
   }
 
   @override
   void dispose() {
     _chapterListProvider?.dispose();
     _characterListProvider?.dispose();
+
     _linkProvider?.dispose();
     _magicTreeProvider?.dispose();
+    _calendarTreeProvider?.dispose();
+    _timelineEventProvider?.dispose();
     super.dispose();
   }
 
@@ -287,34 +281,35 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
     if (result == null || !mounted) return;
 
-    if (result['action'] == 'confirm') {
-      final newName = result['name'] as String;
-      await _characterListProvider!.updateCharacterName(characterKey, newName);
-    } else if (result['action'] == 'delete') {
-      await _characterListProvider!.deleteCharacter(characterKey);
-      if (mounted) {
-        // After deletion, the provider reloads its list. We can now select the new first character.
-        if (_characterListProvider!.characters.isNotEmpty) {
-          _onCharacterSelected(
-            _characterListProvider!.characters.first.key.toString(),
-          );
-        } else {
-          _onCharacterSelected(''); // Clear selection if no characters are left
+    switch (result) {
+      case ConfirmCharacterName(:final name):
+        await _characterListProvider!.updateCharacterName(characterKey, name);
+      case DeleteCharacter():
+        await _characterListProvider!.deleteCharacter(characterKey);
+        if (mounted) {
+          // After deletion, the provider reloads its list. We can now select the new first character.
+          if (_characterListProvider!.characters.isNotEmpty) {
+            _onCharacterSelected(
+              _characterListProvider!.characters.first.key.toString(),
+            );
+          } else {
+            _onCharacterSelected(
+              '',
+            ); // Clear selection if no characters are left
+          }
         }
-      }
     }
   }
 
   // Helper method to build the second column based on the selected module
-  Widget _buildSecondColumn() {
+  Widget _buildSecondColumn({required bool isMobile}) {
     if (_moduleIndex == 0) {
       return ChapterListPane(
         chapterProvider: _chapterListProvider!,
         selectedChapterKey: _selectedChapterKey,
-        onChapterSelected: (key, {bool closeDrawer = false}) =>
-            _onChapterSelected(key),
+        onChapterSelected: _onChapterSelected,
         onChapterCreated: (key) => _onChapterCreated(key),
-        isMobile: _isMobile,
+        isMobile: isMobile,
       );
     } else if (_moduleIndex == 1) {
       return CharacterListPane(
@@ -323,19 +318,17 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onCharacterSelected: _onCharacterSelected,
         onCharacterCreated: _onCharacterCreated,
         onCharacterEdit: _showEditNameDialog,
-        isMobile: _isMobile,
+        isMobile: isMobile,
       );
-    } else if (_moduleIndex == 2) {
-      return MapListPane(
-        mapProvider: _mapListProvider!,
-        selectedMapKey: _selectedMapKey,
-        onMapSelected: (key) => setState(() => _selectedMapKey = key),
-        isMobile: _isMobile,
+    } else if (_moduleIndex == 4) {
+      return CalendarListPane(
+        calendarProvider: _calendarTreeProvider!,
+        isMobile: isMobile,
       );
     } else if (_moduleIndex == 6) {
       return MagicListPane(
         magicProvider: _magicTreeProvider!,
-        isMobile: _isMobile,
+        isMobile: isMobile,
       );
     }
     return const SizedBox.shrink();
@@ -343,8 +336,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   Widget _buildModuleContent() {
     // Get the label for the current module from the _moduleItems list
-    final String currentModuleName =
-        _moduleItems[_moduleIndex]['label'] as String;
+    final currentModuleName = _moduleItems[_moduleIndex].label;
 
     if (_moduleIndex == 0) {
       return _selectedChapterKey.isEmpty
@@ -354,10 +346,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               selectedChapterKey: _selectedChapterKey,
               chapterProvider: _chapterListProvider!,
               onChapterSelected: _onChapterSelected,
-              onControllerReady: (QuillController? controller) {
-                // Controller ready
+              onControllerReady: (controller) {
+                _manuscriptController = controller;
               },
-              key: _projectEditorKey,
+              onGrammarCheckReady: (grammarCheck) {
+                _runManuscriptGrammarCheck = grammarCheck;
+              },
             );
     } else if (_moduleIndex == 1) {
       return _selectedCharacterKey.isEmpty
@@ -368,13 +362,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               key: _characterModuleKey, // Assign the key here
               onReload: _handleRevert,
             );
-    } else if (_moduleIndex == 2) {
-      return MapModule(
-        projectId: widget.project.key,
-        mapProvider: _mapListProvider!,
-        selectedMapKey: _selectedMapKey,
-        onReload: _handleRevert,
+    } else if (_moduleIndex == 3) {
+      return TimelineModule(
+        calendarProvider: _calendarTreeProvider!,
+        eventProvider: _timelineEventProvider!,
       );
+    } else if (_moduleIndex == 4) {
+      return CalendarModule(calendarProvider: _calendarTreeProvider!);
     } else if (_moduleIndex == 6) {
       return MagicModule(magicProvider: _magicTreeProvider!);
     }
@@ -426,18 +420,24 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   Widget? _buildHistoryPanel() {
     if (_moduleIndex == 0) {
+      final targetKey = _selectedChapterKey.startsWith('front_matter_')
+          ? _selectedChapterKey
+          : int.tryParse(_selectedChapterKey);
+      if (targetKey == null) return null;
+
       return HistoryPanel(
-        targetKey: _selectedChapterKey.startsWith('front_matter_')
-            ? _selectedChapterKey
-            : int.tryParse(_selectedChapterKey),
+        targetKey: targetKey,
         targetType: 'Chapter',
         onClose: _toggleHistoryPanel,
         onReverted: _handleRevert,
       );
     }
     if (_moduleIndex == 1) {
+      final targetKey = int.tryParse(_selectedCharacterKey);
+      if (targetKey == null) return null;
+
       return HistoryPanel(
-        targetKey: int.tryParse(_selectedCharacterKey),
+        targetKey: targetKey,
         targetType: 'Character',
         onClose: _toggleHistoryPanel,
         onReverted: _handleRevert,
@@ -450,17 +450,16 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        _isMobile = constraints.maxWidth < 600;
+        final isMobile = constraints.maxWidth < 600;
         final moduleResolver = ProjectEditorModuleResolver(
           moduleItems: _moduleItems,
           moduleIndex: _moduleIndex,
-          buildSecondColumn: _buildSecondColumn,
+          buildSecondColumn: () => _buildSecondColumn(isMobile: isMobile),
           buildModuleContent: _buildModuleContent,
         );
         final moduleResolution = moduleResolver.resolve();
         final actions = ProjectEditorActions(
           moduleIndex: _moduleIndex,
-          isHistoryVisible: _isHistoryPanelVisible,
           onShowSelectionDialog: _showSelectionDialog,
           onToggleHistoryPanel: _toggleHistoryPanel,
           onOpenFindReplace: _openFindReplaceDialog,
@@ -472,7 +471,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
             ? _buildHistoryPanel()
             : null;
 
-        if (_isMobile) {
+        if (isMobile) {
           return ProjectEditorMobileLayout(
             currentModuleName: moduleResolver.currentModuleName,
             showModuleActions: actions.supportsHistory,
@@ -497,10 +496,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
         return ProjectEditorDesktopLayout(
           isSidebarExpanded: _isSidebarExpanded,
+          isListPaneCollapsed: _isListPaneCollapsed,
           moduleItems: _moduleItems,
           selectedModuleIndex: _moduleIndex,
           onModuleTapped: _onModuleTapped,
           onToggleSidebar: _toggleSidebar,
+          onToggleListPane: _toggleListPane,
           projectTitle: widget.project.title,
           onGoHome: _goToMainScreen,
           onOpenSettings: _openSettings,
@@ -514,7 +515,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           onFindReplacePressed: actions.showFindReplace
               ? actions.onOpenFindReplace
               : null,
-          isFindReplaceAvailable: actions.showFindReplace,
         );
       },
     );

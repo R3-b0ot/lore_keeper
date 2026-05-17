@@ -8,6 +8,7 @@ import 'widgets/project_list_table.dart';
 import 'package:lore_keeper/screens/dashboard/project_browser_screen.dart';
 import 'package:lore_keeper/screens/project_editor_screen.dart';
 import 'package:lore_keeper/models/project.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -113,41 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Quick Actions
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ActionCard(
-                                      icon: '✨',
-                                      title: 'New Project',
-                                      description:
-                                          'Start a fresh manuscript with world-building templates.',
-                                      onTap: () =>
-                                          _showCreateProjectDialog(context),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: ActionCard(
-                                      icon: '📚',
-                                      title: 'Project Browser',
-                                      description:
-                                          'Explore and manage your library of created settings.',
-                                      onTap: () => _openProjectBrowser(context),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: ActionCard(
-                                      icon: '📥',
-                                      title: 'Import',
-                                      description:
-                                          'Bring in files from Word, Scrivener, or plain text.',
-                                      onTap: () {},
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              _buildQuickActions(context),
 
                               const SizedBox(height: 64),
 
@@ -161,17 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               const SizedBox(height: 64),
 
                               // Project Global Repository
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  _buildSectionHeader(
-                                    '📚',
-                                    'Project Repository',
-                                  ),
-                                ],
-                              ),
+                              _buildSectionHeader('📚', 'Project Repository'),
                               const ProjectListTable(),
 
                               const SizedBox(height: 100), // Bottom padding
@@ -205,10 +162,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSectionHeader(String icon, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
           Text(
             title,
             style: TextStyle(
@@ -219,6 +178,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    final cards = [
+      ActionCard(
+        icon: '✨',
+        title: 'New Project',
+        description: 'Start a fresh manuscript with world-building templates.',
+        onTap: () => _showCreateProjectDialog(context),
+      ),
+      ActionCard(
+        icon: '📚',
+        title: 'Project Browser',
+        description: 'Explore and manage your library of created settings.',
+        onTap: () => _openProjectBrowser(context),
+      ),
+      ActionCard(
+        icon: '📥',
+        title: 'Import',
+        description: 'Bring in files from Word, Scrivener, or plain text.',
+        onTap: () {},
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.isCompact
+            ? 1
+            : constraints.maxWidth < AppBreakpoints.wide
+            ? 2
+            : 3;
+        final spacing = columns == 1 ? 0.0 : 20.0;
+        final cardWidth =
+            (constraints.maxWidth - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 20,
+          children: [
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
+          ],
+        );
+      },
     );
   }
 }

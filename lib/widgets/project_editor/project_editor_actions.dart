@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 /// Encapsulates module-specific actions for the project editor UI.
 class ProjectEditorActions {
   final int moduleIndex;
-  final bool isHistoryVisible;
   final VoidCallback onShowSelectionDialog;
   final VoidCallback onToggleHistoryPanel;
   final VoidCallback onOpenFindReplace;
@@ -13,7 +12,6 @@ class ProjectEditorActions {
 
   const ProjectEditorActions({
     required this.moduleIndex,
-    required this.isHistoryVisible,
     required this.onShowSelectionDialog,
     required this.onToggleHistoryPanel,
     required this.onOpenFindReplace,

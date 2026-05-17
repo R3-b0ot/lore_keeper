@@ -156,13 +156,23 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+        OverflowBar(
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            TextButton(onPressed: _performFind, child: const Text('Find')),
+            TextButton(
+              onPressed: _performReplace,
+              child: const Text('Replace'),
+            ),
+            FilledButton(
+              onPressed: _replaceAll,
+              child: const Text('Replace All'),
+            ),
+          ],
         ),
-        TextButton(onPressed: _performFind, child: const Text('Find')),
-        TextButton(onPressed: _performReplace, child: const Text('Replace')),
-        FilledButton(onPressed: _replaceAll, child: const Text('Replace All')),
       ],
     );
   }

@@ -18,6 +18,7 @@ import 'package:lore_keeper/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
 import 'package:lore_keeper/widgets/dictionary_manager_dialog.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 // -------------------------------------------------------------
 // --- Settings Dialog Widget
@@ -713,22 +714,18 @@ class _SettingsDialogState extends State<SettingsDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          entry.key,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (infoWidgets != null &&
-                            infoWidgets.containsKey(entry.key)) ...[
-                          const SizedBox(width: 8),
-                          infoWidgets[entry.key]!,
-                        ],
-                      ],
+                    Text(
+                      entry.key,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    if (infoWidgets != null &&
+                        infoWidgets.containsKey(entry.key))
+                      infoWidgets[entry.key]!,
                     Text(
                       entry.value,
                       style: Theme.of(context).textTheme.bodyLarge,
@@ -792,7 +789,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     return AlertDialog(
       title: Text(
         widget.project != null
@@ -800,15 +796,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
             : 'Application Settings',
       ),
       contentPadding: const EdgeInsets.all(0),
-      content: SizedBox(
-        width: screenWidth * 0.8,
-        height: screenHeight * 0.7,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left column: Category List
-            SizedBox(
-              width: screenWidth > 600 ? 200 : 150,
+      content: ConstrainedBox(
+        constraints: adaptiveDialogConstraints(context, maxWidth: 920),
+        // NOTE: LayoutBuilder cannot be used here because AlertDialog
+        // may be asked for intrinsic dimensions in debug/layout passes.
+        // This breaks with: "LayoutBuilder does not support returning intrinsic dimensions".
+        child: Builder(
+          builder: (context) {
+            final compact = screenWidth < 640;
+            final categoryList = SizedBox(
+              width: compact
+                  ? double.infinity
+                  : (screenWidth > 600 ? 200 : 150),
+              height: compact ? 160 : null,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 itemCount: _categories.length,
@@ -817,6 +817,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   return ListTile(
                     title: Text(
                       _categories[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: isSelected
                             ? FontWeight.bold
@@ -835,13 +837,31 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   );
                 },
               ),
-            ),
-            const VerticalDivider(width: 1),
-            // Right column: Settings Content
-            Expanded(child: _buildSettingsContent()),
-          ],
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  categoryList,
+                  const Divider(height: 1),
+                  Expanded(child: _buildSettingsContent()),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                categoryList,
+                const VerticalDivider(width: 1),
+                Expanded(child: _buildSettingsContent()),
+              ],
+            );
+          },
         ),
       ),
+
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

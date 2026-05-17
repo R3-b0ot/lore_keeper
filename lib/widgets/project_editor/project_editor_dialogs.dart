@@ -6,6 +6,34 @@ import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
 
+/// Describes the confirmed action from the character edit dialog.
+sealed class CharacterDialogResult {
+  const CharacterDialogResult();
+}
+
+/// Requests that the selected character be renamed to [name].
+class ConfirmCharacterName extends CharacterDialogResult {
+  final String name;
+
+  const ConfirmCharacterName(this.name);
+}
+
+/// Requests that the selected character be deleted.
+class DeleteCharacter extends CharacterDialogResult {
+  const DeleteCharacter();
+}
+
+/// Protects persisted character names from empty or malformed input.
+String? validateCharacterName(String? value) {
+  final name = value?.trim() ?? '';
+  if (name.isEmpty) return 'Name cannot be empty';
+  if (name.length > 120) return 'Name is too long';
+  if (RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]').hasMatch(name)) {
+    return 'Name contains unsupported characters';
+  }
+  return null;
+}
+
 /// Presents the settings dialog for the project editor.
 Future<void> showProjectSettingsDialog(
   BuildContext context, {
@@ -34,99 +62,99 @@ Future<String?> showCreateCharacterDialog(BuildContext context) async {
   final nameController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
-  final result = await showDialog<String>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Create New Character'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: nameController,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Character Name'),
-            validator: (value) =>
-                (value?.trim().isEmpty ?? true) ? 'Name cannot be empty' : null,
+  try {
+    return await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Create New Character'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Character Name'),
+              validator: validateCharacterName,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop(nameController.text.trim());
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      );
-    },
-  );
-
-  nameController.dispose();
-  return result;
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(context).pop(nameController.text.trim());
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+  } finally {
+    nameController.dispose();
+  }
 }
 
 /// Prompts to edit a character name or delete it.
-Future<Map<String, dynamic>?> showEditCharacterDialog(
+Future<CharacterDialogResult?> showEditCharacterDialog(
   BuildContext context, {
   required String initialName,
 }) async {
   final nameDialogController = TextEditingController(text: initialName);
   final formKey = GlobalKey<FormState>();
 
-  final result = await showDialog<Map<String, dynamic>>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Edit Character'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: nameDialogController,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Character Name'),
-            validator: (value) =>
-                (value?.trim().isEmpty ?? true) ? 'Name cannot be empty' : null,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop({'action': 'delete'}),
-            child: Text(
-              'Delete Character',
-              style: TextStyle(color: AppColors.getError(context)),
+  try {
+    return await showDialog<CharacterDialogResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Character'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: nameDialogController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Character Name'),
+              validator: validateCharacterName,
             ),
           ),
-          const Spacer(),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop({
-                  'action': 'confirm',
-                  'name': nameDialogController.text.trim(),
-                });
-              }
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      );
-    },
-  );
-
-  nameDialogController.dispose();
-  return result;
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(const DeleteCharacter()),
+              child: Text(
+                'Delete Character',
+                style: TextStyle(color: AppColors.getError(context)),
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(
+                    context,
+                  ).pop(ConfirmCharacterName(nameDialogController.text.trim()));
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  } finally {
+    nameDialogController.dispose();
+  }
 }
 
 /// Opens the chapter title dialog for chapter creation or renaming.

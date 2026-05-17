@@ -1,53 +1,52 @@
-# Map Creator Enhancement TODO
+# TODO — Lore Keeper Theme Refactor (Modular Theme Architecture)
 
-## Current Status
-- Basic grid-based map editor with ocean base, grid, and objects layers
-- Tools: select, brush, stamp, line, shape, text, note
-- Biome system with colors for rendering
+## Step 1 — Scaffold new theme architecture
+- [ ] Create `lib/core/theme/app_theme.dart` (new composition layer)
+- [ ] Create `lib/core/theme/theme_controller.dart` (runtime switching + caching + persistence hooks)
+- [ ] Create `lib/core/theme/theme_registry.dart` (ThemePack registry + metadata)
+- [ ] Create design token files under `lib/core/theme/tokens/`
+  - [ ] colors.dart
+  - [ ] spacing.dart
+  - [ ] typography.dart
+  - [ ] radius.dart
+  - [ ] shadows.dart
+  - [ ] motion.dart
+- [ ] Create ThemeExtension files under `lib/core/theme/theme_extensions/`
+  - [ ] lore_card_theme_extension.dart
+  - [ ] journal_theme_extension.dart
+  - [ ] codex_panel_theme_extension.dart
+  - [ ] timeline_theme_extension.dart
+  - [ ] rarity_theme_extension.dart
+  - [ ] worldbuilding_theme_extension.dart
 
-## Planned Enhancements
+## Step 2 — Add “minimal” pack that reproduces current visuals
+- [ ] Create `lib/core/theme/themes/minimal/minimal_theme_pack.dart`
+- [ ] Create `lib/core/theme/themes/minimal/minimal_theme_light.dart`
+- [ ] Create `lib/core/theme/themes/minimal/minimal_theme_dark.dart`
+- [ ] Ensure output matches current `lib/theme/app_theme.dart` + `lib/theme/app_colors.dart` (AA/AAA)
 
-### 1. Add Land Layers
-- [ ] Add elevation layer for height mapping
-- [ ] Add biome layer for terrain types (grassland, forest, mountain, etc.)
-- [ ] Add terrain layer for natural features
-- [ ] Add settlements layer for man-made elements
+## Step 3 — Wire controller into app + persistence
+- [ ] Update `lib/main.dart` to use ThemeController-produced ThemeData
+- [ ] Update `lib/providers/theme_provider.dart` or replace it with controller persistence
+- [ ] Ensure existing AA/AAA and system/light/dark behavior stays identical
 
-### 2. Enhance Brush Tool
-- [ ] Implement biome brush functionality
-- [ ] Add brush size and opacity controls
-- [ ] Support different brush shapes (circle, square)
-- [ ] Add brush presets for common biomes
+## Step 4 — Create themed components (start with card/button/textfield stack)
+- [ ] Implement `lib/core/theme/themed_widgets/lore_button.dart`
+- [ ] Implement `lib/core/theme/themed_widgets/lore_card.dart`
+- [ ] Implement `lib/core/theme/themed_widgets/lore_textfield.dart`
+- [ ] Add themed background component if needed for key screens
 
-### 3. Enhance Stamp Tool
-- [ ] Add town stamp with distinct texture
-- [ ] Add mountain stamp with natural texture
-- [ ] Add castle/fortress stamps
-- [ ] Add forest grove stamps
-- [ ] Support stamp rotation and scaling
+## Step 5 — Migration rollout (no visual regressions)
+- [ ] Identify first set of widgets using direct styling (cards/buttons/textfields)
+- [ ] Replace with themed components and ThemeExtensions
+- [ ] Keep legacy style code until each component is migrated
 
-### 4. Texture System
-- [ ] Add texture loading system
-- [ ] Implement distinct textures for man-made vs natural elements
-- [ ] Add texture blending for smooth transitions
-- [ ] Support user-provided texture files
+## Step 6 — Compatibility hooks for future JSON themes
+- [ ] Define JSON schema mapping into ThemePack
+- [ ] Add registry API for external pack registration
 
-### 5. Layer Management
-- [ ] Update layer panel with new layer types
-- [ ] Add layer blending modes
-- [ ] Implement layer ordering and visibility
-- [ ] Add layer export/import
+## Verification
+- [ ] Run `flutter analyze`
+- [ ] Run `flutter test` (if present)
+- [ ] Manual check: theme switching + AA/AAA contrast works
 
-### 6. UI Improvements
-- [ ] Add tool settings panel
-- [ ] Add color picker for custom biomes
-- [ ] Add stamp library browser
-- [ ] Add undo/redo for brush and stamp operations
-
-## Implementation Steps
-1. Update MapEditor layers structure
-2. Implement brush tool enhancements
-3. Implement stamp tool enhancements
-4. Add texture rendering system
-5. Update layer management UI
-6. Test and refine functionality

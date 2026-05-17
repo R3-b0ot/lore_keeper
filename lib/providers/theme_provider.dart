@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-enum AccessibilityRating { aa, aaa }
+import 'package:lore_keeper/core/theme/accessibility_rating.dart';
+export 'package:lore_keeper/core/theme/accessibility_rating.dart';
 
 class ThemeNotifier extends ChangeNotifier {
   late Box _settingsBox;

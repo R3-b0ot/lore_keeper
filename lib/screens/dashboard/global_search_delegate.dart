@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
-import 'package:lore_keeper/models/map_model.dart';
 import 'package:lore_keeper/screens/project_editor_screen.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 
@@ -96,14 +95,7 @@ class GlobalSearchDelegate extends SearchDelegate {
         .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
-    final maps = Hive.box<MapModel>('maps').values
-        .where((m) => m.name.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-
-    if (projects.isEmpty &&
-        chapters.isEmpty &&
-        characters.isEmpty &&
-        maps.isEmpty) {
+    if (projects.isEmpty && chapters.isEmpty && characters.isEmpty) {
       return Center(child: Text('No results found for "$query"'));
     }
 
@@ -121,10 +113,6 @@ class GlobalSearchDelegate extends SearchDelegate {
         if (characters.isNotEmpty) ...[
           _buildSectionHeader(context, 'Characters'),
           ...characters.map((c) => _buildCharacterTile(context, c)),
-        ],
-        if (maps.isNotEmpty) ...[
-          _buildSectionHeader(context, 'Maps'),
-          ...maps.map((m) => _buildMapTile(context, m)),
         ],
       ],
     );
@@ -202,28 +190,6 @@ class GlobalSearchDelegate extends SearchDelegate {
               project: project,
               initialModuleIndex: 1,
               initialCharacterKey: character.key.toString(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMapTile(BuildContext context, MapModel map) {
-    final project = Hive.box<Project>('projects').get(map.parentProjectId);
-    return ListTile(
-      leading: const Icon(LucideIcons.map),
-      title: Text(map.name),
-      subtitle: Text('Map • In ${project?.title ?? 'Unknown Project'}'),
-      onTap: () {
-        if (project == null) return;
-        close(context, null);
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProjectEditorScreen(
-              project: project,
-              initialModuleIndex: 2,
-              initialMapKey: map.key.toString(),
             ),
           ),
         );

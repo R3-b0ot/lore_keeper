@@ -35,8 +35,19 @@ class MagicInitWizard extends StatefulWidget {
 }
 
 class _MagicInitWizardState extends State<MagicInitWizard> {
+  static const List<(String title, String subtitle, IconData icon)> _stepsMeta =
+      [
+        ('Welcome', 'Foundation', LucideIcons.sparkles),
+        ('System Name', 'Identity', LucideIcons.bookText),
+        ('Fuels', 'Source', LucideIcons.flame),
+        ('Triggers', 'Execution', LucideIcons.wand),
+        ('Schools', 'Disciplines', LucideIcons.school),
+      ];
+
   int _step = 0;
+  bool _isSubmitting = false;
   late TextEditingController _nameController;
+
   final List<String> _fuels = ['Essence Shards'];
   final List<String> _methods = ['Somatic Tracing'];
   final List<MagicSchoolDraft> _schools = [
@@ -104,6 +115,9 @@ class _MagicInitWizardState extends State<MagicInitWizard> {
   );
 
   Future<void> _finish() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
     final seed = MagicSystemSeed(
       name: _nameController.text.trim().isEmpty
           ? 'Magic System'
@@ -121,7 +135,28 @@ class _MagicInitWizardState extends State<MagicInitWizard> {
           )
           .toList(),
     );
-    await widget.provider.configureSystem(widget.systemKey, seed);
+
+    try {
+      await widget.provider.configureSystem(widget.systemKey, seed);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  void _next() {
+    if (_step < _stepsMeta.length - 1) {
+      setState(() => _step += 1);
+      return;
+    }
+    _finish();
+  }
+
+  void _previous() {
+    if (_step > 0) {
+      setState(() => _step -= 1);
+    }
   }
 
   @override
@@ -130,204 +165,383 @@ class _MagicInitWizardState extends State<MagicInitWizard> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final panelColor = isDark ? AppColors.bgPanel : AppColors.bgPanelLight;
+    final panelLighter = isDark
+        ? AppColors.bgPanelLighter
+        : AppColors.bgPanelLighterLight;
+
+    final progress = (_step + 1) / _stepsMeta.length;
+    final currentMeta = _stepsMeta[_step];
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: panelColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
+        boxShadow: [isDark ? AppColors.shadow : AppColors.shadowLight],
       ),
-      child: SingleChildScrollView(
-        child: Stepper(
-          currentStep: _step,
-          onStepContinue: () {
-            if (_step < 4) {
-              setState(() => _step += 1);
-            } else {
-              _finish();
-            }
-          },
-          onStepCancel: () {
-            if (_step > 0) {
-              setState(() => _step -= 1);
-            }
-          },
-          controlsBuilder: (context, details) {
-            return Row(
-              children: [
-                FilledButton(
-                  onPressed: details.onStepContinue,
-                  child: Text(_step == 4 ? 'Bind to Grimoire' : 'Next'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryCardGradient,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 8),
-                if (_step > 0)
-                  TextButton(
-                    onPressed: details.onStepCancel,
-                    child: const Text('Back'),
-                  ),
-              ],
-            );
-          },
-          steps: [
-            Step(
-              title: const Text('Welcome'),
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Create your magic system foundation.',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'You can edit everything later from the main panel.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
+                child: const Icon(LucideIcons.sparkles, color: Colors.white),
               ),
-              isActive: _step >= 0,
-            ),
-            Step(
-              title: const Text('System Name'),
-              content: TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Magic system name',
-                ),
-              ),
-              isActive: _step >= 1,
-            ),
-            Step(
-              title: const Text('Fuels'),
-              content: _EditableList(
-                label: 'Fuel source',
-                values: _fuels,
-                onAdd: _addFuel,
-                onRemove: (index) => setState(() => _fuels.removeAt(index)),
-                onChanged: (index, value) => _fuels[index] = value,
-              ),
-              isActive: _step >= 2,
-            ),
-            Step(
-              title: const Text('Triggers'),
-              content: _EditableList(
-                label: 'Trigger',
-                values: _methods,
-                onAdd: _addMethod,
-                onRemove: (index) => setState(() => _methods.removeAt(index)),
-                onChanged: (index, value) => _methods[index] = value,
-              ),
-              isActive: _step >= 3,
-            ),
-            Step(
-              title: const Text('Schools'),
-              content: Column(
-                children: [
-                  ..._schools.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final school = entry.value;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Switch(
-                                  value: school.selected,
-                                  onChanged: (value) =>
-                                      setState(() => school.selected = value),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextFormField(
-                                    key: ValueKey(
-                                      'school-$index-${school.name}',
-                                    ),
-                                    decoration: const InputDecoration(
-                                      labelText: 'School name',
-                                    ),
-                                    initialValue: school.name,
-                                    onChanged: (value) => school.name = value,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () =>
-                                      setState(() => _schools.removeAt(index)),
-                                  icon: const Icon(LucideIcons.x),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                _IconPicker(
-                                  selectedIconKey: school.iconKey,
-                                  onSelected: (iconKey) =>
-                                      setState(() => school.iconKey = iconKey),
-                                ),
-                                const SizedBox(width: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  children: _palette
-                                      .map(
-                                        (color) => GestureDetector(
-                                          onTap: () => setState(
-                                            () => school.colorValue = color
-                                                .toARGB32(),
-                                          ),
-                                          child: Container(
-                                            width: 20,
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                              color: color,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color:
-                                                    school.colorValue ==
-                                                        color.toARGB32()
-                                                    ? colorScheme.onSurface
-                                                    : Colors.transparent,
-                                                width: 2,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Arcane Initialization',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                       ),
-                    );
-                  }),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: _addSchool,
-                      icon: const Icon(LucideIcons.plus),
-                      label: const Text('Add School'),
+                    ),
+                    Text(
+                      'Step ${_step + 1} of ${_stepsMeta.length}: ${currentMeta.$1}',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: progress,
+              backgroundColor: panelLighter,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _stepsMeta.asMap().entries.map((entry) {
+              final index = entry.key;
+              final (title, _, icon) = entry.value;
+              final isActive = index == _step;
+              final isDone = index < _step;
+              return InkWell(
+                onTap: () => setState(() => _step = index),
+                borderRadius: BorderRadius.circular(999),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? colorScheme.primaryContainer
+                        : panelLighter,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isActive
+                          ? colorScheme.primary
+                          : colorScheme.outlineVariant.withValues(alpha: 0.5),
                     ),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isDone ? LucideIcons.check : icon,
+                        size: 14,
+                        color: isActive
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        title,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isActive
+                              ? colorScheme.onPrimaryContainer
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: panelLighter,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                ),
               ),
-              isActive: _step >= 4,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: SingleChildScrollView(
+                  key: ValueKey<int>(_step),
+                  child: _buildStepContent(_step),
+                ),
+              ),
             ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              if (_step > 0)
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _previous,
+                  icon: const Icon(LucideIcons.arrowLeft, size: 16),
+                  label: const Text('Back'),
+                )
+              else
+                const SizedBox(width: 1),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: _isSubmitting ? null : _next,
+                icon: _isSubmitting
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        _step == _stepsMeta.length - 1
+                            ? LucideIcons.wandSparkles
+                            : LucideIcons.arrowRight,
+                        size: 16,
+                      ),
+                label: Text(
+                  _step == _stepsMeta.length - 1
+                      ? 'Bind to Grimoire'
+                      : 'Continue',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepContent(int step) {
+    switch (step) {
+      case 0:
+        return _buildWelcomeStep();
+      case 1:
+        return _buildSystemNameStep();
+      case 2:
+        return _EditableList(
+          label: 'Fuel source',
+          values: _fuels,
+          addLabel: 'Add Fuel Source',
+          onAdd: _addFuel,
+          onRemove: (index) => setState(() => _fuels.removeAt(index)),
+          onChanged: (index, value) => _fuels[index] = value,
+        );
+      case 3:
+        return _EditableList(
+          label: 'Trigger',
+          values: _methods,
+          addLabel: 'Add Trigger',
+          onAdd: _addMethod,
+          onRemove: (index) => setState(() => _methods.removeAt(index)),
+          onChanged: (index, value) => _methods[index] = value,
+        );
+      case 4:
+        return _buildSchoolsStep();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildWelcomeStep() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Shape the rules of your arcane world.',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Define fuels, triggers, and disciplines. Everything remains editable after setup.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: const [
+            _InfoPill(icon: LucideIcons.flame, label: 'Fuel economy'),
+            _InfoPill(icon: LucideIcons.wand, label: 'Casting methods'),
+            _InfoPill(icon: LucideIcons.school, label: 'Schools'),
           ],
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildSystemNameStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Name the system',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(
+            labelText: 'Magic system name',
+            prefixIcon: Icon(LucideIcons.bookText),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSchoolsStep() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._schools.asMap().entries.map((entry) {
+          final index = entry.key;
+          final school = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Switch(
+                      value: school.selected,
+                      onChanged: (value) =>
+                          setState(() => school.selected = value),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        key: ValueKey('school-$index-${school.name}'),
+                        decoration: const InputDecoration(
+                          labelText: 'School name',
+                          isDense: true,
+                        ),
+                        initialValue: school.name,
+                        onChanged: (value) => school.name = value,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => setState(() => _schools.removeAt(index)),
+                      icon: const Icon(LucideIcons.trash2),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _IconPicker(
+                      selectedIconKey: school.iconKey,
+                      onSelected: (iconKey) =>
+                          setState(() => school.iconKey = iconKey),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _palette.map((color) {
+                          final selected =
+                              school.colorValue == color.toARGB32();
+                          return InkWell(
+                            onTap: () => setState(
+                              () => school.colorValue = color.toARGB32(),
+                            ),
+                            borderRadius: BorderRadius.circular(999),
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selected
+                                      ? colorScheme.onSurface
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addSchool,
+            icon: const Icon(LucideIcons.plus),
+            label: const Text('Add School'),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _EditableList extends StatelessWidget {
   final String label;
+  final String addLabel;
   final List<String> values;
   final VoidCallback onAdd;
   final ValueChanged<int> onRemove;
@@ -335,6 +549,7 @@ class _EditableList extends StatelessWidget {
 
   const _EditableList({
     required this.label,
+    required this.addLabel,
     required this.values,
     required this.onAdd,
     required this.onRemove,
@@ -343,20 +558,42 @@ class _EditableList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          label,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
         ...values.asMap().entries.map((entry) {
           final index = entry.key;
           final value = entry.value;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     key: ValueKey('$label-$index-$value'),
                     initialValue: value,
-                    decoration: InputDecoration(labelText: label),
+                    decoration: InputDecoration(
+                      labelText: label,
+                      border: InputBorder.none,
+                    ),
                     onChanged: (text) => onChanged(index, text),
                   ),
                 ),
@@ -368,15 +605,43 @@ class _EditableList extends StatelessWidget {
             ),
           );
         }),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(LucideIcons.plus),
-            label: const Text('Add'),
-          ),
+        TextButton.icon(
+          onPressed: onAdd,
+          icon: const Icon(LucideIcons.plus),
+          label: Text(addLabel),
         ),
       ],
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoPill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
     );
   }
 }
@@ -428,7 +693,7 @@ class _IconPicker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
           ),

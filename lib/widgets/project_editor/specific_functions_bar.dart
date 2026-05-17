@@ -9,8 +9,6 @@ class SpecificFunctionsBar extends StatelessWidget {
   final bool showHistoryButton;
   final VoidCallback? onSettingsPressed;
   final VoidCallback? onFindReplacePressed;
-  final bool isMobile;
-  final bool isFindReplaceAvailable;
 
   const SpecificFunctionsBar({
     super.key,
@@ -19,73 +17,10 @@ class SpecificFunctionsBar extends StatelessWidget {
     required this.showHistoryButton,
     this.onSettingsPressed,
     this.onFindReplacePressed,
-    required this.isMobile,
-    required this.isFindReplaceAvailable,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isMobile) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          PopupMenuButton<String>(
-            icon: const Icon(LucideIcons.ellipsisVertical),
-            onSelected: (value) {
-              switch (value) {
-                case 'history':
-                  onHistoryPressed();
-                  break;
-                case 'find_replace':
-                  onFindReplacePressed?.call();
-                  break;
-                case 'settings':
-                  onSettingsPressed?.call();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              if (showHistoryButton)
-                PopupMenuItem<String>(
-                  value: 'history',
-                  child: Text(
-                    isHistoryVisible ? 'Hide History' : 'Show History',
-                  ),
-                ),
-              if (onFindReplacePressed != null)
-                const PopupMenuItem<String>(
-                  value: 'find_replace',
-                  child: Text('Find and Replace'),
-                ),
-              const PopupMenuItem<String>(
-                value: 'bookmarks',
-                child: Text('Bookmarks'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'comments',
-                child: Text('Comments'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'add_block',
-                child: Text('Add Block'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'download',
-                child: Text('Download'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Text('Settings'),
-              ),
-            ],
-          ),
-          const Spacer(),
-          const SizedBox(height: 16),
-        ],
-      );
-    }
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [

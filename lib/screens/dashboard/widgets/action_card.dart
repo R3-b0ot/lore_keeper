@@ -36,7 +36,7 @@ class _ActionCardState extends State<ActionCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
-          height: 220,
+          constraints: const BoxConstraints(minHeight: 180),
           transform: _isHovered
               ? Matrix4.translationValues(0.0, -8.0, 0.0)
               : Matrix4.identity(),
@@ -78,6 +78,8 @@ class _ActionCardState extends State<ActionCard> {
                   fontWeight: FontWeight.w700,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
               Text(
@@ -89,6 +91,8 @@ class _ActionCardState extends State<ActionCard> {
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

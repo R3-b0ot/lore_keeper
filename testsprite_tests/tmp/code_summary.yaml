@@ -1,0 +1,93 @@
+version: "2"
+type: frontend
+tech_stack:
+  - Dart
+  - Flutter
+  - Riverpod
+  - Provider
+  - Hive
+  - flutter_quill
+routes:
+  - path: "/"
+    file: lib/screens/dashboard/dashboard_screen.dart
+    auth_required: false
+    description: Dashboard with recent projects
+  - path: "/project-editor"
+    file: lib/screens/project_editor_screen.dart
+    auth_required: false
+    description: Project editor
+  - path: "/trait-editor"
+    file: lib/screens/trait_editor_screen.dart
+    auth_required: false
+    description: Trait editor screen
+  - path: "/map-view"
+    file: lib/screens/map_view_screen.dart
+    auth_required: false
+    description: Map view screen
+  - path: "/relation-chart"
+    file: lib/screens/relation_chart_screen.dart
+    auth_required: false
+    description: Relationship chart
+features:
+  - name: Project Management
+    description: Create, open, persist projects using Hive local DB
+    files:
+      - lib/screens/dashboard/dashboard_screen.dart
+      - lib/models/project.dart
+      - lib/main.dart
+    entry_route: "/"
+    user_interactions:
+      - Click create project button
+      - Enter project name
+      - Save project
+      - Open project from dashboard list
+    api_calls: []
+    auth_required: false
+  - name: Character Management
+    description: Add characters, traits, relationships
+    files:
+      - lib/modules/character_module.dart
+      - lib/models/character.dart
+      - lib/services/trait_service.dart
+    entry_route: "/project-editor"
+    user_interactions:
+      - Add new character
+      - Assign traits
+      - Add relationship to other character
+      - Save changes
+    api_calls: []
+    auth_required: false
+  - name: Relationship Visualization
+    description: View interactive charts of character relationships
+    files:
+      - lib/screens/relation_chart_screen.dart
+      - lib/services/relationship_service.dart
+    entry_route: "/relation-chart"
+    user_interactions:
+      - Navigate to relationship chart
+      - Click nodes to inspect connections
+      - View labels on edges
+    api_calls: []
+    auth_required: false
+  - name: Fantasy Map Generation
+    description: Procedural map creation with editing
+    files:
+      - lib/screens/map_view_screen.dart
+      - lib/services/map_service.dart
+      - lib/models/geometry.dart
+    entry_route: "/map-view"
+    user_interactions:
+      - Open map creator
+      - Generate terrain
+      - Edit rivers/lakes
+      - Save map
+    api_calls: []
+    auth_required: false
+known_limitations:
+  - issue: Local-only persistence (Hive)
+    location: lib/main.dart
+    impact: No cloud sync/multi-device
+  - issue: No auth/login flow
+    location: lib/main.dart
+    impact: Direct to dashboard, no user accounts
+

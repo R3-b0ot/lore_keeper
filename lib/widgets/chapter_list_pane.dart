@@ -8,7 +8,7 @@ import 'package:lore_keeper/widgets/chapter_title_dialog.dart';
 class ChapterListPane extends StatefulWidget {
   final ChapterListProvider chapterProvider;
   final String? selectedChapterKey;
-  final Function(String key, {bool closeDrawer}) onChapterSelected;
+  final ValueChanged<String> onChapterSelected;
   final ValueChanged<String> onChapterCreated;
   final bool isMobile;
 
@@ -502,7 +502,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
     if (confirmed == true) {
       await widget.chapterProvider.deleteChapter(chapter.key);
       if (widget.selectedChapterKey == chapter.key.toString()) {
-        widget.onChapterSelected('', closeDrawer: false);
+        widget.onChapterSelected('');
       }
     }
   }
