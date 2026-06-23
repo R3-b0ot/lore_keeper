@@ -1,3 +1,5 @@
 # Table of contents
 
-* [Page](README.md)
+* [Lore Keeper](README.md)
+* [User Guide](USER_GUIDE.md)
+* [Developer Guide](DEVELOPER_GUIDE.md)
