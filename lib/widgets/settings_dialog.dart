@@ -307,7 +307,33 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Theme',
+                    'Theme Pack',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    title: const Text('Minimal'),
+                    subtitle: const Text('The default minimalist lore theme.'),
+                    leading: Radio<String>.adaptive(
+                      value: 'minimal',
+                      groupValue: themeNotifier.themePack,
+                      onChanged: (String? value) => themeNotifier.setThemePack('minimal'),
+                    ),
+                    onTap: () => themeNotifier.setThemePack('minimal'),
+                  ),
+                  ListTile(
+                    title: const Text('Dracula'),
+                    subtitle: const Text('The classic Dracula theme colors.'),
+                    leading: Radio<String>.adaptive(
+                      value: 'dracula',
+                      groupValue: themeNotifier.themePack,
+                      onChanged: (String? value) => themeNotifier.setThemePack('dracula'),
+                    ),
+                    onTap: () => themeNotifier.setThemePack('dracula'),
+                  ),
+                  const Divider(height: 32),
+                  const Text(
+                    'Theme Mode',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -322,7 +348,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     onTap: () => themeNotifier.setTheme(ThemeMode.system),
                   ),
                   ListTile(
-                    title: const Text('Light'),
+                    title: Text(themeNotifier.themePack == 'dracula' ? 'Light (Alucard)' : 'Light'),
                     leading: Radio<ThemeMode>.adaptive(
                       value: ThemeMode.light,
                       groupValue: themeNotifier.themeMode,
@@ -332,7 +358,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     onTap: () => themeNotifier.setTheme(ThemeMode.light),
                   ),
                   ListTile(
-                    title: const Text('Dark'),
+                    title: Text(themeNotifier.themePack == 'dracula' ? 'Dark (Dracula)' : 'Dark'),
                     leading: Radio<ThemeMode>.adaptive(
                       value: ThemeMode.dark,
                       groupValue: themeNotifier.themeMode,
@@ -342,42 +368,44 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     onTap: () => themeNotifier.setTheme(ThemeMode.dark),
                   ),
 
-                  const Divider(height: 32),
-                  const Text(
-                    'Contrast Level',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    title: const Text('Standard (AA Compliant)'),
-                    subtitle: const Text(
-                      'Balanced contrast suitable for most users.',
+                  if (themeNotifier.themePack == 'minimal') ...[
+                    const Divider(height: 32),
+                    const Text(
+                      'Contrast Level',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    leading: Radio<AccessibilityRating>.adaptive(
-                      value: AccessibilityRating.aa,
-                      groupValue: themeNotifier.accessibilityRating,
-                      onChanged: (AccessibilityRating? value) => themeNotifier
-                          .setAccessibilityRating(AccessibilityRating.aa),
+                    const SizedBox(height: 8),
+                    ListTile(
+                      title: const Text('Standard (AA Compliant)'),
+                      subtitle: const Text(
+                        'Balanced contrast suitable for most users.',
+                      ),
+                      leading: Radio<AccessibilityRating>.adaptive(
+                        value: AccessibilityRating.aa,
+                        groupValue: themeNotifier.accessibilityRating,
+                        onChanged: (AccessibilityRating? value) => themeNotifier
+                            .setAccessibilityRating(AccessibilityRating.aa),
+                      ),
+                      onTap: () => themeNotifier.setAccessibilityRating(
+                        AccessibilityRating.aa,
+                      ),
                     ),
-                    onTap: () => themeNotifier.setAccessibilityRating(
-                      AccessibilityRating.aa,
+                    ListTile(
+                      title: const Text('High Contrast (AAA Compliant)'),
+                      subtitle: const Text(
+                        'Enhanced contrast for better readability.',
+                      ),
+                      leading: Radio<AccessibilityRating>.adaptive(
+                        value: AccessibilityRating.aaa,
+                        groupValue: themeNotifier.accessibilityRating,
+                        onChanged: (AccessibilityRating? value) => themeNotifier
+                            .setAccessibilityRating(AccessibilityRating.aaa),
+                      ),
+                      onTap: () => themeNotifier.setAccessibilityRating(
+                        AccessibilityRating.aaa,
+                      ),
                     ),
-                  ),
-                  ListTile(
-                    title: const Text('High Contrast (AAA Compliant)'),
-                    subtitle: const Text(
-                      'Enhanced contrast for better readability.',
-                    ),
-                    leading: Radio<AccessibilityRating>.adaptive(
-                      value: AccessibilityRating.aaa,
-                      groupValue: themeNotifier.accessibilityRating,
-                      onChanged: (AccessibilityRating? value) => themeNotifier
-                          .setAccessibilityRating(AccessibilityRating.aaa),
-                    ),
-                    onTap: () => themeNotifier.setAccessibilityRating(
-                      AccessibilityRating.aaa,
-                    ),
-                  ),
+                  ],
 
                   // Preview Box
                   const SizedBox(height: 16),

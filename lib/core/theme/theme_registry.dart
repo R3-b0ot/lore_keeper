@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' show ThemeData;
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart' show immutable;
 
 import 'accessibility_rating.dart';
 

@@ -8,6 +8,7 @@ import 'package:lore_keeper/modules/calendar_module.dart';
 import 'package:lore_keeper/modules/timeline_module.dart';
 
 import 'package:lore_keeper/modules/magic_module.dart';
+import 'package:lore_keeper/modules/map/map_module.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
@@ -362,6 +363,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               key: _characterModuleKey, // Assign the key here
               onReload: _handleRevert,
             );
+    } else if (_moduleIndex == 2) {
+      return MapModule(projectId: widget.project.key);
     } else if (_moduleIndex == 3) {
       return TimelineModule(
         calendarProvider: _calendarTreeProvider!,

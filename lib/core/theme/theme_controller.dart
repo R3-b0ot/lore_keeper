@@ -48,7 +48,6 @@ class ThemeController extends ChangeNotifier {
       case ThemeMode.dark:
         return true;
       case ThemeMode.system:
-      default:
         return systemBrightness == Brightness.dark;
     }
   }

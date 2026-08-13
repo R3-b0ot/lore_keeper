@@ -152,4 +152,30 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [Color(0xFFFFFFFF), Color(0xFFF9F5FF)],
   );
+
+  // --- Dracula Colors ---
+  static const Color draculaBackground = Color(0xFF282A36);
+  static const Color draculaForeground = Color(0xFFF8F8F2);
+  static const Color draculaPrimary = Color(0xFFFF79C6);
+  static const Color draculaSecondary = Color(0xFFBD93F9);
+  static const Color draculaTertiary = Color(0xFF8BE9FD);
+  static const Color draculaError = Color(0xFFFF5555);
+  static const Color draculaWarning = Color(0xFFFFB86C);
+  static const Color draculaSuccess = Color(0xFF50FA7B);
+  static const Color draculaMuted = Color(0xFF6272A4);
+  static const Color draculaSelection = Color(0xFF44475A);
+  static const Color draculaUIBackground = Color(0xFF191A21);
+
+  // --- Alucard Colors ---
+  static const Color alucardBackground = Color(0xFFFFFBEB);
+  static const Color alucardForeground = Color(0xFF1F1F1F);
+  static const Color alucardPrimary = Color(0xFFA3144D);
+  static const Color alucardSecondary = Color(0xFF644AC9);
+  static const Color alucardTertiary = Color(0xFF036A96);
+  static const Color alucardError = Color(0xFFCB3A2A);
+  static const Color alucardWarning = Color(0xFFA34D14);
+  static const Color alucardSuccess = Color(0xFF14710A);
+  static const Color alucardMuted = Color(0xFF6C664B);
+  static const Color alucardSelection = Color(0xFFCFCFDE);
+  static const Color alucardUIBackground = Color(0xFFBCBAB3);
 }

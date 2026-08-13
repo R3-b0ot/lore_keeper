@@ -7,7 +7,11 @@ export 'package:lore_keeper/core/theme/accessibility_rating.dart';
 class ThemeNotifier extends ChangeNotifier {
   late Box _settingsBox;
   static const String _themeKey = 'themeMode';
+  static const String _themePackKey = 'themePack';
   static const String _accessibilityKey = 'accessibilityRating';
+
+  String _themePack = 'minimal';
+  String get themePack => _themePack;
 
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
@@ -21,6 +25,9 @@ class ThemeNotifier extends ChangeNotifier {
 
   Future<void> _loadTheme() async {
     _settingsBox = await Hive.openBox('settings');
+
+    // Load Theme Pack
+    _themePack = _settingsBox.get(_themePackKey, defaultValue: 'minimal');
 
     // Load Theme Mode
     final themeString = _settingsBox.get(_themeKey, defaultValue: 'system');
@@ -45,6 +52,12 @@ class ThemeNotifier extends ChangeNotifier {
         ? AccessibilityRating.aaa
         : AccessibilityRating.aa;
 
+    notifyListeners();
+  }
+
+  Future<void> setThemePack(String pack) async {
+    _themePack = pack;
+    await _settingsBox.put(_themePackKey, pack);
     notifyListeners();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
 import 'app_colors.dart';
+import 'theme_extensions.dart';
 
 class AppTheme {
   static ThemeData getDarkTheme(AccessibilityRating rating) {
@@ -297,6 +298,56 @@ class AppTheme {
         fontWeight: FontWeight.normal,
         fontSize: 13,
       ),
+    );
+  }
+
+  static ThemeData get draculaTheme {
+    return ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: AppColors.draculaBackground,
+      primaryColor: AppColors.draculaPrimary,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.draculaPrimary,
+        secondary: AppColors.draculaSecondary,
+        surface: AppColors.draculaBackground,
+        onSurface: AppColors.draculaForeground,
+        error: AppColors.draculaError,
+        tertiary: AppColors.draculaTertiary,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: AppColors.draculaForeground),
+        bodyMedium: TextStyle(color: AppColors.draculaForeground),
+      ),
+      extensions: const <ThemeExtension<dynamic>>[
+        LoreCardTheme(backgroundColor: AppColors.draculaSelection),
+        FantasyBorderTheme(borderColor: AppColors.draculaMuted),
+      ],
+      useMaterial3: true,
+    );
+  }
+
+  static ThemeData get alucardTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: AppColors.alucardBackground,
+      primaryColor: AppColors.alucardPrimary,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.alucardPrimary,
+        secondary: AppColors.alucardSecondary,
+        surface: AppColors.alucardBackground,
+        onSurface: AppColors.alucardForeground,
+        error: AppColors.alucardError,
+        tertiary: AppColors.alucardTertiary,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: AppColors.alucardForeground),
+        bodyMedium: TextStyle(color: AppColors.alucardForeground),
+      ),
+      extensions: const <ThemeExtension<dynamic>>[
+        LoreCardTheme(backgroundColor: AppColors.alucardSelection),
+        FantasyBorderTheme(borderColor: AppColors.alucardMuted),
+      ],
+      useMaterial3: true,
     );
   }
 }

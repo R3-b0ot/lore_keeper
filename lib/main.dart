@@ -15,15 +15,16 @@ import 'package:lore_keeper/models/section.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/models/history_entry.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
+import 'package:lore_keeper/models/map_data.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
-import 'package:lore_keeper/core/theme/theme_bootstrap.dart';
-
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/screens/dashboard/dashboard_screen.dart';
 import 'package:lore_keeper/screens/trait_editor_screen.dart';
-import 'package:lore_keeper/core/theme/app_theme.dart';
+import 'package:lore_keeper/services/resource_manager.dart';
+import 'package:lore_keeper/theme/app_theme.dart' as dracula_theme;
+import 'package:lore_keeper/core/theme/app_theme.dart' as core_theme;
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -38,6 +39,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeHive();
   await RelationshipService().initialize();
+  await ResourceManager().initialize();
   runApp(
     riverpod.ProviderScope(
       child: ChangeNotifierProvider(
@@ -81,6 +83,12 @@ Future<void> initializeHive() async {
   registerAdapterIfNeeded(27, CalendarNodeAdapter());
   registerAdapterIfNeeded(28, CalendarAttributeAdapter());
   registerAdapterIfNeeded(29, TimelineEventAdapter());
+  registerAdapterIfNeeded(30, MapDataAdapter());
+  registerAdapterIfNeeded(31, MapLayerAdapter());
+  registerAdapterIfNeeded(32, MapStampAdapter());
+  registerAdapterIfNeeded(33, MapPathAdapter());
+  registerAdapterIfNeeded(34, MapPolygonAdapter());
+  registerAdapterIfNeeded(35, OffsetDataAdapter());
 
   try {
     projectBox = await Hive.openBox<Project>('projects');
@@ -95,6 +103,7 @@ Future<void> initializeHive() async {
     await Hive.openBox<HistoryEntry>('history');
     await Hive.openBox<SimpleTrait>('custom_traits');
     await Hive.openBox<TimelineEvent>('timeline_events');
+    await Hive.openBox<MapData>('map_data');
   } catch (e) {
     if (e.toString().contains('unknown typeId')) {
       await Hive.deleteBoxFromDisk('calendar_systems');
@@ -154,8 +163,8 @@ class LoreKeeperApp extends StatelessWidget {
         return MaterialApp(
           title: 'Lore Keeper',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.getLightTheme(themeNotifier.accessibilityRating),
-          darkTheme: AppTheme.getDarkTheme(themeNotifier.accessibilityRating),
+          theme: themeNotifier.themePack == 'dracula' ? dracula_theme.AppTheme.alucardTheme : core_theme.AppTheme.getLightTheme(themeNotifier.accessibilityRating),
+          darkTheme: themeNotifier.themePack == 'dracula' ? dracula_theme.AppTheme.draculaTheme : core_theme.AppTheme.getDarkTheme(themeNotifier.accessibilityRating),
           themeMode: themeNotifier.themeMode,
           home: const DashboardScreen(),
           localizationsDelegates: const [
