@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/project.dart';
-import 'package:lore_keeper/modules/manuscript_module.dart'; // Import the new module
-import 'package:lore_keeper/modules/character_module.dart'; // Import the new module
-import 'package:lore_keeper/modules/calendar_module.dart';
-import 'package:lore_keeper/modules/timeline_module.dart';
+import 'package:lore_keeper/modules/manuscript_module.dart';
+import 'package:lore_keeper/modules/character_module.dart';
 
-import 'package:lore_keeper/modules/magic_module.dart';
-import 'package:lore_keeper/modules/map/map_module.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
@@ -27,11 +23,13 @@ import 'package:lore_keeper/widgets/project_editor/project_editor_desktop_layout
 import 'package:lore_keeper/widgets/project_editor/project_editor_mobile_layout.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_module_resolver.dart';
+import 'package:lore_keeper/widgets/project_editor/overview_module.dart';
+import 'package:lore_keeper/widgets/project_editor/world_building_tabs.dart';
+import 'package:lore_keeper/widgets/project_editor/lore_map_stub.dart';
 
 import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 
 import 'package:lore_keeper/widgets/calendar_list_pane.dart';
-import 'package:lore_keeper/widgets/magic_list_pane.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -79,29 +77,29 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   TimelineEventProvider? _timelineEventProvider;
   LinkProvider? _linkProvider;
 
+  // New navigation structure: Overview | Manuscripts | Characters | World Building | Lore Map
+  // Internal index mapping:
+  //   0 = Overview (NEW default landing)
+  //   1 = Manuscripts (was index 0)
+  //   2 = Characters (was index 1)
+  //   3 = World Building (consolidates old indices 2–15)
+  //   4 = Lore Map (stub)
   final List<ProjectEditorModuleItem>
   _moduleItems = const <ProjectEditorModuleItem>[
-    ProjectEditorModuleItem(label: 'Manuscript', icon: LucideIcons.bookOpen),
-    ProjectEditorModuleItem(label: 'Characters', icon: LucideIcons.user),
-    ProjectEditorModuleItem(label: 'Map', icon: LucideIcons.map),
-    ProjectEditorModuleItem(label: 'Timeline', icon: LucideIcons.chartLine),
-    ProjectEditorModuleItem(label: 'Calendar', icon: LucideIcons.calendar),
-    ProjectEditorModuleItem(label: 'Languages', icon: LucideIcons.languages),
-    ProjectEditorModuleItem(label: 'Magic', icon: LucideIcons.sparkles),
-    ProjectEditorModuleItem(label: 'Research', icon: LucideIcons.flaskConical),
-    ProjectEditorModuleItem(label: 'Arcs', icon: LucideIcons.chartLine),
-    ProjectEditorModuleItem(label: 'Relationships', icon: LucideIcons.link),
-    ProjectEditorModuleItem(label: 'Items', icon: LucideIcons.tag),
-    ProjectEditorModuleItem(label: 'Species', icon: LucideIcons.pawPrint),
-    ProjectEditorModuleItem(label: 'Cultures', icon: LucideIcons.usersRound),
-    ProjectEditorModuleItem(label: 'Philosophies', icon: LucideIcons.brain),
-    ProjectEditorModuleItem(label: 'Religions', icon: LucideIcons.church),
-    ProjectEditorModuleItem(label: 'Systems', icon: LucideIcons.chartNetwork),
+    ProjectEditorModuleItem(
+      label: 'Overview',
+      icon: LucideIcons.layoutDashboard,
+    ),
+    ProjectEditorModuleItem(label: 'Manuscripts', icon: LucideIcons.bookOpen),
+    ProjectEditorModuleItem(label: 'Characters', icon: LucideIcons.users),
+    ProjectEditorModuleItem(label: 'World Building', icon: LucideIcons.globe),
+    ProjectEditorModuleItem(label: 'Lore Map', icon: LucideIcons.map),
   ];
 
   @override
   void initState() {
     super.initState();
+    // Default to Overview (index 0) unless deep-linked
     _moduleIndex = _normalizeModuleIndex(widget.initialModuleIndex);
     _selectedChapterKey = widget.initialChapterKey ?? '';
     _selectedCharacterKey = widget.initialCharacterKey ?? '';
@@ -133,9 +131,38 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   int _normalizeModuleIndex(int? index) {
-    if (index == null) return 0;
-    if (index < 0 || index >= _moduleItems.length) return 0;
-    return index;
+    if (index == null) return 0; // Default to Overview
+    // Handle deep links with old indices (0-15) by mapping to new indices (0-4)
+    if (index >= 0 && index <= 15) {
+      // Old mapping: 0=Manuscript, 1=Characters, 2=Map, 3=Timeline, 4=Calendar, 5=Languages, 6=Magic, 7=Research, 8=Arcs, 9=Relationships, 10=Items, 11=Species, 12=Cultures, 13=Philosophies, 14=Religions, 15=Systems
+      // New mapping: 0=Overview, 1=Manuscripts, 2=Characters, 3=World Building, 4=Lore Map
+      switch (index) {
+        case 0:
+          return 1; // Manuscript -> Manuscripts
+        case 1:
+          return 2; // Characters -> Characters
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 15:
+          return 3; // All world-building modules -> World Building
+      }
+    }
+    // If index is already in new range (0-4), use it
+    if (index >= 0 && index < _moduleItems.length) {
+      return index;
+    }
+    return 0;
   }
 
   void _selectInitialCharacterIfNeeded() {
@@ -207,7 +234,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     if (typeLabel == 'Character') {
       // Switch to character module and select the character.
       setState(() {
-        _moduleIndex = 1;
+        _moduleIndex = 2; // Characters is index 2 in new nav
         _selectedCharacterKey = id;
       });
     }
@@ -234,8 +261,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   void _openFindReplaceDialog() {
-    // Only allow for manuscript module
-    if (_moduleIndex != 0) return;
+    // Only allow for manuscript module (index 1)
+    if (_moduleIndex != 1) return;
     final controller = _manuscriptController;
     if (controller != null) {
       // Unfocus any focused widget to avoid keyboard event conflicts
@@ -322,8 +349,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   // Helper method to build the second column based on the selected module
+  // New indices: 0=Overview, 1=Manuscripts, 2=Characters, 3=World Building, 4=Lore Map
   Widget _buildSecondColumn({required bool isMobile}) {
-    if (_moduleIndex == 0) {
+    if (_moduleIndex == 1) {
+      // Manuscripts
       return ChapterListPane(
         chapterProvider: _chapterListProvider!,
         selectedChapterKey: _selectedChapterKey,
@@ -331,7 +360,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onChapterCreated: (key) => _onChapterCreated(key),
         isMobile: isMobile,
       );
-    } else if (_moduleIndex == 1) {
+    } else if (_moduleIndex == 2) {
+      // Characters
       return CharacterListPane(
         characterProvider: _characterListProvider!,
         selectedCharacterKey: _selectedCharacterKey,
@@ -340,14 +370,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onCharacterEdit: _showEditNameDialog,
         isMobile: isMobile,
       );
-    } else if (_moduleIndex == 4) {
+    } else if (_moduleIndex == 3) {
+      // World Building - show calendar list as default second column
       return CalendarListPane(
         calendarProvider: _calendarTreeProvider!,
-        isMobile: isMobile,
-      );
-    } else if (_moduleIndex == 6) {
-      return MagicListPane(
-        magicProvider: _magicTreeProvider!,
         isMobile: isMobile,
       );
     }
@@ -355,10 +381,31 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   Widget _buildModuleContent() {
-    // Get the label for the current module from the _moduleItems list
-    final currentModuleName = _moduleItems[_moduleIndex].label;
+    // New indices: 0=Overview, 1=Manuscripts, 2=Characters, 3=World Building, 4=Lore Map
 
     if (_moduleIndex == 0) {
+      // Overview (NEW)
+      return OverviewModule(
+        project: widget.project,
+        chapterProvider: _chapterListProvider!,
+        characterProvider: _characterListProvider!,
+        magicProvider: _magicTreeProvider!,
+        calendarProvider: _calendarTreeProvider!,
+        timelineProvider: _timelineEventProvider!,
+        onNavigate: (module) {
+          final index = _moduleItems.indexWhere(
+            (m) => m.label == module.label && m.icon == module.icon,
+          );
+          if (index >= 0) {
+            setState(() {
+              _moduleIndex = index;
+              _isListPaneCollapsed = false;
+            });
+          }
+        },
+      );
+    } else if (_moduleIndex == 1) {
+      // Manuscripts
       return _selectedChapterKey.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ManuscriptModule(
@@ -375,31 +422,29 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               },
               onReferenceNavigate: _onReferenceNavigate,
             );
-    } else if (_moduleIndex == 1) {
+    } else if (_moduleIndex == 2) {
+      // Characters
       return _selectedCharacterKey.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : CharacterModule(
               characterKey: _selectedCharacterKey,
-              linkProvider: _linkProvider!, // Pass the provider down
-              key: _characterModuleKey, // Assign the key here
+              linkProvider: _linkProvider!,
+              key: _characterModuleKey,
               onReload: _handleRevert,
             );
-    } else if (_moduleIndex == 2) {
-      return MapModule(projectId: widget.project.key);
     } else if (_moduleIndex == 3) {
-      return TimelineModule(
+      // World Building (consolidated)
+      return WorldBuildingTabs(
         calendarProvider: _calendarTreeProvider!,
-        eventProvider: _timelineEventProvider!,
+        magicProvider: _magicTreeProvider!,
+        timelineProvider: _timelineEventProvider!,
       );
     } else if (_moduleIndex == 4) {
-      return CalendarModule(calendarProvider: _calendarTreeProvider!);
-    } else if (_moduleIndex == 6) {
-      return MagicModule(magicProvider: _magicTreeProvider!);
+      // Lore Map (stub)
+      return const LoreMapStub();
     }
-    return _ModulePlaceholder(
-      moduleName: currentModuleName,
-      color: Theme.of(context).colorScheme.primary,
-    );
+
+    return const SizedBox.shrink();
   }
 
   void _toggleHistoryPanel() {
@@ -417,7 +462,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   void _showSelectionDialog() {
-    if (_moduleIndex == 0) {
+    if (_moduleIndex == 1) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -428,7 +473,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           );
         },
       );
-    } else if (_moduleIndex == 1) {
+    } else if (_moduleIndex == 2) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -443,7 +488,8 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   }
 
   Widget? _buildHistoryPanel() {
-    if (_moduleIndex == 0) {
+    // History supported for Manuscripts (index 1) and Characters (index 2)
+    if (_moduleIndex == 1) {
       final targetKey = _selectedChapterKey.startsWith('front_matter_')
           ? _selectedChapterKey
           : int.tryParse(_selectedChapterKey);
@@ -456,7 +502,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         onReverted: _handleRevert,
       );
     }
-    if (_moduleIndex == 1) {
+    if (_moduleIndex == 2) {
       final targetKey = int.tryParse(_selectedCharacterKey);
       if (targetKey == null) return null;
 

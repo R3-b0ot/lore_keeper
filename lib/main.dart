@@ -19,12 +19,11 @@ import 'package:lore_keeper/models/map_data.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
+import 'package:lore_keeper/core/theme/theme_bootstrap.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/screens/dashboard/dashboard_screen.dart';
 import 'package:lore_keeper/screens/trait_editor_screen.dart';
 import 'package:lore_keeper/services/resource_manager.dart';
-import 'package:lore_keeper/theme/app_theme.dart' as dracula_theme;
-import 'package:lore_keeper/core/theme/app_theme.dart' as core_theme;
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -38,6 +37,7 @@ late Box<Character> characterBox;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ThemeBootstrap.initialize();
 
   // ── Global error handling ─────────────────────────────────────────────
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -182,8 +182,8 @@ class LoreKeeperApp extends StatelessWidget {
         return MaterialApp(
           title: 'Lore Keeper',
           debugShowCheckedModeBanner: false,
-          theme: themeNotifier.themePack == 'dracula' ? dracula_theme.AppTheme.alucardTheme : core_theme.AppTheme.getLightTheme(themeNotifier.accessibilityRating),
-          darkTheme: themeNotifier.themePack == 'dracula' ? dracula_theme.AppTheme.draculaTheme : core_theme.AppTheme.getDarkTheme(themeNotifier.accessibilityRating),
+          theme: themeNotifier.lightTheme,
+          darkTheme: themeNotifier.darkTheme,
           themeMode: themeNotifier.themeMode,
           home: const DashboardScreen(),
           localizationsDelegates: const [

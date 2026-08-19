@@ -47,6 +47,7 @@ class DashboardTopbar extends StatelessWidget {
                                   ? 'assets/svg/LOGOMARK_DARK.svg'
                                   : 'assets/svg/LOGOMARK_LIGHT.svg',
                               height: 28,
+                              placeholderBuilder: (context) => const SizedBox(height: 28, width: 28),
                             ),
                             if (!isCompact) ...[
                               const SizedBox(width: 12),
@@ -55,6 +56,7 @@ class DashboardTopbar extends StatelessWidget {
                                     ? 'assets/svg/WORDMARK_DARK.svg'
                                     : 'assets/svg/WORDMARK_LIGHT.svg',
                                 height: 14,
+                                placeholderBuilder: (context) => const SizedBox(height: 14, width: 100),
                               ),
                             ],
                           ],

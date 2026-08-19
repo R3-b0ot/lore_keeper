@@ -1,10 +1,22 @@
 import 'package:lore_keeper/core/theme/theme_controller.dart';
 import 'package:lore_keeper/core/theme/theme_registry.dart';
+import 'package:lore_keeper/core/theme/themes/dracula/dracula_theme_pack.dart';
 import 'package:lore_keeper/core/theme/themes/minimal/minimal_theme_pack.dart';
 
-/// Builds a default theme registry and controller for app startup.
+/// Bootstrap utility to initialize built-in theme packs at application startup.
 class ThemeBootstrap {
+  static bool _initialized = false;
+
+  /// Registers built-in dual theme packs (`minimal` and `dracula`) in [ThemeRegistry.instance].
+  static void initialize() {
+    if (_initialized) return;
+    ThemeRegistry.instance.register(const MinimalThemePack());
+    ThemeRegistry.instance.register(const DraculaThemePack());
+    _initialized = true;
+  }
+
   static ThemeRegistryAdapter buildRegistryAdapter() {
+    initialize();
     return _DefaultThemeRegistryAdapter();
   }
 
@@ -12,19 +24,16 @@ class ThemeBootstrap {
       buildRegistryAdapter();
 
   static ThemeController createDefaultController() {
+    initialize();
     return ThemeController(registry: defaultRegistryAdapter());
   }
 }
 
 class _DefaultThemeRegistryAdapter implements ThemeRegistryAdapter {
-  final ThemeRegistry _registry = ThemeRegistry();
-
-  _DefaultThemeRegistryAdapter() {
-    _registry.register(const MinimalThemePack());
-  }
+  _DefaultThemeRegistryAdapter();
 
   @override
   dynamic getPackById(String id) {
-    return _registry.getPackById(id);
+    return ThemeRegistry.instance.getPackById(id);
   }
 }
