@@ -5,9 +5,8 @@ import 'widgets/dashboard_topbar.dart';
 import 'widgets/action_card.dart';
 import 'widgets/project_recent_grid.dart';
 import 'widgets/project_list_table.dart';
+// Removed unused import: package:lore_keeper/utils/project_utils.dart
 import 'package:lore_keeper/screens/dashboard/project_browser_screen.dart';
-import 'package:lore_keeper/screens/project_editor_screen.dart';
-import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -76,12 +75,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ).push(MaterialPageRoute(builder: (_) => const ProjectBrowserScreen()));
   }
 
-  void _openProject(BuildContext context, Project project) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ProjectEditorScreen(project: project)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,10 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                               // Recent Manuscripts
                               _buildSectionHeader('🕑', 'Recent Manuscripts'),
-                              ProjectRecentGrid(
-                                onProjectTap: (project) =>
-                                    _openProject(context, project),
-                              ),
+                              const ProjectRecentGrid(),
 
                               const SizedBox(height: 64),
 

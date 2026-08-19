@@ -158,19 +158,19 @@ class CharacterIterationAdapter extends TypeAdapter<CharacterIteration> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return CharacterIteration(
-      iterationName: fields[0] as String,
-      name: fields[1] as String?,
-      aliases: (fields[2] as List?)?.cast<String>(),
-      occupation: fields[3] as String?,
-      gender: fields[4] as String?,
-      customGender: fields[5] as String?,
-      bio: fields[6] as String?,
-      originCountry: fields[7] as String?,
-      traits: (fields[8] as List?)?.cast<String>(),
-      congenitalTraits: fields[9] as dynamic,
-      leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
-      personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
-    )
+        iterationName: fields[0] as String,
+        name: fields[1] as String?,
+        aliases: (fields[2] as List?)?.cast<String>(),
+        occupation: fields[3] as String?,
+        gender: fields[4] as String?,
+        customGender: fields[5] as String?,
+        bio: fields[6] as String?,
+        originCountry: fields[7] as String?,
+        traits: (fields[8] as List?)?.cast<String>(),
+        congenitalTraits: fields[9] as dynamic,
+        leveledTraits: (fields[10] as Map?)?.cast<String, int>(),
+        personalityTraits: (fields[11] as Map?)?.cast<String, int>(),
+      )
       .._customFieldValues = (fields[12] as Map?)?.cast<String, String>()
       .._customPanels = (fields[13] as List?)?.cast<CustomPanel>()
       .._panelOrders = (fields[14] as Map?)?.cast<String, int>()
@@ -237,14 +237,16 @@ class CharacterAdapter extends TypeAdapter<Character> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Character(
-      name: fields[0] as String,
-      parentProjectId: fields[1] as int,
-      aliases: (fields[2] as List?)?.cast<String>(),
-      species: fields[3] as String?,
-      relationWebLayout: (fields[15] as Map?)?.map((dynamic k, dynamic v) =>
-          MapEntry(k as dynamic, (v as Map).cast<String, double>())),
-      createdAt: fields[17] as DateTime?,
-    )
+        name: fields[0] as String,
+        parentProjectId: fields[1] as int,
+        aliases: (fields[2] as List?)?.cast<String>(),
+        species: fields[3] as String?,
+        relationWebLayout: (fields[15] as Map?)?.map(
+          (dynamic k, dynamic v) =>
+              MapEntry(k as dynamic, (v as Map).cast<String, double>()),
+        ),
+        createdAt: fields[17] as DateTime?,
+      )
       ..gender = fields[4] as String?
       ..customGender = fields[5] as String?
       ..residence = fields[7] as String?

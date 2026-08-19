@@ -42,7 +42,7 @@ class MapModuleView extends StatelessWidget {
               child: Stack(
                 children: [
                   const MapEditorCanvas(),
-                  
+
                   // Top overlay (Layers panel toggle, etc.)
                   Positioned(
                     top: 16,

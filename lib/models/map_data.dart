@@ -30,8 +30,8 @@ class MapData extends HiveObject {
     this.height = 4096,
     List<MapLayer>? layers,
     DateTime? createdAt,
-  })  : layers = layers ?? [],
-        createdAt = createdAt ?? DateTime.now();
+  }) : layers = layers ?? [],
+       createdAt = createdAt ?? DateTime.now();
 }
 
 @HiveType(typeId: 31)
@@ -65,9 +65,9 @@ class MapLayer extends HiveObject {
     List<MapStamp>? stamps,
     List<MapPath>? paths,
     List<MapPolygon>? polygons,
-  })  : stamps = stamps ?? [],
-        paths = paths ?? [],
-        polygons = polygons ?? [];
+  }) : stamps = stamps ?? [],
+       paths = paths ?? [],
+       polygons = polygons ?? [];
 }
 
 @HiveType(typeId: 32)
@@ -163,6 +163,7 @@ class OffsetData {
   OffsetData(this.dx, this.dy);
 
   Offset toOffset() => Offset(dx, dy);
-  
-  factory OffsetData.fromOffset(Offset offset) => OffsetData(offset.dx, offset.dy);
+
+  factory OffsetData.fromOffset(Offset offset) =>
+      OffsetData(offset.dx, offset.dy);
 }

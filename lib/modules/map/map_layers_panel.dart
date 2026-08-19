@@ -30,10 +30,7 @@ class MapLayersPanel extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Layers',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Layers', style: Theme.of(context).textTheme.titleMedium),
                 IconButton(
                   icon: const Icon(LucideIcons.plus, size: 20),
                   tooltip: 'New Layer',
@@ -55,17 +52,25 @@ class MapLayersPanel extends StatelessWidget {
 
                 return Material(
                   key: ValueKey(layer.id),
-                  color: isActive ? colorScheme.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+                  color: isActive
+                      ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                      : Colors.transparent,
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                     leading: ReorderableDragStartListener(
                       index: index,
-                      child: Icon(LucideIcons.gripVertical, color: colorScheme.onSurfaceVariant, size: 20),
+                      child: Icon(
+                        LucideIcons.gripVertical,
+                        color: colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
                     ),
                     title: Text(
                       layer.name,
                       style: TextStyle(
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isActive
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                     onTap: () => provider.setActiveLayer(index),
@@ -73,13 +78,24 @@ class MapLayersPanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(layer.isLocked ? LucideIcons.lock : LucideIcons.lockOpen, size: 18),
+                          icon: Icon(
+                            layer.isLocked
+                                ? LucideIcons.lock
+                                : LucideIcons.lockOpen,
+                            size: 18,
+                          ),
                           onPressed: () => provider.toggleLayerLock(index),
                           tooltip: layer.isLocked ? 'Unlock' : 'Lock',
                         ),
                         IconButton(
-                          icon: Icon(layer.isVisible ? LucideIcons.eye : LucideIcons.eyeOff, size: 18),
-                          onPressed: () => provider.toggleLayerVisibility(index),
+                          icon: Icon(
+                            layer.isVisible
+                                ? LucideIcons.eye
+                                : LucideIcons.eyeOff,
+                            size: 18,
+                          ),
+                          onPressed: () =>
+                              provider.toggleLayerVisibility(index),
                           tooltip: layer.isVisible ? 'Hide' : 'Show',
                         ),
                       ],

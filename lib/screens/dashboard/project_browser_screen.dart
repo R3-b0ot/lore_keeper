@@ -1,11 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lore_keeper/models/project.dart';
-import 'package:lore_keeper/models/chapter.dart';
-import 'package:lore_keeper/screens/project_editor_screen.dart';
-import 'package:lore_keeper/screens/dashboard/widgets/project_recent_grid.dart'; // Reuse ProjectCard
 import 'package:lore_keeper/widgets/project_details_dialog.dart';
+import 'package:lore_keeper/widgets/project_book/project_book.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 
 enum ProjectSort { nameAZ, nameZA, newest, oldest, lastModified }
@@ -19,6 +18,11 @@ class ProjectBrowserScreen extends StatefulWidget {
 
 class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  /// Tracks the genre glow colour of whichever book is currently hovered,
+  /// or null when nothing is hovered. Drives the screen-level ambient glow.
+  final ValueNotifier<Color?> _hoveredGlowColor = ValueNotifier(null);
+
   ProjectSort _sortBy = ProjectSort.lastModified;
 
   @override
@@ -32,6 +36,7 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _hoveredGlowColor.dispose();
     super.dispose();
   }
 
@@ -55,166 +60,189 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
           ),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _buildFilterBar(isDark),
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: Hive.box<Project>('projects').listenable(),
-              builder: (context, Box<Project> box, _) {
-                final query = _searchController.text.toLowerCase();
-                var projects = box.values.where((p) {
-                  final title = p.title.toLowerCase();
-                  final desc = (p.description ?? '').toLowerCase();
-                  return title.contains(query) || desc.contains(query);
-                }).toList();
-
-                // Apply Sorting
-                projects.sort((a, b) {
-                  switch (_sortBy) {
-                    case ProjectSort.nameAZ:
-                      return a.title.toLowerCase().compareTo(
-                        b.title.toLowerCase(),
-                      );
-                    case ProjectSort.nameZA:
-                      return b.title.toLowerCase().compareTo(
-                        a.title.toLowerCase(),
-                      );
-                    case ProjectSort.newest:
-                      return b.createdAt.compareTo(a.createdAt);
-                    case ProjectSort.oldest:
-                      return a.createdAt.compareTo(b.createdAt);
-                    case ProjectSort.lastModified:
-                      final aDate = a.lastModified ?? a.createdAt;
-                      final bDate = b.lastModified ?? b.createdAt;
-                      return bDate.compareTo(aDate);
-                  }
-                });
-
-                if (projects.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.folderOpen,
-                          size: 64,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          // ── Screen-level ambient glow ────────────────────────────────────
+          // Rendered at Scaffold level so it isn't clipped by GridView.
+          // ImageFiltered blurs the circle itself (CSS `filter: blur()` equiv).
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ValueListenableBuilder<Color?>(
+                valueListenable: _hoveredGlowColor,
+                builder: (context, color, _) {
+                  return AnimatedOpacity(
+                    opacity: color != null ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 400),
+                    child: Center(
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(
+                          sigmaX: 120,
+                          sigmaY: 120,
+                          tileMode: TileMode.decal,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          query.isEmpty
-                              ? 'Your library is empty.'
-                              : 'No projects match your search.',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                        child: Container(
+                          width: 600,
+                          height: 600,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: (color ?? Colors.transparent).withValues(
+                              alpha: 0.2,
+                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   );
-                }
+                },
+              ),
+            ),
+          ),
 
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double width = constraints.maxWidth;
-                    int crossAxisCount = (width / 260).floor();
-                    if (crossAxisCount < 1) crossAxisCount = 1;
+          // ── Main content ─────────────────────────────────────────────────
+          Column(
+            children: [
+              _buildFilterBar(isDark),
+              Expanded(
+                child: ValueListenableBuilder(
+                  valueListenable: Hive.box<Project>('projects').listenable(),
+                  builder: (context, Box<Project> box, _) {
+                    final query = _searchController.text.toLowerCase();
+                    var projects = box.values.where((p) {
+                      final title = p.title.toLowerCase();
+                      final desc = (p.description ?? '').toLowerCase();
+                      return title.contains(query) || desc.contains(query);
+                    }).toList();
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 24,
-                      ),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        mainAxisSpacing: 32,
-                        crossAxisSpacing: 32,
-                        childAspectRatio: 0.82,
-                      ),
-                      itemCount: projects.length,
-                      itemBuilder: (context, index) {
-                        final project = projects[index];
-                        final genre = project.genre ?? 'General';
+                    // Apply Sorting
+                    projects.sort((a, b) {
+                      switch (_sortBy) {
+                        case ProjectSort.nameAZ:
+                          return a.title.toLowerCase().compareTo(
+                            b.title.toLowerCase(),
+                          );
+                        case ProjectSort.nameZA:
+                          return b.title.toLowerCase().compareTo(
+                            a.title.toLowerCase(),
+                          );
+                        case ProjectSort.newest:
+                          return b.createdAt.compareTo(a.createdAt);
+                        case ProjectSort.oldest:
+                          return a.createdAt.compareTo(b.createdAt);
+                        case ProjectSort.lastModified:
+                          final aDate = a.lastModified ?? a.createdAt;
+                          final bDate = b.lastModified ?? b.createdAt;
+                          return bDate.compareTo(aDate);
+                      }
+                    });
 
-                        return ProjectCard(
-                          title: project.title,
-                          tag: genre,
-                          wordCount: '${_getProjectWordCount(project)} words',
-                          time: _formatDate(
-                            project.lastModified ?? project.createdAt,
+                    if (projects.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.folderOpen,
+                              size: 64,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              query.isEmpty
+                                  ? 'Your library is empty.'
+                                  : 'No projects match your search.',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double width = constraints.maxWidth;
+                        int crossAxisCount = (width / 260).floor();
+                        if (crossAxisCount < 1) crossAxisCount = 1;
+
+                        return GridView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 24,
                           ),
-                          gradientColors: _getGenreColor(genre),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProjectEditorScreen(project: project),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                mainAxisSpacing: 32,
+                                crossAxisSpacing: 32,
+                                childAspectRatio: 0.82,
                               ),
-                            );
-                          },
-                          onEditTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProjectEditorScreen(project: project),
-                              ),
-                            );
-                          },
-                          onSettingsTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) =>
-                                  ProjectDetailsDialog(project: project),
-                            );
-                          },
-                          onDeleteTap: () async {
-                            final confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Project?'),
-                                content: Text(
-                                  'Are you sure you want to delete "${project.title}"? This cannot be undone.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(true),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                      foregroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.onError,
-                                    ),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
-                            );
+                          itemCount: projects.length,
+                          itemBuilder: (context, index) {
+                            final project = projects[index];
 
-                            if (confirmed == true) {
-                              await project.delete();
-                            }
+                            return ProjectBook(
+                              project: project,
+                              onHoverGlowChanged: (color) {
+                                _hoveredGlowColor.value = color;
+                              },
+                              onSettingsTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) =>
+                                      ProjectDetailsDialog(project: project),
+                                );
+                              },
+                              onDeleteTap: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Project?'),
+                                    content: Text(
+                                      'Are you sure you want to delete "${project.title}"? This cannot be undone.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).colorScheme.error,
+                                          foregroundColor: Theme.of(
+                                            context,
+                                          ).colorScheme.onError,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmed == true) {
+                                  await project.delete();
+                                }
+                              },
+                            );
                           },
                         );
                       },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -318,50 +346,5 @@ class _ProjectBrowserScreenState extends State<ProjectBrowserScreen> {
         ],
       ),
     );
-  }
-
-  int _getProjectWordCount(Project project) {
-    if (!Hive.isBoxOpen('chapters')) return 0;
-    final chapters = Hive.box<Chapter>('chapters').values
-        .where((chapter) => chapter.parentProjectId == project.key)
-        .toList();
-    int totalWords = 0;
-    for (final chapter in chapters) {
-      if (chapter.richTextJson != null) {
-        final text = chapter.richTextJson!
-            .replaceAll(RegExp(r'<[^>]*>'), '')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim();
-        if (text.isNotEmpty) {
-          totalWords += text.split(' ').where((word) => word.isNotEmpty).length;
-        }
-      }
-    }
-    return totalWords;
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-    return '${date.month}/${date.day}/${date.year}';
-  }
-
-  List<Color> _getGenreColor(String genre) {
-    switch (genre.toLowerCase()) {
-      case 'fantasy':
-        return [const Color(0xFF1e1b4b), const Color(0xFF4338ca)];
-      case 'horror':
-        return [const Color(0xFF450a0a), const Color(0xFF991b1b)];
-      case 'sci-fi':
-        return [const Color(0xFF064e3b), const Color(0xFF059669)];
-      case 'mystery':
-        return [const Color(0xFF4c1d95), const Color(0xFF7c3aed)];
-      default:
-        return [const Color(0xFF1e293b), const Color(0xFF334155)];
-    }
   }
 }

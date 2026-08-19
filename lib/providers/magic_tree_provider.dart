@@ -823,8 +823,14 @@ class MagicTreeProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _systemBox.close();
-    _nodeBox.close();
+    // Boxes are opened asynchronously in [_initialize]; only close the ones
+    // that were actually opened (unconditionally touching a `late` box that
+    // never got assigned would throw LateInitializationError when the editor
+    // is torn down before the async open completes).
+    if (_isInitialized) {
+      _systemBox.close();
+      _nodeBox.close();
+    }
     super.dispose();
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lore_keeper/utils/project_utils.dart';
 
 import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
@@ -71,7 +72,11 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
       await projectBox.add(newProject);
 
       if (mounted) {
-        Navigator.of(context).pop(true);
+        openProject(context, newProject).then((_) {
+          if (mounted) {
+            Navigator.of(context).pop(true);
+          }
+        });
       }
     }
   }

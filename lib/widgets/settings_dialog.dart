@@ -317,7 +317,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     leading: Radio<String>.adaptive(
                       value: 'minimal',
                       groupValue: themeNotifier.themePack,
-                      onChanged: (String? value) => themeNotifier.setThemePack('minimal'),
+                      onChanged: (String? value) =>
+                          themeNotifier.setThemePack('minimal'),
                     ),
                     onTap: () => themeNotifier.setThemePack('minimal'),
                   ),
@@ -327,7 +328,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     leading: Radio<String>.adaptive(
                       value: 'dracula',
                       groupValue: themeNotifier.themePack,
-                      onChanged: (String? value) => themeNotifier.setThemePack('dracula'),
+                      onChanged: (String? value) =>
+                          themeNotifier.setThemePack('dracula'),
                     ),
                     onTap: () => themeNotifier.setThemePack('dracula'),
                   ),
@@ -348,7 +350,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     onTap: () => themeNotifier.setTheme(ThemeMode.system),
                   ),
                   ListTile(
-                    title: Text(themeNotifier.themePack == 'dracula' ? 'Light (Alucard)' : 'Light'),
+                    title: Text(
+                      themeNotifier.themePack == 'dracula'
+                          ? 'Light (Alucard)'
+                          : 'Light',
+                    ),
                     leading: Radio<ThemeMode>.adaptive(
                       value: ThemeMode.light,
                       groupValue: themeNotifier.themeMode,
@@ -358,7 +364,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     onTap: () => themeNotifier.setTheme(ThemeMode.light),
                   ),
                   ListTile(
-                    title: Text(themeNotifier.themePack == 'dracula' ? 'Dark (Dracula)' : 'Dark'),
+                    title: Text(
+                      themeNotifier.themePack == 'dracula'
+                          ? 'Dark (Dracula)'
+                          : 'Dark',
+                    ),
                     leading: Radio<ThemeMode>.adaptive(
                       value: ThemeMode.dark,
                       groupValue: themeNotifier.themeMode,
@@ -372,7 +382,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     const Divider(height: 32),
                     const Text(
                       'Contrast Level',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     ListTile(

@@ -66,10 +66,9 @@ class CalendarMainPanel extends StatelessWidget {
                       color: panelLighter,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
-                            .withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Text(

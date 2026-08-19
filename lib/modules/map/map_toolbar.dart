@@ -81,14 +81,16 @@ class MapToolbar extends StatelessWidget {
       if (result != null && result.files.single.path != null) {
         File file = File(result.files.single.path!);
         String assetPath = await ResourceManager().importCustomAsset(file);
-        
-        await provider.addStamp(MapStamp(
-          id: const Uuid().v4(),
-          assetPath: assetPath,
-          x: 2000, // roughly center of 4096 map for now
-          y: 2000,
-          isCustom: true,
-        ));
+
+        await provider.addStamp(
+          MapStamp(
+            id: const Uuid().v4(),
+            assetPath: assetPath,
+            x: 2000, // roughly center of 4096 map for now
+            y: 2000,
+            isCustom: true,
+          ),
+        );
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -98,9 +100,9 @@ class MapToolbar extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error importing asset: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error importing asset: $e')));
       }
     }
   }
@@ -129,7 +131,9 @@ class _ToolButton extends StatelessWidget {
         tooltip: tooltip,
         color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
         style: IconButton.styleFrom(
-          backgroundColor: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+          backgroundColor: isSelected
+              ? colorScheme.primaryContainer
+              : Colors.transparent,
         ),
         onPressed: onPressed,
       ),

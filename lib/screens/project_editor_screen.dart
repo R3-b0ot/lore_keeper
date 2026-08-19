@@ -195,6 +195,25 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     });
   }
 
+  void _onReferenceNavigate(String encodedTarget) {
+    // Parse "ref:Character:42" → navigate to character module
+    if (!encodedTarget.startsWith('ref:')) return;
+    final rest = encodedTarget.substring(4);
+    final colonIndex = rest.indexOf(':');
+    if (colonIndex == -1) return;
+    final typeLabel = rest.substring(0, colonIndex);
+    final id = rest.substring(colonIndex + 1);
+
+    if (typeLabel == 'Character') {
+      // Switch to character module and select the character.
+      setState(() {
+        _moduleIndex = 1;
+        _selectedCharacterKey = id;
+      });
+    }
+    // Location, Item, Organization: not yet implemented.
+  }
+
   void _goToMainScreen() {
     Navigator.of(context).pop();
   }
@@ -346,6 +365,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               projectId: widget.project.key,
               selectedChapterKey: _selectedChapterKey,
               chapterProvider: _chapterListProvider!,
+              characterProvider: _characterListProvider!,
               onChapterSelected: _onChapterSelected,
               onControllerReady: (controller) {
                 _manuscriptController = controller;
@@ -353,6 +373,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               onGrammarCheckReady: (grammarCheck) {
                 _runManuscriptGrammarCheck = grammarCheck;
               },
+              onReferenceNavigate: _onReferenceNavigate,
             );
     } else if (_moduleIndex == 1) {
       return _selectedCharacterKey.isEmpty
@@ -505,11 +526,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           onModuleTapped: _onModuleTapped,
           onToggleSidebar: _toggleSidebar,
           onToggleListPane: _toggleListPane,
+          moduleContent: moduleResolution.moduleContent,
           projectTitle: widget.project.title,
           onGoHome: _goToMainScreen,
           onOpenSettings: _openSettings,
           secondColumn: moduleResolution.secondColumn,
-          moduleContent: moduleResolution.moduleContent,
           showSecondColumnDivider: moduleResolution.showSecondColumnDivider,
           isHistoryPanelVisible: _isHistoryPanelVisible,
           historyPanel: historyPanel,

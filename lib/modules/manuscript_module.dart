@@ -19,23 +19,31 @@ import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
+import 'package:lore_keeper/providers/character_list_provider.dart';
+import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
+import 'package:lore_keeper/widgets/reference_autocomplete_overlay.dart';
+import 'package:lore_keeper/services/reference_attribute.dart';
 
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
+  final CharacterListProvider characterProvider;
   final ValueChanged<String> onChapterSelected;
   final ValueChanged<QuillController?> onControllerReady;
   final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
+  final ValueChanged<String>? onReferenceNavigate;
 
   const ManuscriptModule({
     super.key,
     required this.projectId,
     required this.selectedChapterKey,
     required this.chapterProvider,
+    required this.characterProvider,
     required this.onChapterSelected,
     required this.onControllerReady,
     required this.onGrammarCheckReady,
+    this.onReferenceNavigate,
   });
 
   @override
@@ -44,9 +52,11 @@ class ManuscriptModule extends StatelessWidget {
       projectId: projectId,
       selectedChapterKey: selectedChapterKey,
       chapterProvider: chapterProvider,
+      characterProvider: characterProvider,
       onChapterSelected: onChapterSelected,
       onControllerReady: onControllerReady,
       onGrammarCheckReady: onGrammarCheckReady,
+      onReferenceNavigate: onReferenceNavigate,
     );
   }
 }
@@ -55,18 +65,22 @@ class ManuscriptEditor extends StatefulWidget {
   final int projectId;
   final String selectedChapterKey;
   final ChapterListProvider chapterProvider;
+  final CharacterListProvider characterProvider;
   final ValueChanged<String> onChapterSelected;
   final ValueChanged<QuillController?> onControllerReady;
   final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
+  final ValueChanged<String>? onReferenceNavigate;
 
   const ManuscriptEditor({
     super.key,
     required this.projectId,
     required this.selectedChapterKey,
     required this.chapterProvider,
+    required this.characterProvider,
     required this.onChapterSelected,
     required this.onControllerReady,
     required this.onGrammarCheckReady,
+    this.onReferenceNavigate,
   });
 
   @override
@@ -105,6 +119,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   bool _showGrammarPanel = false;
   String? _activeCategory;
 
+  // @mention autocomplete
+  late final ReferenceAutocompleteController _autocompleteController;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +130,15 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     widget.onControllerReady(_controller);
     widget.onGrammarCheckReady(_runGrammarCheck);
     _titleFocusNode = FocusNode();
+
+    // Initialize @mention autocomplete controller
+    _autocompleteController = ReferenceAutocompleteController(
+      quillController: _controller,
+      charactersProvider: () => widget.characterProvider.characters,
+    );
+    _autocompleteController.onStateChanged = () {
+      if (mounted) setState(() {});
+    };
 
     _loadProject();
 
@@ -201,6 +227,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     _autosaveTimer = Timer(_autosaveDelay, _saveContent);
 
+    // Update @mention autocomplete
+    _autocompleteController.onTextChanged();
+
     final text = _controller.document.toPlainText();
     if (text.isNotEmpty &&
         (text.endsWith(' ') || text.endsWith('\t') || text.endsWith('\n'))) {
@@ -222,6 +251,35 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
             : plainText.split(RegExp(r'\s+')).length,
       );
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // @mention autocomplete keyboard handling
+  // ---------------------------------------------------------------------------
+
+  KeyEventResult _onAutocompleteKeyHandler(FocusNode node, KeyEvent event) {
+    if (_autocompleteController.handleKeyEvent(event)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Handle taps on inline reference links.
+  ///
+  /// Links with the `ref:` prefix are internal references to Characters,
+  /// Locations, etc. Other URLs open externally.
+  Future<void> _onReferenceLaunch(String url) async {
+    var link = url;
+    // LinkValidator may have prepended https:// to unrecognized prefixes.
+    if (link.startsWith('https://ref:') || link.startsWith('http://ref:')) {
+      link = link.substring(link.indexOf('ref:'));
+    }
+    if (!link.startsWith('ref:')) return;
+
+    final target = ReferenceTarget.decode(link);
+    if (target == null) return;
+
+    widget.onReferenceNavigate?.call(target.encode());
   }
 
   void _loadAboutAuthorTemplate() {
@@ -354,6 +412,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _controller.removeListener(_onTextChanged);
     _titleFocusNode.removeListener(_onFocusChange);
     _focusNode.removeListener(_onFocusChange);
+
+    _autocompleteController.onStateChanged = null;
+    _autocompleteController.dismiss();
 
     _controller.document = Document();
     _titleController.document = Document();
@@ -575,15 +636,32 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       }
       if (kp == -3) return AboutAuthorForm(project: _project!);
     }
-    return QuillEditor(
-      controller: _controller,
-      focusNode: _focusNode,
-      scrollController: _scrollController,
-      config: QuillEditorConfig(
-        padding: const EdgeInsets.all(16),
-        placeholder: 'Write your story...',
-        embedBuilders: [...FlutterQuillEmbeds.editorBuilders()],
-      ),
+    return Stack(
+      children: [
+        Focus(
+          onKeyEvent: _onAutocompleteKeyHandler,
+          child: QuillEditor(
+            controller: _controller,
+            focusNode: _focusNode,
+            scrollController: _scrollController,
+            config: QuillEditorConfig(
+              padding: const EdgeInsets.all(16),
+              placeholder: 'Write your story...',
+              embedBuilders: [...FlutterQuillEmbeds.editorBuilders()],
+              onLaunchUrl: _onReferenceLaunch,
+              customLinkPrefixes: const ['ref:'],
+            ),
+          ),
+        ),
+        if (_autocompleteController.isActive)
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: ReferenceAutocompleteOverlay(
+              controller: _autocompleteController,
+            ),
+          ),
+      ],
     );
   }
 

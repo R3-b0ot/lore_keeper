@@ -58,45 +58,67 @@ Future<void> showProjectSettingsDialog(
 }
 
 /// Prompts for a new character name and returns it if confirmed.
-Future<String?> showCreateCharacterDialog(BuildContext context) async {
-  final nameController = TextEditingController();
-  final formKey = GlobalKey<FormState>();
+Future<String?> showCreateCharacterDialog(BuildContext context) {
+  return showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const _CreateCharacterDialog(),
+  );
+}
 
-  try {
-    return await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Create New Character'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: nameController,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Character Name'),
-              validator: validateCharacterName,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.of(context).pop(nameController.text.trim());
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        );
-      },
+class _CreateCharacterDialog extends StatefulWidget {
+  const _CreateCharacterDialog();
+
+  @override
+  State<_CreateCharacterDialog> createState() => _CreateCharacterDialogState();
+}
+
+class _CreateCharacterDialogState extends State<_CreateCharacterDialog> {
+  late final TextEditingController _nameController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      Navigator.of(context).pop(_nameController.text.trim());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Create New Character'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _nameController,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Character Name'),
+          validator: validateCharacterName,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Create'),
+        ),
+      ],
     );
-  } finally {
-    nameController.dispose();
   }
 }
 
@@ -104,56 +126,78 @@ Future<String?> showCreateCharacterDialog(BuildContext context) async {
 Future<CharacterDialogResult?> showEditCharacterDialog(
   BuildContext context, {
   required String initialName,
-}) async {
-  final nameDialogController = TextEditingController(text: initialName);
-  final formKey = GlobalKey<FormState>();
+}) {
+  return showDialog<CharacterDialogResult>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => _EditCharacterDialog(initialName: initialName),
+  );
+}
 
-  try {
-    return await showDialog<CharacterDialogResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Character'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: nameDialogController,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Character Name'),
-              validator: validateCharacterName,
-            ),
+class _EditCharacterDialog extends StatefulWidget {
+  final String initialName;
+
+  const _EditCharacterDialog({required this.initialName});
+
+  @override
+  State<_EditCharacterDialog> createState() => _EditCharacterDialogState();
+}
+
+class _EditCharacterDialogState extends State<_EditCharacterDialog> {
+  late final TextEditingController _nameController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    if (_formKey.currentState?.validate() ?? false) {
+      Navigator.of(context).pop(ConfirmCharacterName(_nameController.text.trim()));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Character'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _nameController,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Character Name'),
+          validator: validateCharacterName,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () =>
+              Navigator.of(context).pop(const DeleteCharacter()),
+          child: Text(
+            'Delete Character',
+            style: TextStyle(color: AppColors.getError(context)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(const DeleteCharacter()),
-              child: Text(
-                'Delete Character',
-                style: TextStyle(color: AppColors.getError(context)),
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.of(
-                    context,
-                  ).pop(ConfirmCharacterName(nameDialogController.text.trim()));
-                }
-              },
-              child: const Text('Confirm'),
-            ),
-          ],
-        );
-      },
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _confirm,
+          child: const Text('Confirm'),
+        ),
+      ],
     );
-  } finally {
-    nameDialogController.dispose();
   }
 }
 

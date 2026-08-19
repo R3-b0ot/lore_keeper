@@ -28,6 +28,7 @@ import 'package:lore_keeper/core/theme/app_theme.dart' as core_theme;
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 
 // Global access point for the Project data store (Hive Box)
 late Box<Project> projectBox;
@@ -37,6 +38,24 @@ late Box<Character> characterBox;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Global error handling ─────────────────────────────────────────────
+  FlutterError.onError = (FlutterErrorDetails details) {
+    LkLog.error(
+      'FLUTTER',
+      details.exceptionAsString(),
+      details.exception,
+      details.stack,
+    );
+    FlutterError.presentError(details);
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    LkLog.error('FLUTTER', 'PlatformDispatcher error', error, stack);
+    return true; // Handled — preserve default behaviour.
+  };
+  // ───────────────────────────────────────────────────────────────────────
+
   await initializeHive();
   await RelationshipService().initialize();
   await ResourceManager().initialize();

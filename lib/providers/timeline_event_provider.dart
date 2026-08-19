@@ -121,7 +121,13 @@ class TimelineEventProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _eventBox.close();
+    // The box is opened asynchronously in [_initialize]; only close it when it
+    // was actually opened (unconditionally touching a `late` box that never
+    // got assigned would throw LateInitializationError if the editor is torn
+    // down before the async open completes).
+    if (_isInitialized) {
+      _eventBox.close();
+    }
     super.dispose();
   }
 }

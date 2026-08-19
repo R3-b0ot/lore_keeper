@@ -9,7 +9,7 @@ class MapProvider extends ChangeNotifier {
   final int projectId;
   late Box<MapData> _mapBox;
   MapData? _activeMap;
-  
+
   MapTool _currentTool = MapTool.pan;
   int _activeLayerIndex = 0;
   String? _selectedStampId;
@@ -42,10 +42,12 @@ class MapProvider extends ChangeNotifier {
 
   Future<void> _initialize() async {
     _mapBox = Hive.box<MapData>('map_data');
-    
+
     // Find a map for this project or create one
     try {
-      _activeMap = _mapBox.values.firstWhere((map) => map.parentProjectId == projectId);
+      _activeMap = _mapBox.values.firstWhere(
+        (map) => map.parentProjectId == projectId,
+      );
     } catch (e) {
       // Create new map
       final newMap = MapData(
@@ -87,7 +89,11 @@ class MapProvider extends ChangeNotifier {
   }
 
   /// Update selected stamp's transform properties (position, scale, rotation)
-  void updateSelectedStamp({Offset? position, double? scale, double? rotation}) {
+  void updateSelectedStamp({
+    Offset? position,
+    double? scale,
+    double? rotation,
+  }) {
     if (_selectedStampId == null) return;
     MapStamp? targetStamp;
     for (var layer in _activeMap!.layers) {
@@ -116,17 +122,16 @@ class MapProvider extends ChangeNotifier {
 
   Future<void> addLayer(String name) async {
     if (_activeMap == null) return;
-    _activeMap!.layers.insert(0, MapLayer(
-      id: const Uuid().v4(),
-      name: name,
-    ));
+    _activeMap!.layers.insert(0, MapLayer(id: const Uuid().v4(), name: name));
     await _activeMap!.save();
     _activeLayerIndex = 0; // Select new layer
     notifyListeners();
   }
 
   Future<void> deleteLayer(int index) async {
-    if (_activeMap == null || _activeMap!.layers.length <= 1) return; // Always keep one layer
+    if (_activeMap == null || _activeMap!.layers.length <= 1) {
+      return; // Always keep one layer
+    }
     _activeMap!.layers.removeAt(index);
     if (_activeLayerIndex >= _activeMap!.layers.length) {
       _activeLayerIndex = _activeMap!.layers.length - 1;
@@ -142,7 +147,7 @@ class MapProvider extends ChangeNotifier {
     }
     final layer = _activeMap!.layers.removeAt(oldIndex);
     _activeMap!.layers.insert(newIndex, layer);
-    
+
     // Update active index to track the moved layer if it was active
     if (_activeLayerIndex == oldIndex) {
       _activeLayerIndex = newIndex;
@@ -151,7 +156,7 @@ class MapProvider extends ChangeNotifier {
     } else if (oldIndex > _activeLayerIndex && newIndex <= _activeLayerIndex) {
       _activeLayerIndex += 1;
     }
-    
+
     await _activeMap!.save();
     notifyListeners();
   }
@@ -178,7 +183,7 @@ class MapProvider extends ChangeNotifier {
 
   Future<void> addStamp(MapStamp stamp) async {
     if (_activeMap == null || _activeMap!.layers.isEmpty) return;
-    
+
     _activeMap!.layers[_activeLayerIndex].stamps.add(stamp);
     await _activeMap!.save();
     notifyListeners();
@@ -186,15 +191,15 @@ class MapProvider extends ChangeNotifier {
 
   Future<void> addPath(MapPath path) async {
     if (_activeMap == null || _activeMap!.layers.isEmpty) return;
-    
+
     _activeMap!.layers[_activeLayerIndex].paths.add(path);
     await _activeMap!.save();
     notifyListeners();
   }
-  
+
   Future<void> addPolygon(MapPolygon polygon) async {
     if (_activeMap == null || _activeMap!.layers.isEmpty) return;
-    
+
     _activeMap!.layers[_activeLayerIndex].polygons.add(polygon);
     await _activeMap!.save();
     notifyListeners();
@@ -204,15 +209,16 @@ class MapProvider extends ChangeNotifier {
     // Basic hit testing would go here
     // We'll iterate layers in reverse (top to bottom) to delete the top-most clicked asset
     if (_activeMap == null) return;
-    
+
     for (int i = _activeMap!.layers.length - 1; i >= 0; i--) {
       var layer = _activeMap!.layers[i];
       if (layer.isLocked || !layer.isVisible) continue;
-      
+
       // Checking stamps (very crude bounding box)
       for (int j = layer.stamps.length - 1; j >= 0; j--) {
         var stamp = layer.stamps[j];
-        if ((position.dx - stamp.x).abs() < 50 && (position.dy - stamp.y).abs() < 50) {
+        if ((position.dx - stamp.x).abs() < 50 &&
+            (position.dy - stamp.y).abs() < 50) {
           layer.stamps.removeAt(j);
           await _activeMap!.save();
           notifyListeners();
