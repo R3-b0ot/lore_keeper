@@ -4,6 +4,7 @@ import 'package:lore_keeper/modules/calendar_module.dart';
 import 'package:lore_keeper/modules/magic_module.dart';
 import 'package:lore_keeper/modules/timeline_module.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
+import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/magic_tree_provider.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
 
@@ -12,12 +13,21 @@ class WorldBuildingTabs extends StatefulWidget {
   final CalendarTreeProvider calendarProvider;
   final MagicTreeProvider magicProvider;
   final TimelineEventProvider timelineProvider;
+  final CharacterListProvider characterProvider;
+
+  /// Current tab index (controlled mode). If provided, the widget uses this index.
+  final int? initialTabIndex;
+  /// Callback when the user switches tabs.
+  final ValueChanged<int>? onTabChanged;
 
   const WorldBuildingTabs({
     super.key,
     required this.calendarProvider,
     required this.magicProvider,
     required this.timelineProvider,
+    required this.characterProvider,
+    this.initialTabIndex,
+    this.onTabChanged,
   });
 
   @override
@@ -48,11 +58,33 @@ class _WorldBuildingTabsState extends State<WorldBuildingTabs>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: widget.initialTabIndex ?? 0,
+    );
+    _tabController.addListener(_onTabControllerChanged);
+  }
+
+  void _onTabControllerChanged() {
+    if (!_tabController.indexIsChanging) {
+      widget.onTabChanged?.call(_tabController.index);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant WorldBuildingTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTabIndex != null &&
+        widget.initialTabIndex != oldWidget.initialTabIndex &&
+        widget.initialTabIndex != _tabController.index) {
+      _tabController.animateTo(widget.initialTabIndex!);
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabControllerChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -107,6 +139,7 @@ class _WorldBuildingTabsState extends State<WorldBuildingTabs>
         return TimelineModule(
           calendarProvider: widget.calendarProvider,
           eventProvider: widget.timelineProvider,
+          characterProvider: widget.characterProvider,
         );
       case 2:
         return CalendarModule(calendarProvider: widget.calendarProvider);

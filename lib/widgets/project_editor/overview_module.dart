@@ -364,7 +364,7 @@ class _QuickNavGrid extends StatelessWidget {
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
-            final columns = constraints.maxWidth > 700 ? 2 : 1;
+            final columns = constraints.maxWidth > 350 ? 4 : 2;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -506,7 +506,7 @@ class _RecentManuscripts extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: recent.length,
-          separatorBuilder: (_, __) => Divider(
+          separatorBuilder: (_, _) => Divider(
             height: 1,
             color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),

@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:lore_keeper/models/calendar_node.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
+import 'package:lore_keeper/providers/character_list_provider.dart';
+
 import 'package:lore_keeper/theme/app_colors.dart';
+import 'package:lore_keeper/utils/calendar_chronology.dart';
+import 'package:lore_keeper/widgets/project_editor/character_selection_dialog.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 
 enum _ZoomTier { era, year, month, date }
@@ -14,11 +17,13 @@ enum _ZoomTier { era, year, month, date }
 class TimelineModule extends StatefulWidget {
   final CalendarTreeProvider calendarProvider;
   final TimelineEventProvider eventProvider;
+  final CharacterListProvider characterProvider;
 
   const TimelineModule({
     super.key,
     required this.calendarProvider,
     required this.eventProvider,
+    required this.characterProvider,
   });
 
   @override
@@ -67,122 +72,28 @@ class _TimelineModuleState extends State<TimelineModule> {
     super.dispose();
   }
 
-  int _readInt(
-    List<CalendarAttribute> attrs,
-    List<String> labels,
-    int fallback,
-  ) {
-    for (final attr in attrs) {
-      final l = attr.label.toLowerCase();
-      for (final key in labels) {
-        if (l.contains(key.toLowerCase())) {
-          final m = RegExp(r'-?\d+').firstMatch(attr.value);
-          final parsed = m == null ? null : int.tryParse(m.group(0)!);
-          if (parsed != null && parsed != 0) return parsed;
-        }
-      }
-    }
-    return fallback;
-  }
+  /// Builds the active chronology from the calendar tree.
+  CalendarChronology _chronology(int systemKey) =>
+      CalendarChronology.fromProvider(widget.calendarProvider, systemKey);
 
-  _AxisData _axis(int systemKey) {
-    final provider = widget.calendarProvider;
-    final system = provider.getSystemByKey(systemKey);
-    final root = provider.getRootNodeForSystem(systemKey);
-    final top = provider.getTopCalendarNodeForSystem(systemKey);
-    if (system == null || root == null || top == null) return _AxisData.empty();
-
-    final rootChildren = provider.getChildrenOf(root.id);
-    CalendarNode? erasHeader;
-    for (final node in rootChildren) {
-      if (node.title.toLowerCase().contains('eras')) erasHeader = node;
-    }
-    final eras = erasHeader == null
-        ? <String>[]
-        : provider.getChildrenOf(erasHeader.id).map((e) => e.title).toList();
-
-    final topChildren = provider.getChildrenOf(top.id);
-    CalendarNode? monthHeader;
-    for (final node in topChildren) {
-      if (node.title.toLowerCase().contains('month')) monthHeader = node;
-    }
-    final monthNodes = monthHeader == null
-        ? <CalendarNode>[]
-        : provider.getChildrenOf(monthHeader.id);
-
-    final months = <_Month>[];
-    var cursor = 1;
-    for (final node in monthNodes) {
-      final days = _readInt(node.attributes, ['days', 'number of days'], 30);
-      final safe = days <= 0 ? 30 : days;
-      months.add(_Month(node.title, safe, cursor));
-      cursor += safe;
-    }
-    if (months.isEmpty) {
-      const names = [
-        'Primus',
-        'Secundus',
-        'Tertius',
-        'Quartus',
-        'Quintus',
-        'Sextus',
-        'Septimus',
-        'Octavus',
-        'Nonus',
-        'Decimus',
-        'Undecim',
-        'Duodecim',
-      ];
-      cursor = 1;
-      for (final name in names) {
-        months.add(_Month(name, 30, cursor));
-        cursor += 30;
-      }
-    }
-
-    var total = _readInt(top.attributes, [
-      'total cycle',
-      'total days',
-      'days/year',
-    ], 0);
-    if (total <= 0) total = months.fold(0, (sum, m) => sum + m.days);
-    if (total <= 0) total = 360;
-    return _AxisData(system.name, top.title, eras, months, total);
-  }
-
-  _RelDate _dateFor(
-    TimelineEvent event,
-    _AxisData axis,
-    List<TimelineEvent> events,
-  ) {
-    final total = math.max(1, axis.totalDays);
+  _RelDate _dateFor(TimelineEvent event, CalendarChronology chronology) {
+    final total = math.max(1, chronology.daysInYear);
     final day = ((((event.absoluteDayOfYear - 1) % total) + total) % total) + 1;
+    final monthIdx = chronology.monthAtDayOfYear(day);
+    final dayInMonth = chronology.dayOfMonthAtDayOfYear(day);
+    final eraIdx = chronology.eraAtYear(event.absoluteYear);
+    final eraName = eraIdx >= 0 && eraIdx < chronology.eras.length
+        ? chronology.eras[eraIdx]
+        : 'Era';
 
-    var rem = day;
-    var monthIdx = 0;
-    for (int i = 0; i < axis.months.length; i++) {
-      if (rem <= axis.months[i].days) {
-        monthIdx = i;
-        break;
-      }
-      rem -= axis.months[i].days;
-    }
-
-    final eraIdx = _eraIndex(event.absoluteYear, axis.eras, events);
-    final eraName = axis.eras.isEmpty ? 'Era' : axis.eras[eraIdx];
-    return _RelDate(event.absoluteYear, day, monthIdx, rem, eraIdx, eraName);
-  }
-
-  int _eraIndex(int year, List<String> eras, List<TimelineEvent> events) {
-    if (eras.length <= 1) return 0;
-    final years = events.map((e) => e.absoluteYear).toList()
-      ..add(year)
-      ..sort();
-    final span = math.max(
-      1,
-      ((years.last - years.first + 1) / eras.length).ceil(),
+    return _RelDate(
+      event.absoluteYear,
+      day,
+      monthIdx < 0 ? 0 : monthIdx,
+      dayInMonth < 1 ? day : dayInMonth,
+      eraIdx < 0 ? 0 : eraIdx,
+      eraName,
     );
-    return (((year - years.first) / span).floor()).clamp(0, eras.length - 1);
   }
 
   IconData _icon(String key) {
@@ -219,37 +130,34 @@ class _TimelineModuleState extends State<TimelineModule> {
         .toList();
   }
 
-  String _label(_RelDate d, _AxisData axis) {
-    final monthName = axis.months.isEmpty
-        ? 'Month'
-        : axis.months[d.monthIdx].name;
-    return '${d.eraName}  Year ${d.year}  $monthName ${d.dayInMonth}';
+  String _label(_RelDate d, CalendarChronology chronology) {
+    return chronology.formatDisplay(d.year, d.dayOfYear);
   }
 
   double _dayPx() => 3.0 * _zoom;
 
   double _monthPx() => 180.0 * _zoom.clamp(0.8, 2.0);
 
-  double _trackWidth(_AxisData axis, List<TimelineEvent> events) {
+  double _trackWidth(CalendarChronology chronology, List<TimelineEvent> events) {
     if (events.isEmpty) return 1200;
     switch (_tier) {
       case _ZoomTier.era:
-        return (math.max(1, axis.eras.length) * 260.0) + 240.0;
+        return (math.max(1, chronology.eras.length) * 260.0) + 240.0;
       case _ZoomTier.year:
         final years = events.map((e) => e.absoluteYear).toList()..sort();
         return ((years.last - years.first + 1) *
                 (180.0 * _zoom.clamp(0.8, 1.8))) +
             240.0;
       case _ZoomTier.month:
-        return (axis.months.length * _monthPx()) + 240.0;
+        return (chronology.months.length * _monthPx()) + 240.0;
       case _ZoomTier.date:
-        return (axis.totalDays * _dayPx()) + 240.0;
+        return (chronology.daysInYear * _dayPx()) + 240.0;
     }
   }
 
   double _x(
     TimelineEvent event,
-    _AxisData axis,
+    CalendarChronology chronology,
     List<TimelineEvent> events,
     Map<String, _RelDate> dates,
   ) {
@@ -264,7 +172,7 @@ class _TimelineModuleState extends State<TimelineModule> {
         final yearW = 180.0 * _zoom.clamp(0.8, 1.8);
         return left + ((event.absoluteYear - minYear) * yearW) + (yearW / 2);
       case _ZoomTier.month:
-        final monthDays = math.max(1, axis.months[d.monthIdx].days);
+        final monthDays = math.max(1, chronology.months[d.monthIdx].days);
         final ratio = (d.dayInMonth - 1) / monthDays;
         return left + (d.monthIdx * _monthPx()) + (ratio * _monthPx());
       case _ZoomTier.date:
@@ -272,13 +180,14 @@ class _TimelineModuleState extends State<TimelineModule> {
     }
   }
 
-  Future<void> _createEvent(_AxisData axis) async {
+  Future<void> _createEvent(CalendarChronology chronology) async {
     final id = await widget.eventProvider.createEvent(
       name: 'New Event',
       absoluteYear: 1,
-      absoluteDayOfYear: (axis.totalDays / 2).round().clamp(1, axis.totalDays),
+      absoluteDayOfYear: (chronology.daysInYear / 2).round().clamp(1, chronology.daysInYear),
       iconKey: 'star',
       colorValue: 0xFF6366F1,
+      calendarSystemKey: chronology.systemKey,
     );
     if (!mounted) return;
     setState(() => _selectedEventId = id);
@@ -286,7 +195,7 @@ class _TimelineModuleState extends State<TimelineModule> {
 
   Widget _listPane(
     ThemeData theme,
-    _AxisData axis,
+    CalendarChronology chronology,
     List<TimelineEvent> events,
     Map<String, _RelDate> dates,
     List<dynamic> systems,
@@ -339,7 +248,7 @@ class _TimelineModuleState extends State<TimelineModule> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => _createEvent(axis),
+                      onPressed: () => _createEvent(chronology),
                       icon: const Icon(LucideIcons.plus),
                     ),
                   ],
@@ -402,7 +311,7 @@ class _TimelineModuleState extends State<TimelineModule> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       Text(
-                                        _label(d, axis),
+                                        _label(d, chronology),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.labelSmall,
@@ -442,7 +351,7 @@ class _TimelineModuleState extends State<TimelineModule> {
 
   Widget _panel(
     ThemeData theme,
-    _AxisData axis,
+    CalendarChronology chronology,
     List<TimelineEvent> events,
     Map<String, _RelDate> dates,
     TimelineEvent? selected,
@@ -460,7 +369,7 @@ class _TimelineModuleState extends State<TimelineModule> {
                       style: theme.textTheme.bodySmall,
                     ),
                   )
-                : _editor(theme, axis, selected, dates[selected.id]!),
+                : _editor(theme, chronology, selected, dates[selected.id]!),
           ),
         ),
         Expanded(
@@ -512,8 +421,8 @@ class _TimelineModuleState extends State<TimelineModule> {
                     controller: _scroll,
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
-                      width: _trackWidth(axis, events),
-                      child: _track(theme, axis, events, dates),
+                      width: _trackWidth(chronology, events),
+                      child: _track(theme, chronology, events, dates),
                     ),
                   ),
                 ),
@@ -525,7 +434,7 @@ class _TimelineModuleState extends State<TimelineModule> {
     );
   }
 
-  Widget _editor(ThemeData theme, _AxisData axis, TimelineEvent e, _RelDate d) {
+  Widget _editor(ThemeData theme, CalendarChronology chronology, TimelineEvent e, _RelDate d) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -537,11 +446,11 @@ class _TimelineModuleState extends State<TimelineModule> {
         ),
         const SizedBox(height: 8),
         Text(
-          '${axis.systemName}  ${axis.calendarName}',
+          '${chronology.systemName}  ${chronology.calendarName}',
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 4),
-        Text(_label(d, axis), style: theme.textTheme.bodySmall),
+        Text(_label(d, chronology), style: theme.textTheme.bodySmall),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,
@@ -690,7 +599,7 @@ class _TimelineModuleState extends State<TimelineModule> {
 
   Widget _track(
     ThemeData theme,
-    _AxisData axis,
+    CalendarChronology chronology,
     List<TimelineEvent> events,
     Map<String, _RelDate> dates,
   ) {
@@ -709,7 +618,7 @@ class _TimelineModuleState extends State<TimelineModule> {
           Row(
             children: [
               const SizedBox(width: 120),
-              ...(axis.eras.isEmpty ? ['Era'] : axis.eras).map(
+              ...(chronology.eras.isEmpty ? ['Era'] : chronology.eras).map(
                 (era) => Container(
                   width: 260,
                   padding: const EdgeInsets.only(left: 10, bottom: 18),
@@ -723,7 +632,7 @@ class _TimelineModuleState extends State<TimelineModule> {
           Row(
             children: [
               const SizedBox(width: 120),
-              ...axis.months.map(
+              ...chronology.months.map(
                 (m) => Container(
                   width: _tier == _ZoomTier.month
                       ? _monthPx()
@@ -736,7 +645,7 @@ class _TimelineModuleState extends State<TimelineModule> {
             ],
           ),
         ...events.map((e) {
-          final x = _x(e, axis, events, dates);
+          final x = _x(e, chronology, events, dates);
           final active = _selectedEventId == e.id;
           final color = Color(e.colorValue);
           return Positioned(
@@ -807,7 +716,7 @@ class _TimelineModuleState extends State<TimelineModule> {
             ? _activeSystemKey
             : systems.first.key as int;
 
-        final axis = _axis(_activeSystemKey!);
+        final chronology = _chronology(_activeSystemKey!);
         final events = _events();
         if (events.isNotEmpty && !events.any((e) => e.id == _selectedEventId)) {
           _selectedEventId = events.first.id;
@@ -821,7 +730,7 @@ class _TimelineModuleState extends State<TimelineModule> {
         }
 
         final dates = <String, _RelDate>{
-          for (final e in events) e.id: _dateFor(e, axis, events),
+          for (final e in events) e.id: _dateFor(e, chronology),
         };
 
         return Container(
@@ -835,10 +744,10 @@ class _TimelineModuleState extends State<TimelineModule> {
                   children: [
                     SizedBox(
                       height: 260,
-                      child: _listPane(theme, axis, events, dates, systems),
+                      child: _listPane(theme, chronology, events, dates, systems),
                     ),
                     Expanded(
-                      child: _panel(theme, axis, events, dates, selected),
+                      child: _panel(theme, chronology, events, dates, selected),
                     ),
                   ],
                 );
@@ -850,9 +759,9 @@ class _TimelineModuleState extends State<TimelineModule> {
                     width: constraints.maxWidth < AppBreakpoints.wide
                         ? 280
                         : 340,
-                    child: _listPane(theme, axis, events, dates, systems),
+                    child: _listPane(theme, chronology, events, dates, systems),
                   ),
-                  Expanded(child: _panel(theme, axis, events, dates, selected)),
+                  Expanded(child: _panel(theme, chronology, events, dates, selected)),
                 ],
               );
             },
@@ -861,29 +770,6 @@ class _TimelineModuleState extends State<TimelineModule> {
       },
     );
   }
-}
-
-class _AxisData {
-  final String systemName;
-  final String calendarName;
-  final List<String> eras;
-  final List<_Month> months;
-  final int totalDays;
-  const _AxisData(
-    this.systemName,
-    this.calendarName,
-    this.eras,
-    this.months,
-    this.totalDays,
-  );
-  factory _AxisData.empty() => const _AxisData('', '', [], [], 360);
-}
-
-class _Month {
-  final String name;
-  final int days;
-  final int start;
-  const _Month(this.name, this.days, this.start);
 }
 
 class _RelDate {

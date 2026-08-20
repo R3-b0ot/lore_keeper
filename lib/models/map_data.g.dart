@@ -258,7 +258,10 @@ class OffsetDataAdapter extends TypeAdapter<OffsetData> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return OffsetData(fields[0] as double, fields[1] as double);
+    return OffsetData(
+      fields[0] as double,
+      fields[1] as double,
+    );
   }
 
   @override

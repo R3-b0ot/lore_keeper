@@ -28,13 +28,17 @@ class TimelineEventAdapter extends TypeAdapter<TimelineEvent> {
       lore: fields[8] as String,
       createdAt: fields[9] as int?,
       updatedAt: fields[10] as int?,
+      calendarSystemKey: fields[11] as int? ?? 0,
+      durationDays: fields[12] as int? ?? 0,
+      linkedCharacterIds: (fields[13] as List?)?.cast<String>() ?? const <String>[],
+      linkedLocationIds: (fields[14] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
   @override
   void write(BinaryWriter writer, TimelineEvent obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +60,15 @@ class TimelineEventAdapter extends TypeAdapter<TimelineEvent> {
       ..writeByte(9)
       ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(11)
+      ..write(obj.calendarSystemKey)
+      ..writeByte(12)
+      ..write(obj.durationDays)
+      ..writeByte(13)
+      ..write(obj.linkedCharacterIds)
+      ..writeByte(14)
+      ..write(obj.linkedLocationIds);
   }
 
   @override

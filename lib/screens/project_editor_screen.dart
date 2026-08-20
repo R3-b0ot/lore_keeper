@@ -4,7 +4,6 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart';
 import 'package:lore_keeper/modules/character_module.dart';
-
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
@@ -30,6 +29,8 @@ import 'package:lore_keeper/widgets/project_editor/lore_map_stub.dart';
 import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 
 import 'package:lore_keeper/widgets/calendar_list_pane.dart';
+import 'package:lore_keeper/widgets/magic_list_pane.dart';
+import 'package:lore_keeper/widgets/timeline_list_pane.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -55,6 +56,8 @@ class ProjectEditorScreen extends StatefulWidget {
 
 class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
+  /// Current tab index within World Building module (moduleIndex == 3).
+  int _worldTabIndex = 0;
   String _selectedChapterKey = '';
   String _selectedCharacterKey = '';
 
@@ -96,6 +99,41 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     ProjectEditorModuleItem(label: 'Lore Map', icon: LucideIcons.map),
   ];
 
+  // World Building tab labels/icons for placeholders in second column
+  static const List<String> _worldBuildingTabLabels = [
+    'Magic',
+    'Timelines',
+    'Calendars',
+    'Species',
+    'Locations',
+    'Languages',
+    'Items',
+    'Cultures',
+    'Philosophies',
+    'Religions',
+    'Systems',
+    'Research',
+    'Arcs',
+    'Relationships',
+  ];
+
+  static const List<IconData> _worldBuildingTabIcons = [
+    LucideIcons.sparkles,
+    LucideIcons.chartLine,
+    LucideIcons.calendar,
+    LucideIcons.pawPrint,
+    LucideIcons.mapPin,
+    LucideIcons.languages,
+    LucideIcons.tag,
+    LucideIcons.usersRound,
+    LucideIcons.brain,
+    LucideIcons.church,
+    LucideIcons.chartNetwork,
+    LucideIcons.flaskConical,
+    LucideIcons.chartLine,
+    LucideIcons.link,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +166,15 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _magicTreeProvider = MagicTreeProvider(widget.project.key);
     _calendarTreeProvider = CalendarTreeProvider(widget.project.key);
     _timelineEventProvider = TimelineEventProvider(widget.project.key);
+
+    // Wire calendar system selection → timeline events filter
+    _calendarTreeProvider!.addListener(() {
+      if (!mounted) return;
+      final selectedKey = _calendarTreeProvider!.selectedSystem?.key as int?;
+      if (selectedKey != null && selectedKey != _timelineEventProvider!.selectedSystemKey) {
+        _timelineEventProvider!.setSelectedSystemKey(selectedKey);
+      }
+    });
   }
 
   int _normalizeModuleIndex(int? index) {
@@ -371,12 +418,40 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         isMobile: isMobile,
       );
     } else if (_moduleIndex == 3) {
-      // World Building - show calendar list as default second column
-      return CalendarListPane(
-        calendarProvider: _calendarTreeProvider!,
-        isMobile: isMobile,
-      );
+      // World Building - switch second column based on active world tab
+      switch (_worldTabIndex) {
+        case 0:
+          // Magic
+          return MagicListPane(
+            magicProvider: _magicTreeProvider!,
+            isMobile: isMobile,
+          );
+        case 1:
+          // Timelines → show event list pane
+          return TimelineListPane(
+            calendarProvider: _calendarTreeProvider!,
+            eventProvider: _timelineEventProvider!,
+            isMobile: isMobile,
+          );
+        case 2:
+          // Calendars
+          return CalendarListPane(
+            calendarProvider: _calendarTreeProvider!,
+            isMobile: isMobile,
+          );
+        default:
+          // Other domains (Species, Locations, Languages, Items, etc.) - placeholder
+          return _WorldBuildingPlaceholder(
+            label: _worldTabIndex < _worldBuildingTabLabels.length
+                ? _worldBuildingTabLabels[_worldTabIndex]
+                : 'World Building',
+            icon: _worldTabIndex < _worldBuildingTabIcons.length
+                ? _worldBuildingTabIcons[_worldTabIndex]
+                : LucideIcons.globe,
+          );
+      }
     }
+    // Overview (0) and Lore Map (4) hide the second column
     return const SizedBox.shrink();
   }
 
@@ -438,6 +513,13 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         calendarProvider: _calendarTreeProvider!,
         magicProvider: _magicTreeProvider!,
         timelineProvider: _timelineEventProvider!,
+        characterProvider: _characterListProvider!,
+        initialTabIndex: _worldTabIndex,
+        onTabChanged: (index) {
+          setState(() {
+            _worldTabIndex = index;
+          });
+        },
       );
     } else if (_moduleIndex == 4) {
       // Lore Map (stub)
@@ -618,6 +700,47 @@ class _ModulePlaceholder extends StatelessWidget {
             const Text('Module Editor is currently active in this panel.'),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WorldBuildingPlaceholder extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _WorldBuildingPlaceholder({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            label,
+            style: textTheme.headlineSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Second column for this domain — coming soon',
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -10,14 +10,30 @@ class TimelineEventProvider extends ChangeNotifier {
   late Box<TimelineEvent> _eventBox;
   bool _isInitialized = false;
   List<TimelineEvent> _events = <TimelineEvent>[];
+  
+  /// Currently selected calendar system for filtering events in the UI.
+  int? _selectedSystemKey;
 
   TimelineEventProvider(this._projectId) {
     _initialize();
   }
 
   bool get isInitialized => _isInitialized;
+  
+  int? get selectedSystemKey => _selectedSystemKey;
+  
+  void setSelectedSystemKey(int? systemKey) {
+    _selectedSystemKey = systemKey;
+    notifyListeners();
+  }
 
   List<TimelineEvent> get events => List<TimelineEvent>.unmodifiable(_events);
+
+  /// Returns events filtered by the selected calendar system (if set).
+  List<TimelineEvent> get filteredEvents {
+    if (_selectedSystemKey == null) return events;
+    return _events.where((e) => e.calendarSystemKey == _selectedSystemKey).toList();
+  }
 
   TimelineEvent? getEventById(String id) {
     for (final event in _events) {
@@ -44,6 +60,9 @@ class TimelineEventProvider extends ChangeNotifier {
         .where((event) => event.projectId == _projectId)
         .toList();
     _events.sort((a, b) {
+      // Sort by calendar system first, then year, then day of year
+      final sysCmp = a.calendarSystemKey.compareTo(b.calendarSystemKey);
+      if (sysCmp != 0) return sysCmp;
       final yearCmp = a.absoluteYear.compareTo(b.absoluteYear);
       if (yearCmp != 0) return yearCmp;
       return a.absoluteDayOfYear.compareTo(b.absoluteDayOfYear);
@@ -57,6 +76,10 @@ class TimelineEventProvider extends ChangeNotifier {
     String iconKey = 'star',
     int colorValue = 0xFF6366F1,
     String lore = '',
+    int? calendarSystemKey,
+    int durationDays = 0,
+    List<String>? linkedCharacterIds,
+    List<String>? linkedLocationIds,
   }) async {
     final event = TimelineEvent(
       id: _uuid.v4(),
@@ -68,6 +91,10 @@ class TimelineEventProvider extends ChangeNotifier {
       iconKey: iconKey,
       colorValue: colorValue,
       lore: lore,
+      calendarSystemKey: calendarSystemKey ?? _selectedSystemKey ?? 0,
+      durationDays: durationDays,
+      linkedCharacterIds: linkedCharacterIds,
+      linkedLocationIds: linkedLocationIds,
     );
     await _eventBox.add(event);
     _reload();
@@ -83,6 +110,10 @@ class TimelineEventProvider extends ChangeNotifier {
     String? iconKey,
     int? colorValue,
     String? lore,
+    int? calendarSystemKey,
+    int? durationDays,
+    List<String>? linkedCharacterIds,
+    List<String>? linkedLocationIds,
   }) async {
     final event = getEventById(eventId);
     if (event == null) return;
@@ -104,6 +135,18 @@ class TimelineEventProvider extends ChangeNotifier {
     }
     if (lore != null) {
       event.lore = lore;
+    }
+    if (calendarSystemKey != null) {
+      event.calendarSystemKey = calendarSystemKey;
+    }
+    if (durationDays != null) {
+      event.durationDays = durationDays;
+    }
+    if (linkedCharacterIds != null) {
+      event.linkedCharacterIds = linkedCharacterIds;
+    }
+    if (linkedLocationIds != null) {
+      event.linkedLocationIds = linkedLocationIds;
     }
     event.updateTimestamp();
     await event.save();
