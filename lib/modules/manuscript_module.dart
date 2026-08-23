@@ -23,6 +23,7 @@ import 'package:lore_keeper/widgets/about_author_form.dart';
 import 'package:lore_keeper/widgets/manuscript_binder.dart';
 import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
 import 'package:lore_keeper/widgets/manuscript_outliner.dart';
+import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
@@ -36,7 +37,7 @@ import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 
 enum _EditorType { title, manuscript }
-enum _LeftPanelMode { binder, corkboard, outliner }
+enum _LeftPanelMode { binder, corkboard, outliner, collections }
 
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
@@ -959,6 +960,11 @@ Widget _buildLeftPanel() {
         containerDocumentId: _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
         onDocumentSelected: _onDocumentSelected,
       );
+    case _LeftPanelMode.collections:
+      return ManuscriptCollections(
+        provider: _binderProvider!,
+        onDocumentSelected: _onDocumentSelected,
+      );
   }
 }
 
@@ -998,6 +1004,7 @@ Widget _buildTitleToolbar() => SingleChildScrollView(
               _leftPanelMode == _LeftPanelMode.binder,
               _leftPanelMode == _LeftPanelMode.corkboard,
               _leftPanelMode == _LeftPanelMode.outliner,
+              _leftPanelMode == _LeftPanelMode.collections,
             ],
             onPressed: (index) {
               setState(() {
@@ -1021,6 +1028,10 @@ Widget _buildTitleToolbar() => SingleChildScrollView(
               Tooltip(
                 message: 'Outliner (Table View)',
                 child: Icon(LucideIcons.list, size: 18),
+              ),
+              Tooltip(
+                message: 'Collections (Smart Views)',
+                child: Icon(LucideIcons.folderSearch, size: 18),
               ),
             ],
           ),
