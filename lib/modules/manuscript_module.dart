@@ -1,3 +1,5 @@
+// lib/modules/manuscript_module.dart
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -5,9 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:hive/hive.dart';
-import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/project.dart';
+import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
+import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import 'package:lore_keeper/widgets/find_replace_dialog.dart';
@@ -17,12 +20,22 @@ import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
 import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
+import 'package:lore_keeper/widgets/manuscript_binder.dart';
+import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_overlay.dart';
 import 'package:lore_keeper/services/reference_attribute.dart';
+import 'package:lore_keeper/services/manuscript_reference_service.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/database/reference_engine/reference_index.dart';
+import 'package:lore_keeper/database/entity_ref.dart';
+import 'package:lore_keeper/database/database_manager.dart';
+
+enum _EditorType { title, manuscript }
+enum _LeftPanelMode { binder, corkboard, outliner }
 
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
@@ -87,8 +100,6 @@ class ManuscriptEditor extends StatefulWidget {
   State<ManuscriptEditor> createState() => _ManuscriptEditorState();
 }
 
-enum _EditorType { title, manuscript }
-
 class _ManuscriptEditorState extends State<ManuscriptEditor> {
   late final QuillController _controller;
   late final QuillController _titleController;
@@ -118,6 +129,13 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   final List<_GrammarIssue> _issues = [];
   bool _showGrammarPanel = false;
   String? _activeCategory;
+  bool _focusMode = false;
+  _LeftPanelMode _leftPanelMode = _LeftPanelMode.binder;
+
+  ManuscriptBinderProvider? _binderProvider;
+  String? _selectedDocumentId;
+  ManuscriptDocument? _selectedDocument;
+  ManuscriptReferenceService? _referenceService;
 
   // @mention autocomplete
   late final ReferenceAutocompleteController _autocompleteController;
@@ -131,7 +149,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     widget.onGrammarCheckReady(_runGrammarCheck);
     _titleFocusNode = FocusNode();
 
-    // Initialize @mention autocomplete controller
+    // Initialize @mention autocomplete controller with all entity types
     _autocompleteController = ReferenceAutocompleteController(
       quillController: _controller,
       charactersProvider: () => widget.characterProvider.characters,
@@ -141,13 +159,80 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     };
 
     _loadProject();
-
+    _initBinderProvider();
+    _initReferenceService();
     _loadContent();
 
     _titleController.addListener(_onTitleChanged);
     _controller.addListener(_onTextChanged);
     _titleFocusNode.addListener(_onFocusChange);
     _focusNode.addListener(_onFocusChange);
+  }
+
+  Future<void> _initBinderProvider() async {
+    _binderProvider = ManuscriptBinderProvider(widget.projectId);
+    // Wait for initialization
+    while (!_binderProvider!.isInitialized) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    // Select the document corresponding to the current chapter key
+    _selectDocumentForChapterKey(widget.selectedChapterKey);
+
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _initReferenceService() async {
+    final db = DatabaseManager.instance;
+    _referenceService = ManuscriptReferenceService(
+      projectId: widget.projectId,
+      referenceEngine: ReferenceEngine(),
+      documentBox: db.manuscriptDocuments,
+      characterBox: db.characters,
+    );
+    // Initial index build
+    await _referenceService!.rebuildIndex();
+  }
+
+  void _selectDocumentForChapterKey(String chapterKey) {
+    if (_binderProvider == null) return;
+
+    String? docId;
+    if (chapterKey.startsWith('front_matter_')) {
+      // Find front matter document
+      final docs = _binderProvider!.getDocumentsByType(ManuscriptDocumentType.frontMatter);
+      for (final doc in docs) {
+        // Match by order index or title
+        if (chapterKey.contains('front_matter_-1') && doc.title.toLowerCase().contains('front')) {
+          docId = doc.id;
+          break;
+        } else if (chapterKey.contains('front_matter_-2') && doc.title.toLowerCase().contains('index')) {
+          docId = doc.id;
+          break;
+        } else if (chapterKey.contains('front_matter_-3') && doc.title.toLowerCase().contains('author')) {
+          docId = doc.id;
+          break;
+        }
+      }
+      docId ??= docs.firstOrNull?.id;
+    } else {
+      // Find chapter document
+      final chapterKeyInt = int.tryParse(chapterKey);
+      if (chapterKeyInt != null) {
+        final docs = _binderProvider!.getDocumentsByType(ManuscriptDocumentType.chapter);
+        for (final doc in docs) {
+          if (doc.id == 'chapter_$chapterKeyInt') {
+            docId = doc.id;
+            break;
+          }
+        }
+      }
+    }
+
+    if (docId != null) {
+      _selectedDocumentId = docId;
+      _selectedDocument = _binderProvider!.getDocument(docId);
+    }
   }
 
   @override
@@ -166,6 +251,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Future<void> _switchChapter(String oldKey) async {
     await _saveContent(isChangingChapter: true, chapterKeyToSave: oldKey);
     await _saveTitle(isChangingChapter: true, chapterKeyToSave: oldKey);
+    _selectDocumentForChapterKey(widget.selectedChapterKey);
     _loadContent();
   }
 
@@ -182,27 +268,72 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _loadContent() {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    dynamic chapterKey = widget.selectedChapterKey.startsWith('front_matter_')
-        ? widget.selectedChapterKey
-        : int.tryParse(widget.selectedChapterKey);
 
-    final chapter = widget.chapterProvider.getChapter(chapterKey);
-
-    if (widget.selectedChapterKey.startsWith('front_matter_')) {
-      final keyPart = int.tryParse(widget.selectedChapterKey.split('_').last);
-      if (keyPart == -2) {
-        _loadIndexPage();
-        return;
-      }
-      if (keyPart == -3 &&
-          (chapter?.richTextJson == null ||
-              (chapter?.richTextJson ?? '').isEmpty ||
-              chapter?.richTextJson == '[]')) {
-        _loadAboutAuthorTemplate();
-        return;
-      }
+    if (_selectedDocument == null) {
+      _loadEmptyContent();
+      return;
     }
-    _loadStandardContent(chapter);
+
+    final doc = _selectedDocument!;
+
+    // Load title
+    _titleController.document = Document.fromDelta(
+      Delta()..insert('${doc.title}\n', {'header': 1}),
+    );
+
+    // Load content
+    if (doc.richTextJson != null && doc.richTextJson!.isNotEmpty) {
+      try {
+        final jsonDoc = jsonDecode(doc.richTextJson!);
+        final documentMap = jsonDoc is List
+            ? {'ops': jsonDoc}
+            : (jsonDoc as Map<String, dynamic>);
+        _controller.document = Document.fromJson(_cleanDocument(documentMap));
+      } catch (e) {
+        _controller.document = Document();
+      }
+    } else {
+      _controller.document = Document();
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isSwitchingChapter = false;
+        _updateWordCount();
+        _updateDocumentWordCount();
+      });
+    }
+  }
+
+  List<dynamic> _cleanDocument(Map<String, dynamic> doc) {
+    final ops = doc['ops'] as List<dynamic>? ?? [];
+    return ops
+        .where(
+          (op) =>
+              !(op['insert'] is Map &&
+                  (op['insert'] as Map).containsKey('page-break')),
+        )
+        .toList();
+  }
+
+  void _loadEmptyContent() {
+    _titleController.document = Document();
+    _controller.document = Document();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isSwitchingChapter = false;
+        _wordCount = 0;
+      });
+    }
+  }
+
+  void _updateDocumentWordCount() {
+    if (_selectedDocument != null) {
+      _selectedDocument!.wordCount = _wordCount;
+      _selectedDocument!.characterCount = _controller.document.toPlainText().length;
+    }
   }
 
   void _onFocusChange() {
@@ -282,91 +413,16 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     widget.onReferenceNavigate?.call(target.encode());
   }
 
-  void _loadAboutAuthorTemplate() {
-    final authorName = _project?.authors ?? 'Author Name';
-    final delta = Delta()
-      ..insert('About the Author\n', {'header': 1})
-      ..insert('Name: $authorName\n', {'bold': true})
-      ..insert('\n[Author Bio...]\n');
-    _controller.document = Document.fromDelta(delta);
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _isSwitchingChapter = false;
-        _updateWordCount();
-      });
-    }
-  }
-
-  void _loadIndexPage() {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _isSwitchingChapter = false;
-        _titleController.document = Document.fromDelta(
-          Delta()..insert('Index\n', {'header': 1}),
-        );
-        _controller.document = Document();
-      });
-    }
-  }
-
-  void _loadStandardContent(Chapter? chapter) {
-    if (chapter != null) {
-      _titleController.document = Document.fromDelta(
-        Delta()..insert('${chapter.title}\n', {'header': 1}),
-      );
-    } else {
-      _titleController.document = Document();
-    }
-
-    if (chapter?.richTextJson != null && chapter!.richTextJson!.isNotEmpty) {
-      try {
-        final doc = jsonDecode(chapter.richTextJson!);
-        final documentMap = doc is List
-            ? {'ops': doc}
-            : (doc as Map<String, dynamic>);
-        _controller.document = Document.fromJson(_cleanDocument(documentMap));
-      } catch (e) {
-        _controller.document = Document();
-      }
-    } else {
-      _controller.document = Document();
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _isSwitchingChapter = false;
-        _updateWordCount();
-      });
-    }
-  }
-
-  List<dynamic> _cleanDocument(Map<String, dynamic> doc) {
-    final ops = doc['ops'] as List<dynamic>? ?? [];
-    return ops
-        .where(
-          (op) =>
-              !(op['insert'] is Map &&
-                  (op['insert'] as Map).containsKey('page-break')),
-        )
-        .toList();
-  }
-
   Future<void> _saveTitle({
     bool isChangingChapter = false,
     String? chapterKeyToSave,
   }) async {
-    final key = chapterKeyToSave ?? widget.selectedChapterKey;
+    if (_selectedDocument == null) return;
     final newTitle = _titleController.document.toPlainText().trim();
     if (newTitle.isEmpty) return;
-    dynamic cKey = key.startsWith('front_matter_') ? key : int.tryParse(key);
-    if (cKey != null) {
-      final curr = widget.chapterProvider.getChapter(cKey);
-      if (curr?.title != newTitle) {
-        await widget.chapterProvider.updateChapterTitle(cKey, newTitle);
-      }
+    if (_selectedDocument!.title != newTitle) {
+      await _binderProvider?.updateTitle(_selectedDocument!.id, newTitle);
+      _selectedDocument!.title = newTitle;
     }
   }
 
@@ -374,24 +430,24 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     bool isChangingChapter = false,
     String? chapterKeyToSave,
   }) async {
+    if (_selectedDocument == null) return;
     if (!isChangingChapter && mounted) setState(() => _isSaving = true);
-    final key = chapterKeyToSave ?? widget.selectedChapterKey;
-    dynamic cKey = key.startsWith('front_matter_') ? key : int.tryParse(key);
-    if (cKey != null) {
-      final curr = widget.chapterProvider.getChapter(cKey);
-      if (curr != null) {
-        await _historyService.addHistoryEntry(
-          targetKey: curr.key,
-          targetType: 'Chapter',
-          objectToSave: curr,
-          projectId: widget.projectId,
-        );
-      }
-      await widget.chapterProvider.updateChapterContent(
-        cKey,
-        jsonEncode(_controller.document.toDelta().toJson()),
-      );
-    }
+    final content = jsonEncode(_controller.document.toDelta().toJson());
+    await _binderProvider?.updateContent(_selectedDocument!.id, content);
+    _selectedDocument!.richTextJson = content;
+    _updateDocumentWordCount();
+
+    // Add history entry
+    await _historyService.addHistoryEntry(
+      targetKey: _selectedDocument!.id,
+      targetType: 'ManuscriptDocument',
+      objectToSave: _selectedDocument!,
+      projectId: widget.projectId,
+    );
+
+    // Rebuild reference index for this document
+    await _referenceService?.rebuildIndex();
+
     if (_project != null) {
       _project!.lastModified = DateTime.now();
       await _project!.save();
@@ -430,35 +486,495 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final bgColor = theme.brightness == Brightness.dark
         ? AppColors.bgMain
         : AppColors.bgMainLight;
 
+    if (_focusMode) {
+      return _buildFocusModeView(bgColor);
+    }
+
     return Scaffold(
       backgroundColor: bgColor,
-      body: _isLoading
+      body: _isLoading || _binderProvider == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  if (!widget.selectedChapterKey.startsWith('front_matter_'))
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 150),
-                      child: _activeEditor == _EditorType.title
-                          ? _buildTitleToolbar()
-                          : _buildMainToolbar(),
-                    ),
-                  const SizedBox(height: 16),
-                  Expanded(child: _buildEditorView(bgColor)),
-                ],
-              ),
+          : Row(
+              children: [
+                // Left Panel
+                SizedBox(
+                  width: 280,
+                  child: _buildLeftPanel(),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant,
+                ),
+                // Editor Panel (Center) - Flexible
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (!widget.selectedChapterKey.startsWith('front_matter_'))
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 150),
+                          child: _activeEditor == _EditorType.title
+                              ? _buildTitleToolbar()
+                              : _buildMainToolbar(),
+                        ),
+                      const SizedBox(height: 16),
+                      Expanded(child: _buildEditorView(bgColor)),
+                    ],
+                  ),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant,
+                ),
+                // Inspector Panel (Right)
+                SizedBox(
+                  width: 300,
+                  child: _buildInspectorPanel(),
+                ),
+              ],
             ),
       bottomNavigationBar: _buildBottomStatusBar(),
     );
   }
 
-  Widget _buildTitleToolbar() => SingleChildScrollView(
+  Widget _buildFocusModeView(Color bgColor) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: Column(
+        children: [
+          // Minimal toolbar in focus mode
+          Container(
+            height: 48,
+            color: cs.surfaceContainerHighest,
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Text(
+                  _selectedDocument?.title ?? 'Manuscript',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(LucideIcons.maximize),
+                  tooltip: 'Exit Focus Mode',
+                  onPressed: () => setState(() => _focusMode = false),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              color: bgColor,
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: _buildEditorContent(),
+                ),
+              ),
+            ),
+          ),
+          // Minimal status bar
+          Container(
+            height: 32,
+            color: cs.surfaceContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Words: $_wordCount',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                ),
+                const Spacer(),
+                Text(
+                  'Zoom: ${(_zoomFactor * 100).toInt()}%',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========================================================================
+  // BINDER HANDLERS
+  // ========================================================================
+
+  void _onDocumentSelected(String documentId) {
+    setState(() {
+      _selectedDocumentId = documentId;
+      _selectedDocument = _binderProvider!.getDocument(documentId);
+    });
+
+    // If it's a chapter document, update the chapter key and load content
+    if (_selectedDocument != null) {
+      if (_selectedDocument!.documentType == ManuscriptDocumentType.chapter) {
+        // Extract chapter key from document ID (format: chapter_<key>)
+        final parts = _selectedDocument!.id.split('_');
+        if (parts.length >= 2) {
+          final chapterKey = parts.sublist(1).join('_');
+          widget.onChapterSelected(chapterKey);
+        }
+      } else if (_selectedDocument!.documentType == ManuscriptDocumentType.frontMatter) {
+        widget.onChapterSelected(_selectedDocument!.id);
+      }
+    }
+    _loadContent();
+  }
+
+  void _onDocumentRenamed(String documentId) {
+    // Update chapter provider if it's a chapter
+    final doc = _binderProvider!.getDocument(documentId);
+    if (doc != null && doc.documentType == ManuscriptDocumentType.chapter) {
+      // The chapter provider will be updated via the binder provider
+    }
+  }
+
+  void _onDocumentMoved(String documentId) {
+    // Handle document moved - could update ordering in chapter provider if needed
+  }
+
+  // ========================================================================
+  // INSPECTOR PANEL
+  // ========================================================================
+
+  Widget _buildInspectorPanel() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    if (_selectedDocument == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.info, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Select a document',
+              style: theme.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Inspector shows metadata,\nreferences, and links',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.7)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      color: cs.surfaceContainerHighest,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+            ),
+            child: Row(
+              children: [
+                Icon(_getIconForType(_selectedDocument!.documentType),
+                    size: 20, color: _getColorForType(_selectedDocument!.documentType, cs)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Inspector',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InspectorSection(
+                    title: 'Document',
+                    children: [
+                      _InspectorRow('Type', _selectedDocument!.documentType.label),
+                      _InspectorRow('Status', _selectedDocument!.status.label),
+                      _InspectorRow('Words', '${_selectedDocument!.wordCount}'),
+                      _InspectorRow('Characters', '${_selectedDocument!.characterCount}'),
+                      if (_selectedDocument!.createdAt != null)
+                        _InspectorRow('Created', _formatDate(_selectedDocument!.createdAt!)),
+                      if (_selectedDocument!.modifiedAt != null)
+                        _InspectorRow('Modified', _formatDate(_selectedDocument!.modifiedAt!)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (_selectedDocument!.isLeaf) ...[
+                    _InspectorSection(
+                      title: 'Scene Metadata',
+                      children: [
+                        _InspectorRow('POV Character', _selectedDocument!.povCharacterId ?? '—'),
+                        _InspectorRow('Location', _selectedDocument!.locationId ?? '—'),
+                        _InspectorRow('Timeline', _selectedDocument!.timelineEventId ?? '—'),
+                        _InspectorRow('Plotline', _selectedDocument!.plotline ?? '—'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_selectedDocument!.characterIds.isNotEmpty) ...[
+                    _InspectorSection(
+                      title: 'Characters (${_selectedDocument!.characterIds.length})',
+                      children: _selectedDocument!.characterIds
+                          .map((id) => _InspectorRow('•', id))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_selectedDocument!.tagIds.isNotEmpty) ...[
+                    _InspectorSection(
+                      title: 'Tags (${_selectedDocument!.tagIds.length})',
+                      children: _selectedDocument!.tagIds
+                          .map((id) => _InspectorRow('•', id))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_selectedDocument!.summary != null && _selectedDocument!.summary!.isNotEmpty) ...[
+                    _InspectorSection(
+                      title: 'Summary',
+                      children: [
+                        _InspectorRow('', _selectedDocument!.summary!),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  _InspectorSection(
+                    title: 'Hierarchy',
+                    children: [
+                      _InspectorRow('Parent', _getParentTitle() ?? 'Root'),
+                      _InspectorRow('Children', '${_binderProvider!.getChildren(_selectedDocument!.id).length}'),
+                      _InspectorRow('Depth', '${_getDepth(_selectedDocument!.id)}'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildReferencesSection(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReferencesSection() {
+    if (_referenceService == null || _selectedDocument == null) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    // Get outgoing references from this document
+    final outgoingRefs = _referenceService!.getReferencesFrom(_selectedDocument!);
+
+    // Get incoming references (backlinks) to this document
+    final docRef = EntityRef.fromKey(
+      key: _selectedDocument!.id,
+      entityType: 'ManuscriptDocument',
+      projectId: widget.projectId.toString(),
+    );
+    final backlinks = _referenceService!.getBacklinksTo(docRef);
+
+    if (outgoingRefs.isEmpty && backlinks.isEmpty) {
+      return _InspectorSection(
+        title: 'References',
+        children: [
+          _InspectorRow('', 'No references found'),
+        ],
+      );
+    }
+
+    return _InspectorSection(
+      title: 'References',
+      children: [
+        if (outgoingRefs.isNotEmpty) ...[
+          Text(
+            'References (${outgoingRefs.length})',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...outgoingRefs.map((ref) => _buildReferenceTile(ref, isOutgoing: true)),
+          const SizedBox(height: 12),
+        ],
+        if (backlinks.isNotEmpty) ...[
+          Text(
+            'Backlinks (${backlinks.length})',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: cs.secondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...backlinks.map((ref) => _buildReferenceTile(ref, isOutgoing: false)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReferenceTile(ReferenceIndexEntry ref, {required bool isOutgoing}) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isOutgoing = ref.source.id == _selectedDocument!.id;
+
+    String displayName = ref.target.id;
+    String entityType = ref.target.entityType;
+
+    // Try to get a better display name from the character box
+    if (ref.target.entityType == EntityType.character) {
+      final character = DatabaseManager.instance.characters.get(ref.target.asKey);
+      if (character != null) {
+        displayName = character.name;
+      }
+    }
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        isOutgoing ? LucideIcons.arrowRight : LucideIcons.arrowLeft,
+        size: 16,
+        color: isOutgoing ? cs.primary : cs.secondary,
+      ),
+      title: Text(
+        displayName,
+        style: theme.textTheme.bodySmall,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        '$entityType • ${ref.kind}',
+        style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+      onTap: () {
+        // Navigate to the referenced document/entity
+        if (!isOutgoing && ref.source.entityType == 'ManuscriptDocument') {
+          _onDocumentSelected(ref.source.id);
+        }
+      },
+    );
+  }
+
+  String? _getParentTitle() {
+    if (_selectedDocument!.parentId == null) return null;
+    final parent = _binderProvider!.getDocument(_selectedDocument!.parentId!);
+    return parent?.title;
+  }
+
+  int _getDepth(String documentId) {
+    int depth = 0;
+    String? currentId = documentId;
+    while (currentId != null) {
+      final doc = _binderProvider!.getDocument(currentId);
+      if (doc?.parentId == null) break;
+      currentId = doc!.parentId;
+      depth++;
+    }
+    return depth;
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  IconData _getIconForType(ManuscriptDocumentType type) {
+    return switch (type) {
+      ManuscriptDocumentType.manuscript => LucideIcons.bookOpen,
+      ManuscriptDocumentType.part => LucideIcons.folderKanban,
+      ManuscriptDocumentType.chapter => LucideIcons.book,
+      ManuscriptDocumentType.scene => LucideIcons.fileText,
+      ManuscriptDocumentType.section => LucideIcons.folder,
+      ManuscriptDocumentType.note => LucideIcons.stickyNote,
+      ManuscriptDocumentType.research => LucideIcons.search,
+      ManuscriptDocumentType.frontMatter => LucideIcons.fileInput,
+      ManuscriptDocumentType.backMatter => LucideIcons.fileOutput,
+      ManuscriptDocumentType.custom => LucideIcons.file,
+    };
+  }
+
+  Color _getColorForType(ManuscriptDocumentType type, ColorScheme cs) {
+    return switch (type) {
+      ManuscriptDocumentType.manuscript => cs.primary,
+      ManuscriptDocumentType.part => cs.tertiary,
+      ManuscriptDocumentType.chapter => cs.secondary,
+      ManuscriptDocumentType.scene => cs.primary,
+      ManuscriptDocumentType.section => cs.tertiary,
+      ManuscriptDocumentType.note => Colors.amber,
+      ManuscriptDocumentType.research => Colors.blue,
+      ManuscriptDocumentType.frontMatter => Colors.purple,
+      ManuscriptDocumentType.backMatter => Colors.purple,
+      ManuscriptDocumentType.custom => cs.outline,
+    };
+  }
+
+// ========================================================================
+// LEFT PANEL
+// ========================================================================
+
+Widget _buildLeftPanel() {
+  switch (_leftPanelMode) {
+    case _LeftPanelMode.binder:
+      return ManuscriptBinder(
+        provider: _binderProvider!,
+        selectedDocumentId: _selectedDocumentId,
+        onDocumentSelected: _onDocumentSelected,
+        onDocumentRenamed: _onDocumentRenamed,
+        onDocumentMoved: _onDocumentMoved,
+      );
+    case _LeftPanelMode.corkboard:
+      return ManuscriptCorkboard(
+        provider: _binderProvider!,
+        containerDocumentId: _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
+        onDocumentSelected: _onDocumentSelected,
+        onDocumentRenamed: _onDocumentRenamed,
+      );
+    case _LeftPanelMode.outliner:
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.list, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Outliner view - Coming soon',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+  }
+}
+
+// ========================================================================
+// TOOLBARS & EDITOR
+// ========================================================================
+
+Widget _buildTitleToolbar() => SingleChildScrollView(
     scrollDirection: Axis.horizontal,
     child: QuillSimpleToolbar(
       controller: _titleController,
@@ -476,25 +992,78 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   Widget _buildMainToolbar() => SingleChildScrollView(
     scrollDirection: Axis.horizontal,
-    child: QuillSimpleToolbar(
-      controller: _controller,
-      config: QuillSimpleToolbarConfig(
-        showBoldButton: true,
-        showItalicButton: true,
-        showUnderLineButton: true,
-        showStrikeThrough: true,
-        showAlignmentButtons: true,
-        showHeaderStyle: true,
-        showQuote: true,
-        showUndo: true,
-        showRedo: true,
-        customButtons: [
-          QuillToolbarCustomButtonOptions(
-            icon: const Icon(LucideIcons.search),
-            onPressed: _openFindReplaceDialog,
+    child: Row(
+      children: [
+        // View switcher for left panel
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
-        ],
-      ),
+          child: ToggleButtons(
+            isSelected: [
+              _leftPanelMode == _LeftPanelMode.binder,
+              _leftPanelMode == _LeftPanelMode.corkboard,
+              _leftPanelMode == _LeftPanelMode.outliner,
+            ],
+            onPressed: (index) {
+              setState(() {
+                _leftPanelMode = _LeftPanelMode.values[index];
+              });
+            },
+            borderRadius: BorderRadius.circular(8),
+            selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
+            fillColor: Theme.of(context).colorScheme.primaryContainer,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+            children: [
+              Tooltip(
+                message: 'Binder (Tree View)',
+                child: Icon(LucideIcons.listTree, size: 18),
+              ),
+              Tooltip(
+                message: 'Corkboard (Card View)',
+                child: Icon(LucideIcons.layoutGrid, size: 18),
+              ),
+              Tooltip(
+                message: 'Outliner (Table View)',
+                child: Icon(LucideIcons.list, size: 18),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        // Quill Toolbar
+        SizedBox(
+          width: 600, // Limit toolbar width
+          child: QuillSimpleToolbar(
+            controller: _controller,
+            config: QuillSimpleToolbarConfig(
+              showBoldButton: true,
+              showItalicButton: true,
+              showUnderLineButton: true,
+              showStrikeThrough: true,
+              showAlignmentButtons: true,
+              showHeaderStyle: true,
+              showQuote: true,
+              showUndo: true,
+              showRedo: true,
+              customButtons: [
+                QuillToolbarCustomButtonOptions(
+                  icon: const Icon(LucideIcons.search),
+                  onPressed: _openFindReplaceDialog,
+                ),
+                QuillToolbarCustomButtonOptions(
+                  icon: const Icon(LucideIcons.maximize),
+                  tooltip: 'Focus Mode',
+                  onPressed: () => setState(() => _focusMode = true),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     ),
   );
 
@@ -1105,6 +1674,90 @@ class _GrammarPanel extends StatelessWidget {
                     );
                   },
                 ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InspectorSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _InspectorSection({
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: children.map((child) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: child,
+            )).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InspectorRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InspectorRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.isNotEmpty) ...[
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+        Expanded(
+          child: Text(
+            value,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurface,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
