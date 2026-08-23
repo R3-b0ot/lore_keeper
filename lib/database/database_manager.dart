@@ -15,12 +15,14 @@ import 'package:lore_keeper/models/calendar_node.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
 import 'package:lore_keeper/models/map_data.dart';
 import 'package:lore_keeper/models/classification_node.dart';
+import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 
 const _kMetaBox = 'lorekeeper_meta';
 const _kProjectBox = 'projects';
 const _kChapterBox = 'chapters';
 const _kSectionBox = 'sections';
+const _kManuscriptDocumentBox = 'manuscript_documents';
 const _kCharacterBox = 'characters';
 const _kLinkBox = 'links';
 const _kHistoryBox = 'history';
@@ -56,6 +58,8 @@ class DatabaseManager {
   Box<Project> get projects => getBox<Project>(_kProjectBox);
   Box<Chapter> get chapters => getBox<Chapter>(_kChapterBox);
   Box<Section> get sections => getBox<Section>(_kSectionBox);
+  Box<ManuscriptDocument> get manuscriptDocuments =>
+      getBox<ManuscriptDocument>(_kManuscriptDocumentBox);
   Box<Character> get characters => getBox<Character>(_kCharacterBox);
   Box<Link> get links => getBox<Link>(_kLinkBox);
   Box<HistoryEntry> get historyEntries => getBox<HistoryEntry>(_kHistoryBox);
@@ -218,6 +222,7 @@ class DatabaseManager {
     reg(33, MapPathAdapter());
     reg(34, MapPolygonAdapter());
     reg(35, OffsetDataAdapter());
+    reg(40, ManuscriptDocumentAdapter());
     reg(50, DatabaseMetadataAdapter());
   }
 
@@ -248,6 +253,9 @@ class DatabaseManager {
       case 2:
         await _migrateV1toV2();
         break;
+      case 3:
+        await _migrateV2toV3();
+        break;
       default:
         throw StateError(
             'No migration defined for schema v$newVersion');
@@ -267,6 +275,146 @@ class DatabaseManager {
     LkLog.info('DatabaseManager', 'Migration V1→V2 complete');
   }
 
+  /// V2 → V3: Add ManuscriptDocument box and migrate existing Chapter/Section
+  /// data to the new hierarchical document structure.
+  ///
+  /// Creates ManuscriptDocument entries for:
+  /// - Root Manuscript document per project
+  /// - Sections as Part documents
+  /// - Chapters as Chapter documents
+  /// - Preserves all content, ordering, and project ownership
+  Future<void> _migrateV2toV3() async {
+    LkLog.info('DatabaseManager',
+        'Migration V2→V3: Creating ManuscriptDocument hierarchy from existing Chapter/Section data');
+
+    const int frontMatterSectionKey = -1;
+
+    final projectBox = _boxes[_kProjectBox] as Box<Project>?;
+    final chapterBox = _boxes[_kChapterBox] as Box<Chapter>?;
+    final sectionBox = _boxes[_kSectionBox] as Box<Section>?;
+    final manuscriptBox = _boxes[_kManuscriptDocumentBox] as Box<ManuscriptDocument>?;
+
+    if (projectBox == null || chapterBox == null || sectionBox == null || manuscriptBox == null) {
+      LkLog.warning('DatabaseManager', 'Migration V2→V3: Required boxes not available, skipping');
+      return;
+    }
+
+    final now = DateTime.now();
+    int createdCount = 0;
+
+    for (final project in projectBox.values) {
+      // Create root Manuscript document
+      final manuscriptId = 'manuscript_${project.key}';
+      final manuscriptDoc = ManuscriptDocument()
+        ..id = manuscriptId
+        ..projectId = project.key as int
+        ..title = project.bookTitle ?? project.title
+        ..documentType = ManuscriptDocumentType.manuscript
+        ..parentId = null
+        ..orderIndex = 0
+        ..status = ManuscriptDocumentStatus.draft
+        ..isExpanded = true
+        ..createdAt = project.createdAt
+        ..modifiedAt = now;
+
+      await manuscriptBox.put(manuscriptId, manuscriptDoc);
+      createdCount++;
+
+      // Get sections for this project
+      final sections = sectionBox.values
+          .where((s) => s.parentProjectId == project.key)
+          .toList()
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+
+      // Get chapters for this project
+      final chapters = chapterBox.values
+          .where((c) => c.parentProjectId == project.key)
+          .toList()
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+
+      // Map section key -> manuscript document ID for Parts
+      final sectionToDocId = <dynamic, String>{};
+
+      // Create Part documents for each section
+      for (int i = 0; i < sections.length; i++) {
+        final section = sections[i];
+        final partId = 'part_${section.key}';
+        final partDoc = ManuscriptDocument()
+          ..id = partId
+          ..projectId = project.key as int
+          ..title = section.title
+          ..documentType = ManuscriptDocumentType.part
+          ..parentId = manuscriptId
+          ..orderIndex = i
+          ..status = ManuscriptDocumentStatus.draft
+          ..isExpanded = section.isExpanded
+          ..createdAt = now
+          ..modifiedAt = now;
+
+        await manuscriptBox.put(partId, partDoc);
+        sectionToDocId[section.key] = partId;
+        createdCount++;
+      }
+
+      // Create Chapter documents
+      for (int i = 0; i < chapters.length; i++) {
+        final chapter = chapters[i];
+        final chapterId = 'chapter_${chapter.key}';
+        String? parentId;
+
+        if (chapter.parentSectionKey == frontMatterSectionKey) {
+          // Front matter chapters go directly under manuscript root
+          parentId = manuscriptId;
+        } else if (sectionToDocId.containsKey(chapter.parentSectionKey)) {
+          // Regular chapters under their Part
+          parentId = sectionToDocId[chapter.parentSectionKey]!;
+        } else {
+          // Fallback to manuscript root
+          parentId = manuscriptId;
+        }
+
+        // Determine document type based on key
+        ManuscriptDocumentType docType = ManuscriptDocumentType.chapter;
+        if (chapter.key is String && (chapter.key as String).startsWith('front_matter_')) {
+          docType = ManuscriptDocumentType.frontMatter;
+        }
+
+        final chapterDoc = ManuscriptDocument()
+          ..id = chapterId
+          ..projectId = project.key as int
+          ..title = chapter.title
+          ..documentType = docType
+          ..parentId = parentId
+          ..orderIndex = chapter.orderIndex
+          ..richTextJson = chapter.richTextJson
+          ..status = ManuscriptDocumentStatus.draft
+          ..isExpanded = true
+          ..createdAt = now
+          ..modifiedAt = now
+          ..wordCount = _countWords(chapter.richTextJson)
+          ..characterCount = chapter.richTextJson?.length ?? 0;
+
+        await manuscriptBox.put(chapterId, chapterDoc);
+        createdCount++;
+      }
+    }
+
+    LkLog.info('DatabaseManager',
+        'Migration V2→V3 complete: created $createdCount ManuscriptDocument entries');
+  }
+
+  int _countWords(String? json) {
+    if (json == null || json.isEmpty) return 0;
+    try {
+      final doc = json.contains('ops') ? json : '{"ops": $json}';
+      // Simple word count from plain text extraction
+      final text = doc.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ');
+      return text.trim().isEmpty ? 0 : text.trim().split(RegExp(r'\s+')).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   // ── Box opening ───────────────────────────────────────────────────────
 
   Future<void> _openApplicationBoxes() async {
@@ -274,6 +422,7 @@ class DatabaseManager {
       () => _openBox<Project>(_kProjectBox),
       () => _openBox<Chapter>(_kChapterBox),
       () => _openBox<Section>(_kSectionBox),
+      () => _openBox<ManuscriptDocument>(_kManuscriptDocumentBox),
       () => _openBox<Character>(_kCharacterBox),
       () => _openBox<Link>(_kLinkBox),
       () => _openBox<HistoryEntry>(_kHistoryBox),

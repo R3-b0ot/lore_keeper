@@ -7,7 +7,7 @@ import 'package:lore_keeper/models/classification_node.dart';
 /// This is independent of Hive TypeIds and entity revisions.
 /// Increment this when the persistence structure changes (new boxes,
 /// new required fields, renamed fields, structural migrations).
-const int currentSchemaVersion = 2;
+const int currentSchemaVersion = 3;
 
 @HiveType(typeId: 50)
 class DatabaseMetadata extends HiveObject {
