@@ -22,6 +22,7 @@ import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
 import 'package:lore_keeper/widgets/manuscript_binder.dart';
 import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
+import 'package:lore_keeper/widgets/manuscript_outliner.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
@@ -953,19 +954,10 @@ Widget _buildLeftPanel() {
         onDocumentRenamed: _onDocumentRenamed,
       );
     case _LeftPanelMode.outliner:
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(LucideIcons.list, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: 16),
-            Text(
-              'Outliner view - Coming soon',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      return ManuscriptOutliner(
+        provider: _binderProvider!,
+        containerDocumentId: _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
+        onDocumentSelected: _onDocumentSelected,
       );
   }
 }
