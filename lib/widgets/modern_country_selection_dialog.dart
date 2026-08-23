@@ -111,22 +111,26 @@ class _ModernCountrySelectionDialogState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Global Directory',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: textColor,
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Global Directory',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: textColor,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${_countries.length} UN States & ${_fictional.length} Fictional Worlds',
-                      style: TextStyle(color: mutedTextColor, fontSize: 12),
-                    ),
-                  ],
+                      Text(
+                        '${_countries.length} UN States & ${_fictional.length} Fictional Worlds',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(color: mutedTextColor, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),

@@ -14,6 +14,10 @@ class TimelineEventProvider extends ChangeNotifier {
   /// Currently selected calendar system for filtering events in the UI.
   int? _selectedSystemKey;
 
+  /// Currently selected event id shared by the list pane and the canvas so
+  /// both surfaces always reflect a single Timeline selection.
+  String? _selectedEventId;
+
   TimelineEventProvider(this._projectId) {
     _initialize();
   }
@@ -24,6 +28,18 @@ class TimelineEventProvider extends ChangeNotifier {
   
   void setSelectedSystemKey(int? systemKey) {
     _selectedSystemKey = systemKey;
+    notifyListeners();
+  }
+
+  /// The event currently selected in the Timeline UI, or null when nothing
+  /// is selected.
+  String? get selectedEventId => _selectedEventId;
+
+  /// Selects an event (or clears selection with null) across all Timeline
+  /// surfaces listening to this provider.
+  void selectEvent(String? eventId) {
+    if (_selectedEventId == eventId) return;
+    _selectedEventId = eventId;
     notifyListeners();
   }
 
@@ -45,11 +61,7 @@ class TimelineEventProvider extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    if (!Hive.isAdapterRegistered(29)) {
-      Hive.registerAdapter(TimelineEventAdapter());
-    }
-
-    _eventBox = await Hive.openBox<TimelineEvent>('timeline_events');
+    _eventBox = Hive.box<TimelineEvent>('timeline_events');
     _isInitialized = true;
     _reload();
     notifyListeners();
@@ -73,6 +85,8 @@ class TimelineEventProvider extends ChangeNotifier {
     String? name,
     int absoluteYear = 1,
     int absoluteDayOfYear = 1,
+    int? endYear,
+    int? endDayOfYear,
     String iconKey = 'star',
     int colorValue = 0xFF6366F1,
     String lore = '',
@@ -93,6 +107,8 @@ class TimelineEventProvider extends ChangeNotifier {
       lore: lore,
       calendarSystemKey: calendarSystemKey ?? _selectedSystemKey ?? 0,
       durationDays: durationDays,
+      endYear: endYear ?? absoluteYear,
+      endDayOfYear: endDayOfYear ?? absoluteDayOfYear,
       linkedCharacterIds: linkedCharacterIds,
       linkedLocationIds: linkedLocationIds,
     );
@@ -107,6 +123,8 @@ class TimelineEventProvider extends ChangeNotifier {
     String? name,
     int? absoluteYear,
     int? absoluteDayOfYear,
+    int? endYear,
+    int? endDayOfYear,
     String? iconKey,
     int? colorValue,
     String? lore,
@@ -126,6 +144,12 @@ class TimelineEventProvider extends ChangeNotifier {
     }
     if (absoluteDayOfYear != null) {
       event.absoluteDayOfYear = absoluteDayOfYear;
+    }
+    if (endYear != null) {
+      event.endYear = endYear;
+    }
+    if (endDayOfYear != null) {
+      event.endDayOfYear = endDayOfYear;
     }
     if (iconKey != null) {
       event.iconKey = iconKey;
@@ -158,6 +182,9 @@ class TimelineEventProvider extends ChangeNotifier {
     final event = getEventById(eventId);
     if (event == null) return;
     await event.delete();
+    if (_selectedEventId == eventId) {
+      _selectedEventId = null;
+    }
     _reload();
     notifyListeners();
   }

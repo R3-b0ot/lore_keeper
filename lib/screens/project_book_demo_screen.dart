@@ -567,13 +567,16 @@ class _ProjectWorkspaceState extends State<_ProjectWorkspace> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Generated Result',
-                            style: TextStyle(
-                              color: Color(0xFFFBBF24), // amber-400
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
+                          const Flexible(
+                            child: Text(
+                              'Generated Result',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Color(0xFFFBBF24), // amber-400
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
                           Container(
@@ -587,6 +590,7 @@ class _ProjectWorkspaceState extends State<_ProjectWorkspace> {
                             ),
                             child: Text(
                               _assistantGenre,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Color(0xFFD1D5DB),
                                 fontSize: 12,

@@ -12,6 +12,8 @@ class CalendarChronology {
   final List<int> eraStartYears;
   final String calendarName;
   final String systemName;
+  final List<String> weekdays;
+  final int firstDayOfWeek;
 
   const CalendarChronology({
     required this.systemKey,
@@ -21,6 +23,8 @@ class CalendarChronology {
     required this.eraStartYears,
     required this.calendarName,
     required this.systemName,
+    this.weekdays = const ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    this.firstDayOfWeek = 0,
   });
 
   int monthAtDayOfYear(int dayOfYear) {
@@ -47,6 +51,22 @@ class CalendarChronology {
       if (year >= eraStartYears[i]) return i;
     }
     return 0;
+  }
+
+  /// Returns the weekday index (0-6) for a given absolute year and day of year.
+  /// Year 1, Day 1 starts on [firstDayOfWeek].
+  int weekdayAt(int absoluteYear, int absoluteDayOfYear) {
+    if (absoluteDayOfYear < 1 || absoluteDayOfYear > daysInYear) return -1;
+    final daysBeforeYear = (absoluteYear - 1) * daysInYear;
+    final totalDaysOffset = daysBeforeYear + absoluteDayOfYear - 1;
+    return (firstDayOfWeek + totalDaysOffset) % 7;
+  }
+
+  /// Returns the weekday name for a given absolute year and day of year.
+  String weekdayNameAt(int absoluteYear, int absoluteDayOfYear) {
+    final idx = weekdayAt(absoluteYear, absoluteDayOfYear);
+    if (idx < 0) return '?';
+    return weekdays[idx];
   }
 
   String formatDisplay(int absoluteYear, int absoluteDayOfYear) {
@@ -169,6 +189,10 @@ class CalendarChronology {
       }
     }
 
+    // Read weekday config from root node attributes (system-level config)
+    final weekdays = _readWeekdays(root.attributes);
+    final firstDayOfWeek = _readFirstDayOfWeek(root.attributes);
+
     return CalendarChronology(
       systemKey: systemKey,
       daysInYear: totalDays,
@@ -177,6 +201,8 @@ class CalendarChronology {
       eraStartYears: eraStarts,
       calendarName: calName,
       systemName: system.name,
+      weekdays: weekdays,
+      firstDayOfWeek: firstDayOfWeek,
     );
   }
 
@@ -193,12 +219,53 @@ class CalendarChronology {
       eraStartYears: [],
       calendarName: 'Default',
       systemName: systemName,
+      weekdays: const ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      firstDayOfWeek: 0,
     );
   }
 
   static int? _parseInt(String s) {
     final m = RegExp(r'-?\d+').firstMatch(s);
     return m == null ? null : int.tryParse(m.group(0)!);
+  }
+
+  static List<String> _readWeekdays(List<CalendarAttribute> attrs) {
+    final val = _readAttribute(attrs, const {'weekdays', 'week_days', 'days_of_week'});
+    if (val == null) return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final parts = val.split(RegExp(r'[,;|]')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    if (parts.length >= 3) return parts;
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  }
+
+  static int _readFirstDayOfWeek(List<CalendarAttribute> attrs) {
+    final val = _readAttribute(attrs, const {'first_day_of_week', 'week_start', 'start_of_week'});
+    if (val == null) return 0;
+    final parsed = int.tryParse(val);
+    return (parsed != null && parsed >= 0 && parsed <= 6) ? parsed : 0;
+  }
+
+  static String? _readAttribute(List<CalendarAttribute> attrs, Set<String> keys) {
+    final normalized = <String, String>{};
+    for (final attr in attrs) {
+      final norm = attr.label
+          .toLowerCase()
+          .replaceAll(' ', '_')
+          .replaceAll('/', '_')
+          .replaceAll('-', '_');
+      normalized[norm] = attr.value;
+    }
+    for (final key in keys) {
+      final val = normalized[key];
+      if (val != null && val.isNotEmpty) return val;
+    }
+    for (final attr in attrs) {
+      final l = attr.label.toLowerCase();
+      for (final key in keys) {
+        final search = key.replaceAll('_', ' ');
+        if (l.contains(search)) return attr.value;
+      }
+    }
+    return null;
   }
 
   /// Reads an attribute by trying a set of normalized keys (underscore-lowercase).

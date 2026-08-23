@@ -234,7 +234,7 @@ class _StatsGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            childAspectRatio: 1.6,
+            childAspectRatio: 2.4,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
@@ -284,17 +284,17 @@ class _StatCard extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             children: [
-              Icon(stat.icon, size: 20, color: colorScheme.primary),
+              Icon(stat.icon, size: 22, color: colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   stat.label,
-                  style: textTheme.labelMedium?.copyWith(
+                  style: textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -302,11 +302,12 @@ class _StatCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             stat.value,
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+            textAlign: TextAlign.center,
+            style: textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
               color: colorScheme.onSurface,
             ),
           ),
@@ -370,7 +371,7 @@ class _QuickNavGrid extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                childAspectRatio: 3.5,
+                childAspectRatio: 2.8,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
@@ -419,7 +420,7 @@ class _NavCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -429,19 +430,19 @@ class _NavCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
-                  size: 20,
+                  size: 18,
                   color: colorScheme.onPrimaryContainer,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,22 +450,27 @@ class _NavCard extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: textTheme.titleMedium?.copyWith(
+                      style: textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colorScheme.onSurface,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     Text(
                       subtitle,
                       style: textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
               ),
               Icon(
                 LucideIcons.chevronRight,
+                size: 18,
                 color: colorScheme.onSurfaceVariant,
               ),
             ],

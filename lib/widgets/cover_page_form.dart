@@ -164,46 +164,55 @@ class _CoverPageFormState extends State<CoverPageForm> {
                           padding: const EdgeInsets.all(32.0),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               if (_showTitle)
-                                Text(
-                                  widget.project.bookTitle ??
-                                      widget.project.title,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w900,
-                                    fontFamily:
-                                        'Serif', // Use a classical font for covers
-                                    shadows: [
-                                      Shadow(
-                                        blurRadius: 10,
-                                        color: colorScheme.onSurface,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
+                                Flexible(
+                                  child: Text(
+                                    widget.project.bookTitle ??
+                                        widget.project.title,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 4,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily:
+                                          'Serif', // Use a classical font for covers
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 10,
+                                          color: colorScheme.onSurface,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 )
                               else
                                 const SizedBox.shrink(),
 
                               if (_showAuthor)
-                                Text(
-                                  widget.project.authors ?? 'Unknown Author',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: 2,
-                                    shadows: [
-                                      Shadow(
-                                        blurRadius: 5,
-                                        color: colorScheme.onSurface,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
+                                Flexible(
+                                  child: Text(
+                                    widget.project.authors ?? 'Unknown Author',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 2,
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 5,
+                                          color: colorScheme.onSurface,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 )
                               else

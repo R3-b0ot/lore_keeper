@@ -9,7 +9,7 @@ class GlobalCustomPanelService {
   late Box<String> _box;
 
   Future<void> init() async {
-    _box = await Hive.openBox<String>(_boxName);
+    _box = Hive.box<String>(_boxName);
   }
 
   List<CustomPanel> getCustomPanels() {

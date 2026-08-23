@@ -1,0 +1,21 @@
+The system cannot find the file specified.
+W These options have been removed and were ignored: --delete-conflicting-outputs
+  0s json_serializable on 151 inputs; lib/core/theme/accessibility_rating.dart
+  0s json_serializable on 151 inputs: 1 skipped; lib/core/theme/app_theme.dart
+W SDK language version 3.13.0 is newer than `analyzer` language version 3.12.0. Run `flutter packages upgrade`.
+  6s json_serializable on 151 inputs: 17 skipped, 1 no-op; spent 5s analyzing, 1s resolving; lib/database/database_metadata.dart
+  9s json_serializable on 151 inputs: 20 skipped, 3 no-op; spent 7s analyzing, 2s resolving; lib/models/calendar_node.dart
+E json_serializable on lib/models/classification_node.dart:
+  109:1: Directives must appear before any declarations.
+E json_serializable on lib/modules/species_module.dart:
+  98:1: Expected to find ','.
+  99:1: Expected to find ','.
+  101:5: Expected to find ','.
+  And 49 more.
+  9s json_serializable on 151 inputs: 126 skipped, 25 no-op; spent 7s analyzing, 2s resolving
+  0s source_gen:combining_builder on 151 inputs; lib/core/theme/accessibility_rating.dart
+  0s source_gen:combining_builder on 151 inputs: 151 skipped
+  0s mockito:mockBuilder on 24 inputs; test/database/ai_provider_test.dart
+  0s mockito:mockBuilder on 24 inputs: 20 skipped, 4 no-op
+  Failed to build with build_runner/aot in 22s; wrote 0 outputs.
+Failed to update packages.

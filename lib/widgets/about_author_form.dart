@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AboutAuthorForm extends StatefulWidget {
   final Project project;
@@ -107,7 +108,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _emailController,
                       label: 'Contact Email',
                       hint: 'author@example.com',
-                      icon: LucideIcons.mail,
+                      icon: const Icon(LucideIcons.mail),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -116,7 +117,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _websiteController,
                       label: 'Website',
                       hint: 'https://yourwebsite.com',
-                      icon: LucideIcons.globe,
+                      icon: const Icon(LucideIcons.globe),
                     ),
                   ),
                 ],
@@ -131,7 +132,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _twitterController,
                       label: 'Twitter / X',
                       hint: '@username',
-                      icon: LucideIcons.atSign,
+                      icon: SvgPicture.asset('assets/icons/social/x_twitter.svg'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -140,7 +141,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _instagramController,
                       label: 'Instagram',
                       hint: 'username',
-                      icon: LucideIcons.camera,
+                      icon: SvgPicture.asset('assets/icons/social/instagram.svg'),
                     ),
                   ),
                 ],
@@ -150,7 +151,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                 controller: _facebookController,
                 label: 'Facebook',
                 hint: 'facebook.com/username',
-                icon: LucideIcons.facebook,
+                icon: SvgPicture.asset('assets/icons/social/facebook.svg'),
               ),
 
               const SizedBox(height: 48),
@@ -197,7 +198,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
     required TextEditingController controller,
     required String label,
     required String hint,
-    IconData? icon,
+    Widget? icon,
     int maxLines = 1,
   }) {
     return TextField(
@@ -206,7 +207,7 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: icon != null ? Icon(icon) : null,
+        prefixIcon: icon,
         alignLabelWithHint: maxLines > 1,
       ),
     );

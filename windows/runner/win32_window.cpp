@@ -207,6 +207,20 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
     }
 
+    case WM_GETMINMAXINFO: {
+      if (minimum_size_.width > 0 && minimum_size_.height > 0) {
+        // Get the DPI scale factor for this monitor.
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+        double scale_factor = dpi / 96.0;
+
+        auto info = reinterpret_cast<MINMAXINFO*>(lparam);
+        info->ptMinTrackSize.x = Scale(minimum_size_.width, scale_factor);
+        info->ptMinTrackSize.y = Scale(minimum_size_.height, scale_factor);
+      }
+      return 0;
+    }
+
     case WM_ACTIVATE:
       if (child_content_ != nullptr) {
         SetFocus(child_content_);
@@ -261,6 +275,10 @@ HWND Win32Window::GetHandle() {
 
 void Win32Window::SetQuitOnClose(bool quit_on_close) {
   quit_on_close_ = quit_on_close;
+}
+
+void Win32Window::SetMinimumSize(unsigned int width, unsigned int height) {
+  minimum_size_ = Size(width, height);
 }
 
 bool Win32Window::OnCreate() {

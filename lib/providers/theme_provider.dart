@@ -48,7 +48,7 @@ class ThemeNotifier extends ChangeNotifier {
   }
 
   Future<void> _loadTheme() async {
-    _settingsBox = await Hive.openBox('settings');
+    _settingsBox = Hive.box('settings');
 
     // Load Theme Pack
     _themePack = _settingsBox.get(_themePackKey, defaultValue: 'minimal');

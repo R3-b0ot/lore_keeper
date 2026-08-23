@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/modules/calendar_module.dart';
 import 'package:lore_keeper/modules/magic_module.dart';
+import 'package:lore_keeper/modules/species_module.dart';
 import 'package:lore_keeper/modules/timeline_module.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/magic_tree_provider.dart';
+import 'package:lore_keeper/providers/species_provider.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
 
 /// World Building module — consolidates lore domains as internal tabs.
 class WorldBuildingTabs extends StatefulWidget {
   final CalendarTreeProvider calendarProvider;
   final MagicTreeProvider magicProvider;
+  final SpeciesProvider speciesProvider;
   final TimelineEventProvider timelineProvider;
   final CharacterListProvider characterProvider;
 
@@ -24,6 +27,7 @@ class WorldBuildingTabs extends StatefulWidget {
     super.key,
     required this.calendarProvider,
     required this.magicProvider,
+    required this.speciesProvider,
     required this.timelineProvider,
     required this.characterProvider,
     this.initialTabIndex,
@@ -143,6 +147,8 @@ class _WorldBuildingTabsState extends State<WorldBuildingTabs>
         );
       case 2:
         return CalendarModule(calendarProvider: widget.calendarProvider);
+      case 3:
+        return SpeciesModule(speciesProvider: widget.speciesProvider);
       default:
         return _PlaceholderTab(
           label: _tabs[index].label,

@@ -7,29 +7,23 @@ import 'package:path_provider/path_provider.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
-import 'package:lore_keeper/models/magic_system.dart';
-import 'package:lore_keeper/models/magic_node.dart';
-import 'package:lore_keeper/models/calendar_system.dart';
-import 'package:lore_keeper/models/calendar_node.dart';
 import 'package:lore_keeper/models/section.dart';
-import 'package:lore_keeper/models/link.dart';
-import 'package:lore_keeper/models/history_entry.dart';
-import 'package:lore_keeper/models/timeline_event.dart';
-import 'package:lore_keeper/models/map_data.dart';
-import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
 import 'package:lore_keeper/core/theme/theme_bootstrap.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/screens/dashboard/dashboard_screen.dart';
-import 'package:lore_keeper/screens/trait_editor_screen.dart';
 import 'package:lore_keeper/services/resource_manager.dart';
+import 'package:lore_keeper/database/database_manager.dart';
 
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:lore_keeper/utils/debug_logger.dart';
 
-// Global access point for the Project data store (Hive Box)
+/// Global access points for frequently-used Hive boxes.
+///
+/// These are assigned once during [initializeDatabase] and read by services
+/// and providers throughout the application. They are kept for backward
+/// compatibility; prefer using [DatabaseManager.instance] for new code.
 late Box<Project> projectBox;
 late Box<Section> sectionBox;
 late Box<Chapter> chapterBox;
@@ -56,7 +50,7 @@ void main() async {
   };
   // ───────────────────────────────────────────────────────────────────────
 
-  await initializeHive();
+  await initializeDatabase();
   await RelationshipService().initialize();
   await ResourceManager().initialize();
   runApp(
@@ -69,107 +63,25 @@ void main() async {
   );
 }
 
-Future<void> initializeHive() async {
+/// Central database initialization via [DatabaseManager].
+///
+/// Uses [getApplicationSupportDirectory] to match the original Hive storage
+/// path exactly — critical for locating existing legacy data.
+/// On web, falls back to default Hive.initFlutter() path.
+Future<void> initializeDatabase() async {
   if (kIsWeb) {
-    await Hive.initFlutter();
+    await DatabaseManager.instance.initialize();
   } else {
-    Directory dir = await getApplicationSupportDirectory();
-    await Hive.initFlutter(dir.path);
+    final dir = await getApplicationSupportDirectory();
+    await DatabaseManager.instance.initialize(path: dir.path);
   }
 
-  void registerAdapterIfNeeded<T>(int typeId, TypeAdapter<T> adapter) {
-    if (!Hive.isAdapterRegistered(typeId)) {
-      Hive.registerAdapter<T>(adapter);
-    }
-  }
-
-  registerAdapterIfNeeded(0, ProjectAdapter());
-  registerAdapterIfNeeded(2, ChapterAdapter());
-  registerAdapterIfNeeded(4, CharacterAdapter());
-  registerAdapterIfNeeded(3, SectionAdapter());
-  registerAdapterIfNeeded(5, LinkAdapter());
-  registerAdapterIfNeeded(10, CharacterIterationSafeAdapter());
-  registerAdapterIfNeeded(13, CharacterImageAdapter());
-  registerAdapterIfNeeded(20, CustomFieldAdapter());
-  registerAdapterIfNeeded(21, CustomPanelAdapter());
-  registerAdapterIfNeeded(11, HistoryEntryAdapter());
-  registerAdapterIfNeeded(12, CustomTraitAdapter());
-  registerAdapterIfNeeded(7, MagicSystemAdapter());
-  registerAdapterIfNeeded(8, MagicNodeAdapter());
-  registerAdapterIfNeeded(22, MagicImageAdapter());
-  registerAdapterIfNeeded(9, MagicAttributeAdapter());
-  registerAdapterIfNeeded(26, CalendarSystemAdapter());
-  registerAdapterIfNeeded(27, CalendarNodeAdapter());
-  registerAdapterIfNeeded(28, CalendarAttributeAdapter());
-  registerAdapterIfNeeded(29, TimelineEventAdapter());
-  registerAdapterIfNeeded(30, MapDataAdapter());
-  registerAdapterIfNeeded(31, MapLayerAdapter());
-  registerAdapterIfNeeded(32, MapStampAdapter());
-  registerAdapterIfNeeded(33, MapPathAdapter());
-  registerAdapterIfNeeded(34, MapPolygonAdapter());
-  registerAdapterIfNeeded(35, OffsetDataAdapter());
-
-  try {
-    projectBox = await Hive.openBox<Project>('projects');
-    sectionBox = await Hive.openBox<Section>('sections');
-    chapterBox = await Hive.openBox<Chapter>('chapters');
-    characterBox = await Hive.openBox<Character>('characters');
-    await Hive.openBox<MagicSystem>('magic_systems');
-    await Hive.openBox<MagicNode>('magic_nodes');
-    await Hive.openBox<CalendarSystem>('calendar_systems');
-    await Hive.openBox<CalendarNode>('calendar_nodes');
-    await Hive.openBox<Link>('links');
-    await Hive.openBox<HistoryEntry>('history');
-    await Hive.openBox<SimpleTrait>('custom_traits');
-    await Hive.openBox<TimelineEvent>('timeline_events');
-    await Hive.openBox<MapData>('map_data');
-  } catch (e) {
-    if (e.toString().contains('unknown typeId')) {
-      await Hive.deleteBoxFromDisk('calendar_systems');
-      await Hive.deleteBoxFromDisk('calendar_nodes');
-      await Hive.deleteBoxFromDisk('timeline_events');
-      try {
-        projectBox = await Hive.openBox<Project>('projects');
-        sectionBox = await Hive.openBox<Section>('sections');
-        chapterBox = await Hive.openBox<Chapter>('chapters');
-        characterBox = await Hive.openBox<Character>('characters');
-        await Hive.openBox<MagicSystem>('magic_systems');
-        await Hive.openBox<MagicNode>('magic_nodes');
-        await Hive.openBox<CalendarSystem>('calendar_systems');
-        await Hive.openBox<CalendarNode>('calendar_nodes');
-        await Hive.openBox<Link>('links');
-        await Hive.openBox<HistoryEntry>('history');
-        await Hive.openBox<SimpleTrait>('custom_traits');
-        await Hive.openBox<TimelineEvent>('timeline_events');
-      } catch (_) {
-        await Hive.deleteBoxFromDisk('projects');
-        await Hive.deleteBoxFromDisk('sections');
-        await Hive.deleteBoxFromDisk('chapters');
-        await Hive.deleteBoxFromDisk('characters');
-        await Hive.deleteBoxFromDisk('magic_systems');
-        await Hive.deleteBoxFromDisk('magic_nodes');
-        await Hive.deleteBoxFromDisk('links');
-        await Hive.deleteBoxFromDisk('history');
-        await Hive.deleteBoxFromDisk('custom_traits');
-        await Hive.deleteBoxFromDisk('timeline_events');
-
-        projectBox = await Hive.openBox<Project>('projects');
-        sectionBox = await Hive.openBox<Section>('sections');
-        chapterBox = await Hive.openBox<Chapter>('chapters');
-        characterBox = await Hive.openBox<Character>('characters');
-        await Hive.openBox<MagicSystem>('magic_systems');
-        await Hive.openBox<MagicNode>('magic_nodes');
-        await Hive.openBox<CalendarSystem>('calendar_systems');
-        await Hive.openBox<CalendarNode>('calendar_nodes');
-        await Hive.openBox<Link>('links');
-        await Hive.openBox<HistoryEntry>('history');
-        await Hive.openBox<SimpleTrait>('custom_traits');
-        await Hive.openBox<TimelineEvent>('timeline_events');
-      }
-    } else {
-      rethrow;
-    }
-  }
+  // Assign global box references for backward compatibility.
+  final db = DatabaseManager.instance;
+  projectBox = db.projects;
+  sectionBox = db.sections;
+  chapterBox = db.chapters;
+  characterBox = db.characters;
 }
 
 class LoreKeeperApp extends StatelessWidget {

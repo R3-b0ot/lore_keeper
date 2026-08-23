@@ -181,7 +181,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       final projectId = project.key;
 
       // 1. Delete Chapters
-      final chapterBox = await Hive.openBox<Chapter>('chapters');
+      final chapterBox = Hive.box<Chapter>('chapters');
       final chapterKeysToDelete = chapterBox.values
           .where((c) => c.parentProjectId == projectId)
           .map((c) => c.key)
@@ -189,7 +189,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       await chapterBox.deleteAll(chapterKeysToDelete);
 
       // 2. Delete Characters
-      final characterBox = await Hive.openBox<Character>('characters');
+      final characterBox = Hive.box<Character>('characters');
       final characterKeysToDelete = characterBox.values
           .where((c) => c.parentProjectId == projectId)
           .map((c) => c.key)
@@ -274,7 +274,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
         );
       case 'Proofing':
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

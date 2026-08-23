@@ -37,7 +37,7 @@ dependencies:
   path_provider: ^2.1.0
   path: ^1.9.0 # To parse file paths for fonts
 
-  flutter_quill: ^11.0.0 # The original rich text editor package
+  flutter_quill: ^11.4.0 # The original rich text editor package
   flutter_quill_extensions: ^11.0.0 # Companion package for extra features
   language_tool: ^2.2.0
 
@@ -67,17 +67,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   native_image_cropper: 0.7.0
-  lucide_icons_flutter: 3.1.9
+  lucide_icons_flutter: ^3.1.15
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-# Add Isar code generation tools
-  hive_generator: ^2.0.1
   build_runner: ^2.4.13
   json_serializable: ^6.8.0
   mockito: ^5.4.4
-  analyzer: ^6.4.1 # This version range should be compatible with recent SDKs
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your

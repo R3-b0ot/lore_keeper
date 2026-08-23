@@ -1635,7 +1635,14 @@ class _PanelCard extends StatelessWidget {
                       ),
                       const VerticalDivider(width: 16),
                     ],
-                    Text(title, style: AppColors.panelTitleStyle(context)),
+                    Flexible(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: AppColors.panelTitleStyle(context),
+                      ),
+                    ),
                     const Spacer(),
                     if (onEdit != null)
                       IconButton(
@@ -1734,15 +1741,22 @@ class _TraitsPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: Text(entry.key)),
-                    Row(
-                      children: [
-                        Text(_getLeveledTraitIcon(entry.key, entry.value)),
-                        const SizedBox(width: 8),
-                        Text(
-                          _getLeveledTraitLabel(entry.key, entry.value),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_getLeveledTraitIcon(entry.key, entry.value)),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _getLeveledTraitLabel(entry.key, entry.value),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1760,15 +1774,22 @@ class _TraitsPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: Text(entry.key)),
-                    Row(
-                      children: [
-                        Text(_getPersonalityTraitIcon(entry.key, entry.value)),
-                        const SizedBox(width: 8),
-                        Text(
-                          _getPersonalityTraitLabel(entry.key, entry.value),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_getPersonalityTraitIcon(entry.key, entry.value)),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _getPersonalityTraitLabel(entry.key, entry.value),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -2107,7 +2128,14 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
         children: [
           Row(
             children: [
-              Text(field.name, style: Theme.of(context).textTheme.labelLarge),
+              Flexible(
+                child: Text(
+                  field.name,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
               const Spacer(),
               PopupMenuButton<String>(
                 icon: const Icon(LucideIcons.ellipsisVertical),

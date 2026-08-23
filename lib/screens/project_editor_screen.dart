@@ -8,6 +8,8 @@ import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/link_provider.dart';
 import 'package:lore_keeper/providers/magic_tree_provider.dart';
+import 'package:lore_keeper/providers/species_provider.dart';
+import 'package:lore_keeper/widgets/species_tree.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/widgets/chapter_list_pane.dart';
@@ -56,6 +58,7 @@ class ProjectEditorScreen extends StatefulWidget {
 
 class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   int _moduleIndex = 0;
+
   /// Current tab index within World Building module (moduleIndex == 3).
   int _worldTabIndex = 0;
   String _selectedChapterKey = '';
@@ -78,6 +81,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   MagicTreeProvider? _magicTreeProvider;
   CalendarTreeProvider? _calendarTreeProvider;
   TimelineEventProvider? _timelineEventProvider;
+  SpeciesProvider? _speciesProvider;
   LinkProvider? _linkProvider;
 
   // New navigation structure: Overview | Manuscripts | Characters | World Building | Lore Map
@@ -166,12 +170,14 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _magicTreeProvider = MagicTreeProvider(widget.project.key);
     _calendarTreeProvider = CalendarTreeProvider(widget.project.key);
     _timelineEventProvider = TimelineEventProvider(widget.project.key);
+    _speciesProvider = SpeciesProvider(widget.project.key);
 
     // Wire calendar system selection → timeline events filter
     _calendarTreeProvider!.addListener(() {
       if (!mounted) return;
       final selectedKey = _calendarTreeProvider!.selectedSystem?.key as int?;
-      if (selectedKey != null && selectedKey != _timelineEventProvider!.selectedSystemKey) {
+      if (selectedKey != null &&
+          selectedKey != _timelineEventProvider!.selectedSystemKey) {
         _timelineEventProvider!.setSelectedSystemKey(selectedKey);
       }
     });
@@ -343,6 +349,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _magicTreeProvider?.dispose();
     _calendarTreeProvider?.dispose();
     _timelineEventProvider?.dispose();
+    _speciesProvider?.dispose();
     super.dispose();
   }
 
@@ -439,8 +446,14 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
             calendarProvider: _calendarTreeProvider!,
             isMobile: isMobile,
           );
+        case 3:
+          // Species - shows in second column (tree/list)
+          return SpeciesTree(
+            speciesProvider: _speciesProvider!,
+            isMobile: isMobile,
+          );
         default:
-          // Other domains (Species, Locations, Languages, Items, etc.) - placeholder
+          // Other domains (Locations, Languages, Items, etc.) - placeholder
           return _WorldBuildingPlaceholder(
             label: _worldTabIndex < _worldBuildingTabLabels.length
                 ? _worldBuildingTabLabels[_worldTabIndex]
@@ -512,6 +525,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       return WorldBuildingTabs(
         calendarProvider: _calendarTreeProvider!,
         magicProvider: _magicTreeProvider!,
+        speciesProvider: _speciesProvider!,
         timelineProvider: _timelineEventProvider!,
         characterProvider: _characterListProvider!,
         initialTabIndex: _worldTabIndex,
@@ -669,38 +683,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               : null,
         );
       },
-    );
-  }
-}
-
-class _ModulePlaceholder extends StatelessWidget {
-  final String moduleName;
-  final Color color;
-
-  const _ModulePlaceholder({required this.moduleName, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity, // This will take the available space
-      color: Theme.of(context).canvasColor,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              moduleName,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Module Editor is currently active in this panel.'),
-          ],
-        ),
-      ),
     );
   }
 }

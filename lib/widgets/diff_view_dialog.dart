@@ -225,9 +225,12 @@ class DiffViewDialog extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     panel.name,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: hasChanged ? AppColors.getWarning(context) : null,
@@ -247,8 +250,13 @@ class DiffViewDialog extends StatelessWidget {
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: panel.items
-                          .map((item) => Text('• $item'))
+                          .map((item) => Text(
+                                '• $item',
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ))
                           .toList(),
                     ),
                 ],

@@ -30,6 +30,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"LORE KEEPER", origin, size)) {
     return EXIT_FAILURE;
   }
+  window.SetMinimumSize(900, 600);
   window.SetQuitOnClose(true);
 
   ::MSG msg;

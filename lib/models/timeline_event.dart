@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'timeline_event.g.dart';
-
 @HiveType(typeId: 29)
 class TimelineEvent extends HiveObject {
   @HiveField(0)
@@ -42,9 +40,17 @@ class TimelineEvent extends HiveObject {
   @HiveField(11)
   int calendarSystemKey;
 
-  /// Duration in days (0 = single day/instant event).
+  /// Duration in days (0 = single day/instant event). Kept for backward compatibility.
   @HiveField(12)
   int durationDays;
+
+  /// End date (year) for date-range events. 0 = same as start (instant event).
+  @HiveField(15)
+  int endYear;
+
+  /// End date (day of year) for date-range events. 0 = same as start (instant event).
+  @HiveField(16)
+  int endDayOfYear;
 
   /// Linked character IDs (keys from Character model).
   @HiveField(13)
@@ -68,6 +74,8 @@ class TimelineEvent extends HiveObject {
     int? updatedAt,
     this.calendarSystemKey = 0,
     this.durationDays = 0,
+    this.endYear = 0,
+    this.endDayOfYear = 0,
     List<String>? linkedCharacterIds,
     List<String>? linkedLocationIds,
   }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch,

@@ -138,20 +138,8 @@ class MagicTreeProvider extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    if (!Hive.isAdapterRegistered(7)) {
-      Hive.registerAdapter(MagicSystemAdapter());
-    }
-    if (!Hive.isAdapterRegistered(8)) {
-      Hive.registerAdapter(MagicNodeAdapter());
-    }
-    if (!Hive.isAdapterRegistered(9)) {
-      Hive.registerAdapter(MagicAttributeAdapter());
-    }
-    if (!Hive.isAdapterRegistered(22)) {
-      Hive.registerAdapter(MagicImageAdapter());
-    }
-    _systemBox = await Hive.openBox<MagicSystem>('magic_systems');
-    _nodeBox = await Hive.openBox<MagicNode>('magic_nodes');
+    _systemBox = Hive.box<MagicSystem>('magic_systems');
+    _nodeBox = Hive.box<MagicNode>('magic_nodes');
     _isInitialized = true;
     await _migrateLegacyTypes();
     await _ensureAtLeastOneSystem();

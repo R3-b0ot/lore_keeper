@@ -1052,22 +1052,30 @@ class _GrammarPanel extends StatelessWidget {
                                     color: cs.primary,
                                   ),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    issue.category,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelMedium,
+                                  Flexible(
+                                    child: Text(
+                                      issue.category,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 issue.message,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 issue.context,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               const SizedBox(height: 8),

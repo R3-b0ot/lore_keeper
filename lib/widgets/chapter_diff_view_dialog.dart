@@ -108,21 +108,30 @@ class ChapterDiffViewDialog extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text(
-          currentValue ?? 'N/A',
-          style: TextStyle(
-            color: hasChanged ? AppColors.getWarning(context) : null,
+        Flexible(
+          child: Text(
+            currentValue ?? 'N/A',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+            style: TextStyle(
+              color: hasChanged ? AppColors.getWarning(context) : null,
+            ),
           ),
         ),
         if (hasChanged)
-          Text(
-            'Previous: ${historicalValue ?? 'N/A'}',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              'Previous: ${historicalValue ?? 'N/A'}',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 3,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
             ),
           ),
       ],
@@ -148,6 +157,7 @@ class ChapterDiffViewDialog extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: filteredDiffs.map((diff) {
         Color color;
         String prefix;
@@ -163,7 +173,9 @@ class ChapterDiffViewDialog extends StatelessWidget {
         }
         return Text(
           '$prefix${diff.text}',
-          style: TextStyle(color: color, fontFamily: 'monospace'),
+          overflow: TextOverflow.visible,
+          softWrap: true,
+          style: TextStyle(color: color, fontFamily: 'monospace', fontSize: 12),
         );
       }).toList(),
     );

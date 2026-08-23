@@ -283,18 +283,8 @@ class CalendarTreeProvider extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    if (!Hive.isAdapterRegistered(26)) {
-      Hive.registerAdapter(CalendarSystemAdapter());
-    }
-    if (!Hive.isAdapterRegistered(27)) {
-      Hive.registerAdapter(CalendarNodeAdapter());
-    }
-    if (!Hive.isAdapterRegistered(28)) {
-      Hive.registerAdapter(CalendarAttributeAdapter());
-    }
-
-    _systemBox = await Hive.openBox<CalendarSystem>('calendar_systems');
-    _nodeBox = await Hive.openBox<CalendarNode>('calendar_nodes');
+    _systemBox = Hive.box<CalendarSystem>('calendar_systems');
+    _nodeBox = Hive.box<CalendarNode>('calendar_nodes');
 
     _isInitialized = true;
     await _ensureAtLeastOneSystem();

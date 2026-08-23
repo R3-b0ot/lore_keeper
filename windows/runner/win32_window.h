@@ -52,6 +52,10 @@ class Win32Window {
   // If true, closing this window will quit the application.
   void SetQuitOnClose(bool quit_on_close);
 
+  // Sets the minimum size the window can be resized to (in logical pixels).
+  // Must be called after Create().
+  void SetMinimumSize(unsigned int width, unsigned int height);
+
   // Return a RECT representing the bounds of the current client area.
   RECT GetClientArea();
 
@@ -91,6 +95,9 @@ class Win32Window {
   static void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
+
+  // Minimum window size in logical pixels. {0, 0} means no constraint.
+  Size minimum_size_{0, 0};
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;
