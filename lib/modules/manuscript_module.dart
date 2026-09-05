@@ -20,10 +20,6 @@ import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
 import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
-import 'package:lore_keeper/widgets/manuscript_binder.dart';
-import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
-import 'package:lore_keeper/widgets/manuscript_outliner.dart';
-import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
@@ -42,8 +38,6 @@ import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 
 enum _EditorType { title, manuscript }
-
-enum _LeftPanelMode { binder, corkboard, outliner, collections }
 
 class ManuscriptModule extends StatelessWidget {
   final int projectId;
@@ -173,10 +167,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   bool _showGrammarPanel = false;
   String? _activeCategory;
   bool _focusMode = false;
-  _LeftPanelMode _leftPanelMode = _LeftPanelMode.binder;
 
   ManuscriptBinderProvider? _binderProvider;
-  String? _selectedDocumentId;
   ManuscriptDocument? _selectedDocument;
   ManuscriptReferenceService? _referenceService;
   late final ReferenceNameResolver _nameResolver;
@@ -226,7 +218,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Future<void> _initBinderProvider() async {
     // Prefer the shell-owned binder (already backed by the shared engine) so
     // Column 2 and the editor observe the same provider.
-    _binderProvider ??= widget.binderProvider ??
+    _binderProvider ??=
+        widget.binderProvider ??
         ManuscriptBinderProvider(
           widget.projectId,
           referenceEngine: _resolveSharedEngine(),
@@ -264,21 +257,18 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     };
     final species = widget.speciesProvider;
     if (species != null) {
-      providers[EntityType.species] = () => species.getRootNodes()
-          .map((n) => n.toReferenceEntry())
-          .toList();
+      providers[EntityType.species] = () =>
+          species.getRootNodes().map((n) => n.toReferenceEntry()).toList();
     }
     final timeline = widget.timelineProvider;
     if (timeline != null) {
-      providers[EntityType.timelineEvent] = () => timeline.events
-          .map((e) => e.toReferenceEntry())
-          .toList();
+      providers[EntityType.timelineEvent] = () =>
+          timeline.events.map((e) => e.toReferenceEntry()).toList();
     }
     final binder = _binderProvider;
     if (binder != null) {
-      providers[EntityType.manuscriptDocument] = () => binder.allDocuments
-          .map((d) => d.toReferenceEntry())
-          .toList();
+      providers[EntityType.manuscriptDocument] = () =>
+          binder.allDocuments.map((d) => d.toReferenceEntry()).toList();
     } else {
       // Binder not ready yet; read it lazily when the user types so documents
       // are discoverable as soon as the binder initializes.
@@ -334,7 +324,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     }
 
     if (docId != null) {
-      _selectedDocumentId = docId;
       _selectedDocument = _binderProvider!.getDocument(docId);
     }
   }
@@ -607,13 +596,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
           ? const Center(child: CircularProgressIndicator())
           : Row(
               children: [
-                // Left Panel
-                SizedBox(width: 280, child: _buildLeftPanel()),
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: cs.outlineVariant,
-                ),
                 // Editor Panel (Center) - Flexible
                 Expanded(
                   child: Column(
@@ -718,7 +700,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   void _onDocumentSelected(String documentId) {
     setState(() {
-      _selectedDocumentId = documentId;
       _selectedDocument = _binderProvider!.getDocument(documentId);
     });
 
@@ -737,18 +718,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       }
     }
     _loadContent();
-  }
-
-  void _onDocumentRenamed(String documentId) {
-    // Update chapter provider if it's a chapter
-    final doc = _binderProvider!.getDocument(documentId);
-    if (doc != null && doc.documentType == ManuscriptDocumentType.chapter) {
-      // The chapter provider will be updated via the binder provider
-    }
-  }
-
-  void _onDocumentMoved(String documentId) {
-    // Handle document moved - could update ordering in chapter provider if needed
   }
 
   // ========================================================================
@@ -1027,11 +996,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isUnresolved) ...[
-            Icon(
-              LucideIcons.alertTriangle,
-              size: 12,
-              color: cs.error,
-            ),
+            Icon(LucideIcons.alertTriangle, size: 12, color: cs.error),
             const SizedBox(width: 4),
             Text(
               'Unresolved • ',
@@ -1040,8 +1005,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
           ],
           Text(
             '$entityType • ${ref.kind}',
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -1107,43 +1073,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   }
 
   // ========================================================================
-  // LEFT PANEL
-  // ========================================================================
-
-  Widget _buildLeftPanel() {
-    switch (_leftPanelMode) {
-      case _LeftPanelMode.binder:
-        return ManuscriptBinder(
-          provider: _binderProvider!,
-          selectedDocumentId: _selectedDocumentId,
-          onDocumentSelected: _onDocumentSelected,
-          onDocumentRenamed: _onDocumentRenamed,
-          onDocumentMoved: _onDocumentMoved,
-        );
-      case _LeftPanelMode.corkboard:
-        return ManuscriptCorkboard(
-          provider: _binderProvider!,
-          containerDocumentId:
-              _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
-          onDocumentSelected: _onDocumentSelected,
-          onDocumentRenamed: _onDocumentRenamed,
-        );
-      case _LeftPanelMode.outliner:
-        return ManuscriptOutliner(
-          provider: _binderProvider!,
-          containerDocumentId:
-              _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
-          onDocumentSelected: _onDocumentSelected,
-        );
-      case _LeftPanelMode.collections:
-        return ManuscriptCollections(
-          provider: _binderProvider!,
-          onDocumentSelected: _onDocumentSelected,
-        );
-    }
-  }
-
-  // ========================================================================
   // TOOLBARS & EDITOR
   // ========================================================================
 
@@ -1167,53 +1096,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     scrollDirection: Axis.horizontal,
     child: Row(
       children: [
-        // View switcher for left panel
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: ToggleButtons(
-            isSelected: [
-              _leftPanelMode == _LeftPanelMode.binder,
-              _leftPanelMode == _LeftPanelMode.corkboard,
-              _leftPanelMode == _LeftPanelMode.outliner,
-              _leftPanelMode == _LeftPanelMode.collections,
-            ],
-            onPressed: (index) {
-              setState(() {
-                _leftPanelMode = _LeftPanelMode.values[index];
-              });
-            },
-            borderRadius: BorderRadius.circular(8),
-            selectedColor: Theme.of(context).colorScheme.onPrimaryContainer,
-            fillColor: Theme.of(context).colorScheme.primaryContainer,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
-            children: [
-              Tooltip(
-                message: 'Binder (Tree View)',
-                child: Icon(LucideIcons.listTree, size: 18),
-              ),
-              Tooltip(
-                message: 'Corkboard (Card View)',
-                child: Icon(LucideIcons.layoutGrid, size: 18),
-              ),
-              Tooltip(
-                message: 'Outliner (Table View)',
-                child: Icon(LucideIcons.list, size: 18),
-              ),
-              Tooltip(
-                message: 'Collections (Smart Views)',
-                child: Icon(LucideIcons.folderSearch, size: 18),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 16),
         // Quill Toolbar
         SizedBox(
           width: 600, // Limit toolbar width
