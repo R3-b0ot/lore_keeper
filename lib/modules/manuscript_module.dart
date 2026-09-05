@@ -27,16 +27,22 @@ import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
+import 'package:lore_keeper/providers/calendar_tree_provider.dart';
+import 'package:lore_keeper/providers/species_provider.dart';
+import 'package:lore_keeper/providers/timeline_event_provider.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_overlay.dart';
 import 'package:lore_keeper/services/reference_attribute.dart';
 import 'package:lore_keeper/services/manuscript_reference_service.dart';
+import 'package:lore_keeper/services/entity_reference_entries.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/database/reference_engine/reference_index.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 
 enum _EditorType { title, manuscript }
+
 enum _LeftPanelMode { binder, corkboard, outliner, collections }
 
 class ManuscriptModule extends StatelessWidget {
@@ -48,6 +54,13 @@ class ManuscriptModule extends StatelessWidget {
   final ValueChanged<QuillController?> onControllerReady;
   final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
   final ValueChanged<String>? onReferenceNavigate;
+  final ManuscriptBinderProvider? binderProvider;
+  final CalendarTreeProvider? calendarProvider;
+  final SpeciesProvider? speciesProvider;
+  final TimelineEventProvider? timelineProvider;
+  final ReferenceEngine? sharedReferenceEngine;
+  final String selectedDocumentId;
+  final ValueChanged<String>? onDocumentSelected;
 
   const ManuscriptModule({
     super.key,
@@ -59,6 +72,13 @@ class ManuscriptModule extends StatelessWidget {
     required this.onControllerReady,
     required this.onGrammarCheckReady,
     this.onReferenceNavigate,
+    this.binderProvider,
+    this.calendarProvider,
+    this.speciesProvider,
+    this.timelineProvider,
+    this.sharedReferenceEngine,
+    this.selectedDocumentId = '',
+    this.onDocumentSelected,
   });
 
   @override
@@ -72,6 +92,13 @@ class ManuscriptModule extends StatelessWidget {
       onControllerReady: onControllerReady,
       onGrammarCheckReady: onGrammarCheckReady,
       onReferenceNavigate: onReferenceNavigate,
+      binderProvider: binderProvider,
+      calendarProvider: calendarProvider,
+      speciesProvider: speciesProvider,
+      timelineProvider: timelineProvider,
+      sharedReferenceEngine: sharedReferenceEngine,
+      selectedDocumentId: selectedDocumentId,
+      onDocumentSelected: onDocumentSelected,
     );
   }
 }
@@ -85,6 +112,13 @@ class ManuscriptEditor extends StatefulWidget {
   final ValueChanged<QuillController?> onControllerReady;
   final ValueChanged<Future<void> Function()?> onGrammarCheckReady;
   final ValueChanged<String>? onReferenceNavigate;
+  final ManuscriptBinderProvider? binderProvider;
+  final CalendarTreeProvider? calendarProvider;
+  final SpeciesProvider? speciesProvider;
+  final TimelineEventProvider? timelineProvider;
+  final ReferenceEngine? sharedReferenceEngine;
+  final String selectedDocumentId;
+  final ValueChanged<String>? onDocumentSelected;
 
   const ManuscriptEditor({
     super.key,
@@ -96,6 +130,13 @@ class ManuscriptEditor extends StatefulWidget {
     required this.onControllerReady,
     required this.onGrammarCheckReady,
     this.onReferenceNavigate,
+    this.binderProvider,
+    this.calendarProvider,
+    this.speciesProvider,
+    this.timelineProvider,
+    this.sharedReferenceEngine,
+    this.selectedDocumentId = '',
+    this.onDocumentSelected,
   });
 
   @override
@@ -138,6 +179,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   String? _selectedDocumentId;
   ManuscriptDocument? _selectedDocument;
   ManuscriptReferenceService? _referenceService;
+  late final ReferenceNameResolver _nameResolver;
 
   // @mention autocomplete
   late final ReferenceAutocompleteController _autocompleteController;
@@ -154,8 +196,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     // Initialize @mention autocomplete controller with all entity types
     _autocompleteController = ReferenceAutocompleteController(
       quillController: _controller,
-      charactersProvider: () => widget.characterProvider.characters,
+      entityProviders: _buildEntityProviders(),
     );
+    _nameResolver = ReferenceNameResolver.fromDatabase(widget.projectId);
     _autocompleteController.onStateChanged = () {
       if (mounted) setState(() {});
     };
@@ -171,8 +214,23 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _focusNode.addListener(_onFocusChange);
   }
 
+  /// Resolve the single shared [ReferenceEngine] that binds the manuscript
+  /// pipeline (binder, reference service, collections) so backlinks and the
+  /// inspector all observe ONE index. Prefer the shell-owned engine; fall back
+  /// to a private one only when running standalone.
+  ReferenceEngine? _sharedEngine;
+  ReferenceEngine _resolveSharedEngine() {
+    return _sharedEngine ??= widget.sharedReferenceEngine ?? ReferenceEngine();
+  }
+
   Future<void> _initBinderProvider() async {
-    _binderProvider = ManuscriptBinderProvider(widget.projectId);
+    // Prefer the shell-owned binder (already backed by the shared engine) so
+    // Column 2 and the editor observe the same provider.
+    _binderProvider ??= widget.binderProvider ??
+        ManuscriptBinderProvider(
+          widget.projectId,
+          referenceEngine: _resolveSharedEngine(),
+        );
     // Wait for initialization
     while (!_binderProvider!.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 50));
@@ -188,12 +246,49 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     final db = DatabaseManager.instance;
     _referenceService = ManuscriptReferenceService(
       projectId: widget.projectId,
-      referenceEngine: ReferenceEngine(),
+      referenceEngine: _resolveSharedEngine(),
       documentBox: db.manuscriptDocuments,
-      characterBox: db.characters,
     );
     // Initial index build
     await _referenceService!.rebuildIndex();
+  }
+
+  /// Build @mention autocomplete candidate entries for the real referenceable
+  /// types that have canonical name sources. Unsupported types (Location,
+  /// Item, Organization, Faction, Research) are intentionally absent.
+  Map<String, EntityProvider> _buildEntityProviders() {
+    final providers = <String, EntityProvider>{
+      EntityType.character: () => widget.characterProvider.characters
+          .map((c) => c.toReferenceEntry())
+          .toList(),
+    };
+    final species = widget.speciesProvider;
+    if (species != null) {
+      providers[EntityType.species] = () => species.getRootNodes()
+          .map((n) => n.toReferenceEntry())
+          .toList();
+    }
+    final timeline = widget.timelineProvider;
+    if (timeline != null) {
+      providers[EntityType.timelineEvent] = () => timeline.events
+          .map((e) => e.toReferenceEntry())
+          .toList();
+    }
+    final binder = _binderProvider;
+    if (binder != null) {
+      providers[EntityType.manuscriptDocument] = () => binder.allDocuments
+          .map((d) => d.toReferenceEntry())
+          .toList();
+    } else {
+      // Binder not ready yet; read it lazily when the user types so documents
+      // are discoverable as soon as the binder initializes.
+      providers[EntityType.manuscriptDocument] = () {
+        final ready = _binderProvider;
+        if (ready == null) return const [];
+        return ready.allDocuments.map((d) => d.toReferenceEntry()).toList();
+      };
+    }
+    return providers;
   }
 
   void _selectDocumentForChapterKey(String chapterKey) {
@@ -202,16 +297,21 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     String? docId;
     if (chapterKey.startsWith('front_matter_')) {
       // Find front matter document
-      final docs = _binderProvider!.getDocumentsByType(ManuscriptDocumentType.frontMatter);
+      final docs = _binderProvider!.getDocumentsByType(
+        ManuscriptDocumentType.frontMatter,
+      );
       for (final doc in docs) {
         // Match by order index or title
-        if (chapterKey.contains('front_matter_-1') && doc.title.toLowerCase().contains('front')) {
+        if (chapterKey.contains('front_matter_-1') &&
+            doc.title.toLowerCase().contains('front')) {
           docId = doc.id;
           break;
-        } else if (chapterKey.contains('front_matter_-2') && doc.title.toLowerCase().contains('index')) {
+        } else if (chapterKey.contains('front_matter_-2') &&
+            doc.title.toLowerCase().contains('index')) {
           docId = doc.id;
           break;
-        } else if (chapterKey.contains('front_matter_-3') && doc.title.toLowerCase().contains('author')) {
+        } else if (chapterKey.contains('front_matter_-3') &&
+            doc.title.toLowerCase().contains('author')) {
           docId = doc.id;
           break;
         }
@@ -221,7 +321,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       // Find chapter document
       final chapterKeyInt = int.tryParse(chapterKey);
       if (chapterKeyInt != null) {
-        final docs = _binderProvider!.getDocumentsByType(ManuscriptDocumentType.chapter);
+        final docs = _binderProvider!.getDocumentsByType(
+          ManuscriptDocumentType.chapter,
+        );
         for (final doc in docs) {
           if (doc.id == 'chapter_$chapterKeyInt') {
             docId = doc.id;
@@ -334,7 +436,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _updateDocumentWordCount() {
     if (_selectedDocument != null) {
       _selectedDocument!.wordCount = _wordCount;
-      _selectedDocument!.characterCount = _controller.document.toPlainText().length;
+      _selectedDocument!.characterCount = _controller.document
+          .toPlainText()
+          .length;
     }
   }
 
@@ -504,10 +608,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
           : Row(
               children: [
                 // Left Panel
-                SizedBox(
-                  width: 280,
-                  child: _buildLeftPanel(),
-                ),
+                SizedBox(width: 280, child: _buildLeftPanel()),
                 VerticalDivider(
                   width: 1,
                   thickness: 1,
@@ -517,7 +618,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                 Expanded(
                   child: Column(
                     children: [
-                      if (!widget.selectedChapterKey.startsWith('front_matter_'))
+                      if (!widget.selectedChapterKey.startsWith(
+                        'front_matter_',
+                      ))
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 150),
                           child: _activeEditor == _EditorType.title
@@ -535,10 +638,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                   color: cs.outlineVariant,
                 ),
                 // Inspector Panel (Right)
-                SizedBox(
-                  width: 300,
-                  child: _buildInspectorPanel(),
-                ),
+                SizedBox(width: 300, child: _buildInspectorPanel()),
               ],
             ),
       bottomNavigationBar: _buildBottomStatusBar(),
@@ -562,7 +662,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                 const SizedBox(width: 16),
                 Text(
                   _selectedDocument?.title ?? 'Manuscript',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -629,7 +731,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
           final chapterKey = parts.sublist(1).join('_');
           widget.onChapterSelected(chapterKey);
         }
-      } else if (_selectedDocument!.documentType == ManuscriptDocumentType.frontMatter) {
+      } else if (_selectedDocument!.documentType ==
+          ManuscriptDocumentType.frontMatter) {
         widget.onChapterSelected(_selectedDocument!.id);
       }
     }
@@ -661,17 +764,25 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(LucideIcons.info, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+            Icon(
+              LucideIcons.info,
+              size: 48,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             Text(
               'Select a document',
-              style: theme.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Inspector shows metadata,\nreferences, and links',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.7)),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),
@@ -690,13 +801,18 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
             ),
             child: Row(
               children: [
-                Icon(_getIconForType(_selectedDocument!.documentType),
-                    size: 20, color: _getColorForType(_selectedDocument!.documentType, cs)),
+                Icon(
+                  _getIconForType(_selectedDocument!.documentType),
+                  size: 20,
+                  color: _getColorForType(_selectedDocument!.documentType, cs),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Inspector',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -711,14 +827,26 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                   _InspectorSection(
                     title: 'Document',
                     children: [
-                      _InspectorRow('Type', _selectedDocument!.documentType.label),
+                      _InspectorRow(
+                        'Type',
+                        _selectedDocument!.documentType.label,
+                      ),
                       _InspectorRow('Status', _selectedDocument!.status.label),
                       _InspectorRow('Words', '${_selectedDocument!.wordCount}'),
-                      _InspectorRow('Characters', '${_selectedDocument!.characterCount}'),
+                      _InspectorRow(
+                        'Characters',
+                        '${_selectedDocument!.characterCount}',
+                      ),
                       if (_selectedDocument!.createdAt != null)
-                        _InspectorRow('Created', _formatDate(_selectedDocument!.createdAt!)),
+                        _InspectorRow(
+                          'Created',
+                          _formatDate(_selectedDocument!.createdAt!),
+                        ),
                       if (_selectedDocument!.modifiedAt != null)
-                        _InspectorRow('Modified', _formatDate(_selectedDocument!.modifiedAt!)),
+                        _InspectorRow(
+                          'Modified',
+                          _formatDate(_selectedDocument!.modifiedAt!),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -726,17 +854,30 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                     _InspectorSection(
                       title: 'Scene Metadata',
                       children: [
-                        _InspectorRow('POV Character', _selectedDocument!.povCharacterId ?? '—'),
-                        _InspectorRow('Location', _selectedDocument!.locationId ?? '—'),
-                        _InspectorRow('Timeline', _selectedDocument!.timelineEventId ?? '—'),
-                        _InspectorRow('Plotline', _selectedDocument!.plotline ?? '—'),
+                        _InspectorRow(
+                          'POV Character',
+                          _selectedDocument!.povCharacterId ?? '—',
+                        ),
+                        _InspectorRow(
+                          'Location',
+                          _selectedDocument!.locationId ?? '—',
+                        ),
+                        _InspectorRow(
+                          'Timeline',
+                          _selectedDocument!.timelineEventId ?? '—',
+                        ),
+                        _InspectorRow(
+                          'Plotline',
+                          _selectedDocument!.plotline ?? '—',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
                   ],
                   if (_selectedDocument!.characterIds.isNotEmpty) ...[
                     _InspectorSection(
-                      title: 'Characters (${_selectedDocument!.characterIds.length})',
+                      title:
+                          'Characters (${_selectedDocument!.characterIds.length})',
                       children: _selectedDocument!.characterIds
                           .map((id) => _InspectorRow('•', id))
                           .toList(),
@@ -752,7 +893,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (_selectedDocument!.summary != null && _selectedDocument!.summary!.isNotEmpty) ...[
+                  if (_selectedDocument!.summary != null &&
+                      _selectedDocument!.summary!.isNotEmpty) ...[
                     _InspectorSection(
                       title: 'Summary',
                       children: [
@@ -765,8 +907,14 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
                     title: 'Hierarchy',
                     children: [
                       _InspectorRow('Parent', _getParentTitle() ?? 'Root'),
-                      _InspectorRow('Children', '${_binderProvider!.getChildren(_selectedDocument!.id).length}'),
-                      _InspectorRow('Depth', '${_getDepth(_selectedDocument!.id)}'),
+                      _InspectorRow(
+                        'Children',
+                        '${_binderProvider!.getChildren(_selectedDocument!.id).length}',
+                      ),
+                      _InspectorRow(
+                        'Depth',
+                        '${_getDepth(_selectedDocument!.id)}',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -789,7 +937,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     final cs = theme.colorScheme;
 
     // Get outgoing references from this document
-    final outgoingRefs = _referenceService!.getReferencesFrom(_selectedDocument!);
+    final outgoingRefs = _referenceService!.getReferencesFrom(
+      _selectedDocument!,
+    );
 
     // Get incoming references (backlinks) to this document
     final docRef = EntityRef.fromKey(
@@ -802,9 +952,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (outgoingRefs.isEmpty && backlinks.isEmpty) {
       return _InspectorSection(
         title: 'References',
-        children: [
-          _InspectorRow('', 'No references found'),
-        ],
+        children: [_InspectorRow('', 'No references found')],
       );
     }
 
@@ -820,7 +968,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
             ),
           ),
           const SizedBox(height: 8),
-          ...outgoingRefs.map((ref) => _buildReferenceTile(ref, isOutgoing: true)),
+          ...outgoingRefs.map(
+            (ref) => _buildReferenceTile(ref, isOutgoing: true),
+          ),
           const SizedBox(height: 12),
         ],
         if (backlinks.isNotEmpty) ...[
@@ -832,27 +982,29 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
             ),
           ),
           const SizedBox(height: 8),
-          ...backlinks.map((ref) => _buildReferenceTile(ref, isOutgoing: false)),
+          ...backlinks.map(
+            (ref) => _buildReferenceTile(ref, isOutgoing: false),
+          ),
         ],
       ],
     );
   }
 
-  Widget _buildReferenceTile(ReferenceIndexEntry ref, {required bool isOutgoing}) {
+  Widget _buildReferenceTile(
+    ReferenceIndexEntry ref, {
+    required bool isOutgoing,
+  }) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isOutgoing = ref.source.id == _selectedDocument!.id;
 
-    String displayName = ref.target.id;
-    String entityType = ref.target.entityType;
-
-    // Try to get a better display name from the character box
-    if (ref.target.entityType == EntityType.character) {
-      final character = DatabaseManager.instance.characters.get(ref.target.asKey);
-      if (character != null) {
-        displayName = character.name;
-      }
-    }
+    // Resolve the referenced entity's canonical display name. Entity types
+    // without a canonical name source (Location, Item, Organization, Faction,
+    // Research) fall back to the raw id, which we render as clearly unresolved.
+    final resolvedName = _nameResolver.resolve(ref.target);
+    final isUnresolved = resolvedName == null;
+    final displayName = resolvedName ?? ref.target.id;
+    final entityType = ref.target.entityType;
 
     return ListTile(
       dense: true,
@@ -864,13 +1016,34 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       ),
       title: Text(
         displayName,
-        style: theme.textTheme.bodySmall,
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontStyle: isUnresolved ? FontStyle.italic : FontStyle.normal,
+          color: isUnresolved ? cs.onSurfaceVariant : null,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      subtitle: Text(
-        '$entityType • ${ref.kind}',
-        style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+      subtitle: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isUnresolved) ...[
+            Icon(
+              LucideIcons.alertTriangle,
+              size: 12,
+              color: cs.error,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Unresolved • ',
+              style: theme.textTheme.labelSmall?.copyWith(color: cs.error),
+            ),
+          ],
+          Text(
+            '$entityType • ${ref.kind}',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
       ),
       onTap: () {
         // Navigate to the referenced document/entity
@@ -933,46 +1106,48 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     };
   }
 
-// ========================================================================
-// LEFT PANEL
-// ========================================================================
+  // ========================================================================
+  // LEFT PANEL
+  // ========================================================================
 
-Widget _buildLeftPanel() {
-  switch (_leftPanelMode) {
-    case _LeftPanelMode.binder:
-      return ManuscriptBinder(
-        provider: _binderProvider!,
-        selectedDocumentId: _selectedDocumentId,
-        onDocumentSelected: _onDocumentSelected,
-        onDocumentRenamed: _onDocumentRenamed,
-        onDocumentMoved: _onDocumentMoved,
-      );
-    case _LeftPanelMode.corkboard:
-      return ManuscriptCorkboard(
-        provider: _binderProvider!,
-        containerDocumentId: _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
-        onDocumentSelected: _onDocumentSelected,
-        onDocumentRenamed: _onDocumentRenamed,
-      );
-    case _LeftPanelMode.outliner:
-      return ManuscriptOutliner(
-        provider: _binderProvider!,
-        containerDocumentId: _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
-        onDocumentSelected: _onDocumentSelected,
-      );
-    case _LeftPanelMode.collections:
-      return ManuscriptCollections(
-        provider: _binderProvider!,
-        onDocumentSelected: _onDocumentSelected,
-      );
+  Widget _buildLeftPanel() {
+    switch (_leftPanelMode) {
+      case _LeftPanelMode.binder:
+        return ManuscriptBinder(
+          provider: _binderProvider!,
+          selectedDocumentId: _selectedDocumentId,
+          onDocumentSelected: _onDocumentSelected,
+          onDocumentRenamed: _onDocumentRenamed,
+          onDocumentMoved: _onDocumentMoved,
+        );
+      case _LeftPanelMode.corkboard:
+        return ManuscriptCorkboard(
+          provider: _binderProvider!,
+          containerDocumentId:
+              _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
+          onDocumentSelected: _onDocumentSelected,
+          onDocumentRenamed: _onDocumentRenamed,
+        );
+      case _LeftPanelMode.outliner:
+        return ManuscriptOutliner(
+          provider: _binderProvider!,
+          containerDocumentId:
+              _selectedDocumentId ?? _binderProvider!.manuscriptRoot!.id,
+          onDocumentSelected: _onDocumentSelected,
+        );
+      case _LeftPanelMode.collections:
+        return ManuscriptCollections(
+          provider: _binderProvider!,
+          onDocumentSelected: _onDocumentSelected,
+        );
+    }
   }
-}
 
-// ========================================================================
-// TOOLBARS & EDITOR
-// ========================================================================
+  // ========================================================================
+  // TOOLBARS & EDITOR
+  // ========================================================================
 
-Widget _buildTitleToolbar() => SingleChildScrollView(
+  Widget _buildTitleToolbar() => SingleChildScrollView(
     scrollDirection: Axis.horizontal,
     child: QuillSimpleToolbar(
       controller: _titleController,
@@ -997,7 +1172,9 @@ Widget _buildTitleToolbar() => SingleChildScrollView(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: ToggleButtons(
             isSelected: [
@@ -1687,10 +1864,7 @@ class _InspectorSection extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _InspectorSection({
-    required this.title,
-    required this.children,
-  });
+  const _InspectorSection({required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -1715,10 +1889,17 @@ class _InspectorSection extends StatelessWidget {
             border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
           ),
           child: Column(
-            children: children.map((child) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: child,
-            )).toList(),
+            children: children
+                .map(
+                  (child) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: child,
+                  ),
+                )
+                .toList(),
           ),
         ),
       ],
@@ -1755,9 +1936,7 @@ class _InspectorRow extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurface,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),

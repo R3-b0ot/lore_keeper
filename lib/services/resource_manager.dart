@@ -31,11 +31,11 @@ class ResourceManager {
   /// Returns the relative path within the app's support directory.
   Future<String> importCustomAsset(File sourceFile) async {
     if (_appSupportDir == null) await initialize();
-    
+
     final extension = p.extension(sourceFile.path);
     final fileName = '${const Uuid().v4()}$extension';
     final targetPath = p.join(_appSupportDir!, 'custom_assets', fileName);
-    
+
     await sourceFile.copy(targetPath);
     return 'custom_assets/$fileName';
   }
@@ -62,7 +62,10 @@ class ResourceManager {
       if (absolutePath.startsWith('assets/')) {
         pictureInfo = await vg.loadPicture(SvgAssetLoader(absolutePath), null);
       } else {
-        pictureInfo = await vg.loadPicture(SvgFileLoader(File(absolutePath)), null);
+        pictureInfo = await vg.loadPicture(
+          SvgFileLoader(File(absolutePath)),
+          null,
+        );
       }
       _svgCache[assetPath] = pictureInfo;
       return pictureInfo;

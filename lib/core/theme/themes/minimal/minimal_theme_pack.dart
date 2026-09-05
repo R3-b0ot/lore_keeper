@@ -15,13 +15,13 @@ class MinimalThemePack implements ThemePack {
 
   @override
   ThemePackMetadata get metadata => const ThemePackMetadata(
-        id: 'minimal',
-        displayName: 'Minimal',
-        description:
-            'Default pack that reproduces Lore Keeper current AA/AAA styles.',
-        author: 'Lore Keeper',
-        version: '1.0.0',
-      );
+    id: 'minimal',
+    displayName: 'Minimal',
+    description:
+        'Default pack that reproduces Lore Keeper current AA/AAA styles.',
+    author: 'Lore Keeper',
+    version: '1.0.0',
+  );
 
   @override
   ThemeColorTokens get darkColors => MinimalColors.darkTokens;
@@ -31,10 +31,10 @@ class MinimalThemePack implements ThemePack {
 
   @override
   ThemeFontTokens get fonts => const ThemeFontTokens(
-        displayFamily: 'Inter',
-        bodyFamily: 'Inter',
-        monoFamily: 'monospace',
-      );
+    displayFamily: 'Inter',
+    bodyFamily: 'Inter',
+    monoFamily: 'monospace',
+  );
 
   @override
   ThemeData buildThemeData({
@@ -48,11 +48,7 @@ class MinimalThemePack implements ThemePack {
     final colors = isDark ? darkColors : lightColors;
 
     return baseTheme.copyWith(
-      extensions: [
-        ...baseTheme.extensions.values,
-        colors,
-        fonts,
-      ],
+      extensions: [...baseTheme.extensions.values, colors, fonts],
     );
   }
 }

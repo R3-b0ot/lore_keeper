@@ -55,15 +55,15 @@ class AiMetadataEntry {
       modelId != currentModelId || modelVersion != currentModelVersion;
 
   Map<String, dynamic> toJson() => {
-        'entityId': entityId,
-        'entityType': entityType,
-        'kind': kind,
-        'modelId': modelId,
-        'modelVersion': modelVersion,
-        'generatedAt': generatedAt.toIso8601String(),
-        'confidence': confidence,
-        'payload': payload,
-      };
+    'entityId': entityId,
+    'entityType': entityType,
+    'kind': kind,
+    'modelId': modelId,
+    'modelVersion': modelVersion,
+    'generatedAt': generatedAt.toIso8601String(),
+    'confidence': confidence,
+    'payload': payload,
+  };
 
   factory AiMetadataEntry.fromJson(Map<String, dynamic> json) =>
       AiMetadataEntry(
@@ -74,7 +74,6 @@ class AiMetadataEntry {
         modelVersion: json['modelVersion'] as String,
         generatedAt: DateTime.parse(json['generatedAt'] as String),
         confidence: (json['confidence'] as num?)?.toDouble(),
-        payload: Map<String, dynamic>.from(
-            json['payload'] as Map? ?? {}),
+        payload: Map<String, dynamic>.from(json['payload'] as Map? ?? {}),
       );
 }

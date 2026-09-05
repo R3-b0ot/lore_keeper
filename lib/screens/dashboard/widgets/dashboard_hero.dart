@@ -67,7 +67,8 @@ class DashboardHero extends StatelessWidget {
                                   ? 'assets/svg/LOGOMARK_DARK.svg'
                                   : 'assets/svg/LOGOMARK_LIGHT.svg',
                               fit: BoxFit.contain,
-                              placeholderBuilder: (context) => const SizedBox.shrink(),
+                              placeholderBuilder: (context) =>
+                                  const SizedBox.shrink(),
                             ),
                           ),
                           SizedBox(
@@ -81,7 +82,8 @@ class DashboardHero extends StatelessWidget {
                                   ? 'assets/svg/WORDMARK_DARK.svg'
                                   : 'assets/svg/WORDMARK_LIGHT.svg',
                               height: wordmarkHeight,
-                              placeholderBuilder: (context) => const SizedBox.shrink(),
+                              placeholderBuilder: (context) =>
+                                  const SizedBox.shrink(),
                             ),
                           ),
                         ],

@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/models/character.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
 
 class CharacterListProvider with ChangeNotifier {
   final int _projectId;
   final Box<Character> _characterBox;
+  final ReferenceEngine? _referenceEngine;
   List<Character> _characters = [];
   bool _isInitialized = false;
   String _filterText = '';
 
-  CharacterListProvider(this._projectId)
-    : _characterBox = Hive.box<Character>('characters') {
+  CharacterListProvider(this._projectId, {ReferenceEngine? referenceEngine})
+    : _characterBox = Hive.box<Character>('characters'),
+      _referenceEngine = referenceEngine {
     _loadCharacters();
   }
 
@@ -137,6 +141,15 @@ class CharacterListProvider with ChangeNotifier {
     // --- 3. Delete the character itself from the database ---
     await _characterBox.delete(parsedKey);
     debugPrint('[DB] 3. Delete command issued for character key: $parsedKey');
+
+    // --- 3b. Purge stale manuscript backlinks to the deleted character ---
+    // The character is gone from its box; drop any dangling reference entries
+    // in the shared manuscript index so the Inspector no longer shows it as a
+    // resolvable backlink. Cross-project references are untouched.
+    final engine = _referenceEngine;
+    if (engine != null) {
+      ReferenceNameResolver.purgeStaleFromDatabase(engine);
+    }
 
     // --- 4. Reload the in-memory list from the database and notify the UI ---
     debugPrint('[PROVIDER] 4. Reloading all characters from DB to update UI.');

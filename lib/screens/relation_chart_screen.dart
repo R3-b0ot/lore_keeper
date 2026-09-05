@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
+
 // =================================================================
 // 1. SCREEN AND STATE MANAGEMENT
 // =================================================================

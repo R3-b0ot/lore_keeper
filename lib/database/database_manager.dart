@@ -16,6 +16,7 @@ import 'package:lore_keeper/models/timeline_event.dart';
 import 'package:lore_keeper/models/map_data.dart';
 import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
+import 'package:lore_keeper/models/manuscript_collection.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 
 const _kMetaBox = 'lorekeeper_meta';
@@ -23,6 +24,7 @@ const _kProjectBox = 'projects';
 const _kChapterBox = 'chapters';
 const _kSectionBox = 'sections';
 const _kManuscriptDocumentBox = 'manuscript_documents';
+const _kManuscriptCollectionBox = 'manuscript_collections';
 const _kCharacterBox = 'characters';
 const _kLinkBox = 'links';
 const _kHistoryBox = 'history';
@@ -60,6 +62,8 @@ class DatabaseManager {
   Box<Section> get sections => getBox<Section>(_kSectionBox);
   Box<ManuscriptDocument> get manuscriptDocuments =>
       getBox<ManuscriptDocument>(_kManuscriptDocumentBox);
+  Box<ManuscriptCollection> get manuscriptCollections =>
+      getBox<ManuscriptCollection>(_kManuscriptCollectionBox);
   Box<Character> get characters => getBox<Character>(_kCharacterBox);
   Box<Link> get links => getBox<Link>(_kLinkBox);
   Box<HistoryEntry> get historyEntries => getBox<HistoryEntry>(_kHistoryBox);
@@ -67,7 +71,8 @@ class DatabaseManager {
   Box<MagicNode> get magicNodes => getBox<MagicNode>(_kMagicNodeBox);
   Box<CalendarSystem> get calendarSystems =>
       getBox<CalendarSystem>(_kCalendarSystemBox);
-  Box<CalendarNode> get calendarNodes => getBox<CalendarNode>(_kCalendarNodeBox);
+  Box<CalendarNode> get calendarNodes =>
+      getBox<CalendarNode>(_kCalendarNodeBox);
   Box<TimelineEvent> get timelineEvents =>
       getBox<TimelineEvent>(_kTimelineEventBox);
   Box<ClassificationNode> get classificationNodes =>
@@ -99,8 +104,10 @@ class DatabaseManager {
       await _openApplicationBoxes();
 
       _initialized = true;
-      LkLog.info('DatabaseManager',
-          'Database ready (${_boxes.length} boxes loaded)');
+      LkLog.info(
+        'DatabaseManager',
+        'Database ready (${_boxes.length} boxes loaded)',
+      );
     } catch (e, st) {
       LkLog.error('DatabaseManager', 'Initialization failed', e, st);
       await _reportDiagnostics();
@@ -122,8 +129,10 @@ class DatabaseManager {
 
       if (_metaBox.isNotEmpty) {
         _metadata = _metaBox.get('metadata')!;
-        LkLog.info('DatabaseManager',
-            'Database state detected: version_${_metadata!.schemaVersion}');
+        LkLog.info(
+          'DatabaseManager',
+          'Database state detected: version_${_metadata!.schemaVersion}',
+        );
         await _runMigrations();
         return;
       }
@@ -147,8 +156,10 @@ class DatabaseManager {
       _metadata = DatabaseMetadata.fresh();
       _metaBox = await Hive.openBox<DatabaseMetadata>(_kMetaBox);
       await _metaBox.put('metadata', _metadata!);
-      LkLog.info('DatabaseManager',
-          'Fresh database created (schema v${_metadata!.schemaVersion})');
+      LkLog.info(
+        'DatabaseManager',
+        'Fresh database created (schema v${_metadata!.schemaVersion})',
+      );
     }
   }
 
@@ -171,6 +182,7 @@ class DatabaseManager {
       _kCalendarNodeBox,
       _kTimelineEventBox,
       _kMapDataBox,
+      _kManuscriptCollectionBox,
       _kSettingsBox,
       _kTraitsBox,
       _kCustomPanelBox,
@@ -223,6 +235,7 @@ class DatabaseManager {
     reg(34, MapPolygonAdapter());
     reg(35, OffsetDataAdapter());
     reg(40, ManuscriptDocumentAdapter());
+    reg(41, ManuscriptCollectionAdapter());
     reg(50, DatabaseMetadataAdapter());
   }
 
@@ -232,8 +245,10 @@ class DatabaseManager {
     final version = _metadata!.schemaVersion;
     if (version >= currentSchemaVersion) return;
 
-    LkLog.info('DatabaseManager',
-        'Migrating schema v$version → v$currentSchemaVersion');
+    LkLog.info(
+      'DatabaseManager',
+      'Migrating schema v$version → v$currentSchemaVersion',
+    );
 
     var v = version;
     while (v < currentSchemaVersion) {
@@ -257,8 +272,7 @@ class DatabaseManager {
         await _migrateV2toV3();
         break;
       default:
-        throw StateError(
-            'No migration defined for schema v$newVersion');
+        throw StateError('No migration defined for schema v$newVersion');
     }
   }
 
@@ -267,8 +281,11 @@ class DatabaseManager {
   /// pointing at the current schema version so future migrations can
   /// detect and apply incremental upgrades.
   Future<void> _migrateV1toV2() async {
-    LkLog.info('DatabaseManager', 'Migration V1→V2: recording metadata, '
-        'no data modifications');
+    LkLog.info(
+      'DatabaseManager',
+      'Migration V1→V2: recording metadata, '
+          'no data modifications',
+    );
     _metadata!.schemaVersion = currentSchemaVersion;
     _metadata!.lastMigrationAt = DateTime.now();
     await _metaBox.put('metadata', _metadata!);
@@ -284,18 +301,27 @@ class DatabaseManager {
   /// - Chapters as Chapter documents
   /// - Preserves all content, ordering, and project ownership
   Future<void> _migrateV2toV3() async {
-    LkLog.info('DatabaseManager',
-        'Migration V2→V3: Creating ManuscriptDocument hierarchy from existing Chapter/Section data');
+    LkLog.info(
+      'DatabaseManager',
+      'Migration V2→V3: Creating ManuscriptDocument hierarchy from existing Chapter/Section data',
+    );
 
     const int frontMatterSectionKey = -1;
 
     final projectBox = _boxes[_kProjectBox] as Box<Project>?;
     final chapterBox = _boxes[_kChapterBox] as Box<Chapter>?;
     final sectionBox = _boxes[_kSectionBox] as Box<Section>?;
-    final manuscriptBox = _boxes[_kManuscriptDocumentBox] as Box<ManuscriptDocument>?;
+    final manuscriptBox =
+        _boxes[_kManuscriptDocumentBox] as Box<ManuscriptDocument>?;
 
-    if (projectBox == null || chapterBox == null || sectionBox == null || manuscriptBox == null) {
-      LkLog.warning('DatabaseManager', 'Migration V2→V3: Required boxes not available, skipping');
+    if (projectBox == null ||
+        chapterBox == null ||
+        sectionBox == null ||
+        manuscriptBox == null) {
+      LkLog.warning(
+        'DatabaseManager',
+        'Migration V2→V3: Required boxes not available, skipping',
+      );
       return;
     }
 
@@ -321,16 +347,18 @@ class DatabaseManager {
       createdCount++;
 
       // Get sections for this project
-      final sections = sectionBox.values
-          .where((s) => s.parentProjectId == project.key)
-          .toList()
-        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      final sections =
+          sectionBox.values
+              .where((s) => s.parentProjectId == project.key)
+              .toList()
+            ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
       // Get chapters for this project
-      final chapters = chapterBox.values
-          .where((c) => c.parentProjectId == project.key)
-          .toList()
-        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      final chapters =
+          chapterBox.values
+              .where((c) => c.parentProjectId == project.key)
+              .toList()
+            ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
       // Map section key -> manuscript document ID for Parts
       final sectionToDocId = <dynamic, String>{};
@@ -375,7 +403,8 @@ class DatabaseManager {
 
         // Determine document type based on key
         ManuscriptDocumentType docType = ManuscriptDocumentType.chapter;
-        if (chapter.key is String && (chapter.key as String).startsWith('front_matter_')) {
+        if (chapter.key is String &&
+            (chapter.key as String).startsWith('front_matter_')) {
           docType = ManuscriptDocumentType.frontMatter;
         }
 
@@ -399,8 +428,10 @@ class DatabaseManager {
       }
     }
 
-    LkLog.info('DatabaseManager',
-        'Migration V2→V3 complete: created $createdCount ManuscriptDocument entries');
+    LkLog.info(
+      'DatabaseManager',
+      'Migration V2→V3 complete: created $createdCount ManuscriptDocument entries',
+    );
   }
 
   int _countWords(String? json) {
@@ -423,6 +454,7 @@ class DatabaseManager {
       () => _openBox<Chapter>(_kChapterBox),
       () => _openBox<Section>(_kSectionBox),
       () => _openBox<ManuscriptDocument>(_kManuscriptDocumentBox),
+      () => _openBox<ManuscriptCollection>(_kManuscriptCollectionBox),
       () => _openBox<Character>(_kCharacterBox),
       () => _openBox<Link>(_kLinkBox),
       () => _openBox<HistoryEntry>(_kHistoryBox),
@@ -458,24 +490,39 @@ class DatabaseManager {
 
   Future<void> _reportDiagnostics() async {
     LkLog.info('DatabaseManager', '─── Diagnostic Report ───');
-    LkLog.info('DatabaseManager', 'Schema version: ${_metadata?.schemaVersion ?? "unknown"} '
-        '(current: $currentSchemaVersion)');
-    LkLog.info('DatabaseManager', 'Database ID: ${_metadata?.databaseId ?? "unknown"}');
-    LkLog.info('DatabaseManager', 'Created: ${_metadata?.createdAt ?? "unknown"}');
-    LkLog.info('DatabaseManager',
-        'Last migration: ${_metadata?.lastMigrationAt ?? "never"}');
+    LkLog.info(
+      'DatabaseManager',
+      'Schema version: ${_metadata?.schemaVersion ?? "unknown"} '
+          '(current: $currentSchemaVersion)',
+    );
+    LkLog.info(
+      'DatabaseManager',
+      'Database ID: ${_metadata?.databaseId ?? "unknown"}',
+    );
+    LkLog.info(
+      'DatabaseManager',
+      'Created: ${_metadata?.createdAt ?? "unknown"}',
+    );
+    LkLog.info(
+      'DatabaseManager',
+      'Last migration: ${_metadata?.lastMigrationAt ?? "never"}',
+    );
 
     final registered = <int>{};
     for (var i = 0; i < 100; i++) {
       if (Hive.isAdapterRegistered(i)) registered.add(i);
     }
-    LkLog.info('DatabaseManager',
-        'Registered adapters: ${registered.join(', ')}');
+    LkLog.info(
+      'DatabaseManager',
+      'Registered adapters: ${registered.join(', ')}',
+    );
 
     for (final name in _boxes.keys) {
       final box = _boxes[name];
-      LkLog.info('DatabaseManager',
-          'Box "$name": ${box?.length ?? 0} entries, isOpen=${box?.isOpen}');
+      LkLog.info(
+        'DatabaseManager',
+        'Box "$name": ${box?.length ?? 0} entries, isOpen=${box?.isOpen}',
+      );
     }
     LkLog.info('DatabaseManager', '─── End Report ───');
   }

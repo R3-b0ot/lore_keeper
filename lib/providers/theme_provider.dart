@@ -33,15 +33,15 @@ class ThemeNotifier extends ChangeNotifier {
 
   /// Computes [ThemeData] for light mode from active theme pack.
   ThemeData get lightTheme => activePack.buildThemeData(
-        isDark: false,
-        accessibilityRating: _accessibilityRating,
-      );
+    isDark: false,
+    accessibilityRating: _accessibilityRating,
+  );
 
   /// Computes [ThemeData] for dark mode from active theme pack.
   ThemeData get darkTheme => activePack.buildThemeData(
-        isDark: true,
-        accessibilityRating: _accessibilityRating,
-      );
+    isDark: true,
+    accessibilityRating: _accessibilityRating,
+  );
 
   ThemeNotifier() {
     _loadTheme();

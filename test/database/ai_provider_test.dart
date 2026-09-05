@@ -47,7 +47,9 @@ void main() {
         modelVersion: '1.0',
         generatedAt: DateTime(2024, 6, 15, 12, 30),
         confidence: 0.85,
-        payload: {'vector': [0.1, 0.2, 0.3]},
+        payload: {
+          'vector': [0.1, 0.2, 0.3],
+        },
       );
 
       final json = original.toJson();

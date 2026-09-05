@@ -1,9 +1,12 @@
 // lib/widgets/manuscript_collections.dart
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/database/database_manager.dart';
+import 'package:lore_keeper/models/manuscript_collection.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/services/manuscript_collections_service.dart';
 
 enum CollectionType {
   allDocuments('All Documents', LucideIcons.files),
@@ -44,8 +47,11 @@ class ManuscriptCollections extends StatefulWidget {
 
 class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
   CollectionType _selectedCollection = CollectionType.allDocuments;
+  String? _selectedCustomCollectionId;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  ManuscriptCollectionsService? _service;
 
   @override
   void dispose() {
@@ -53,11 +59,17 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
     super.dispose();
   }
 
+  ManuscriptCollectionsService get _collectionsService {
+    return _service ??= ManuscriptCollectionsService(
+      projectId: widget.provider.projectId,
+      collectionBox: DatabaseManager.instance.manuscriptCollections,
+      documentBox: DatabaseManager.instance.manuscriptDocuments,
+      referenceEngine: widget.provider.referenceEngine,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
     return Column(
       children: [
         _buildHeader(context),
@@ -66,9 +78,7 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
         const Divider(height: 1),
         _buildSearchBar(context),
         const Divider(height: 1),
-        Expanded(
-          child: _buildResultsList(context),
-        ),
+        Expanded(child: _buildResultsList(context)),
       ],
     );
   }
@@ -91,8 +101,18 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Collections', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-                Text('Smart views and filtered document lists', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  'Collections',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Smart views and filtered document lists',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -110,38 +130,107 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    final customCollections = _collectionsService.getAllCollections();
+
     return Container(
       color: cs.surfaceContainerHighest,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
-          children: CollectionType.values.map((type) {
-            final isSelected = _selectedCollection == type;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_getIconForType(type), size: 16),
-                    const SizedBox(width: 6),
-                    Text(type.label),
-                    const SizedBox(width: 6),
-                    _buildCountBadge(type),
-                  ],
+          children: [
+            ...CollectionType.values.map((type) {
+              final isSelected =
+                  _selectedCollection == type &&
+                  _selectedCustomCollectionId == null;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_getIconForType(type), size: 16),
+                      const SizedBox(width: 6),
+                      Text(type.label),
+                      const SizedBox(width: 6),
+                      _buildCountBadge(type),
+                    ],
+                  ),
+                  selected: isSelected,
+                  onSelected: (_) => setState(() {
+                    _selectedCollection = type;
+                    _selectedCustomCollectionId = null;
+                  }),
+                  showCheckmark: false,
+                  selectedColor: cs.primaryContainer,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? cs.onPrimaryContainer
+                        : cs.onSurfaceVariant,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
                 ),
-                selected: isSelected,
-                onSelected: (_) => setState(() => _selectedCollection = type),
-                showCheckmark: false,
-                selectedColor: cs.primaryContainer,
-                labelStyle: TextStyle(
-                  color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              );
+            }),
+            if (customCollections.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: VerticalDivider(width: 1),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Custom',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            );
-          }).toList(),
+              const SizedBox(width: 8),
+              ...customCollections.map((collection) {
+                final isSelected = _selectedCustomCollectionId == collection.id;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.tag, size: 16),
+                        const SizedBox(width: 6),
+                        Text(collection.name),
+                      ],
+                    ),
+                    onDeleted: () {
+                      _collectionsService.deleteCollection(collection.id);
+                      if (_selectedCustomCollectionId == collection.id) {
+                        setState(() {
+                          _selectedCustomCollectionId = null;
+                          _selectedCollection = CollectionType.allDocuments;
+                        });
+                      }
+                      setState(() {});
+                    },
+                    selected: isSelected,
+                    onSelected: (_) => setState(() {
+                      _selectedCustomCollectionId = collection.id;
+                      _selectedCollection = CollectionType.allDocuments;
+                    }),
+                    showCheckmark: false,
+                    selectedColor: cs.secondaryContainer,
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? cs.onSecondaryContainer
+                          : cs.onSurfaceVariant,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ],
         ),
       ),
     );
@@ -178,7 +267,7 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Search in ${_selectedCollection.label}...',
+          hintText: 'Search in $_currentCollectionLabel...',
           prefixIcon: Icon(LucideIcons.search, color: cs.onSurfaceVariant),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -195,7 +284,10 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
           ),
           filled: true,
           fillColor: cs.surfaceContainer,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
         onChanged: (value) => setState(() => _searchQuery = value),
       ),
@@ -212,16 +304,22 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: results.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final doc = results[index];
         return _CollectionListTile(
           document: doc,
           provider: widget.provider,
           onTap: () => widget.onDocumentSelected(doc.id),
+          onToggleFavorite: () => _toggleFavorite(doc.id),
         );
       },
     );
+  }
+
+  Future<void> _toggleFavorite(String documentId) async {
+    await widget.provider.toggleFavorite(documentId);
+    if (mounted) setState(() {});
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -233,7 +331,9 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _searchQuery.isNotEmpty ? LucideIcons.searchX : LucideIcons.folderOpen,
+            _searchQuery.isNotEmpty
+                ? LucideIcons.searchX
+                : LucideIcons.folderOpen,
             size: 64,
             color: cs.onSurfaceVariant.withValues(alpha: 0.3),
           ),
@@ -241,8 +341,10 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
           Text(
             _searchQuery.isNotEmpty
                 ? 'No results for "$_searchQuery"'
-                : 'No documents in ${_selectedCollection.label}',
-            style: theme.textTheme.titleMedium?.copyWith(color: cs.onSurfaceVariant),
+                : 'No documents in $_currentCollectionLabel',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 8),
           if (_searchQuery.isNotEmpty)
@@ -259,7 +361,22 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
   }
 
   List<ManuscriptDocument> _getFilteredResults() {
-    List<ManuscriptDocument> docs = _getDocumentsForCollection(_selectedCollection);
+    List<ManuscriptDocument> docs;
+
+    if (_selectedCustomCollectionId != null) {
+      ManuscriptCollection? collection;
+      for (final c in _collectionsService.getAllCollections()) {
+        if (c.id == _selectedCustomCollectionId) {
+          collection = c;
+          break;
+        }
+      }
+      docs = collection != null
+          ? _collectionsService.documentsForCollection(collection)
+          : <ManuscriptDocument>[];
+    } else {
+      docs = _getDocumentsForCollection(_selectedCollection);
+    }
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -279,19 +396,45 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
   List<ManuscriptDocument> _getDocumentsForCollection(CollectionType type) {
     return switch (type) {
       CollectionType.allDocuments => widget.provider.allDocuments,
-      CollectionType.manuscript => widget.provider.getDocumentsByType(ManuscriptDocumentType.manuscript),
-      CollectionType.parts => widget.provider.getDocumentsByType(ManuscriptDocumentType.part),
-      CollectionType.chapters => widget.provider.getDocumentsByType(ManuscriptDocumentType.chapter),
-      CollectionType.scenes => widget.provider.getDocumentsByType(ManuscriptDocumentType.scene),
-      CollectionType.notes => widget.provider.getDocumentsByType(ManuscriptDocumentType.note),
-      CollectionType.research => widget.provider.getDocumentsByType(ManuscriptDocumentType.research),
-      CollectionType.frontMatter => widget.provider.getDocumentsByType(ManuscriptDocumentType.frontMatter),
-      CollectionType.backMatter => widget.provider.getDocumentsByType(ManuscriptDocumentType.backMatter),
-      CollectionType.draft => widget.provider.getDocumentsByStatus(ManuscriptDocumentStatus.draft),
-      CollectionType.revised => widget.provider.getDocumentsByStatus(ManuscriptDocumentStatus.revised),
-      CollectionType.complete => widget.provider.getDocumentsByStatus(ManuscriptDocumentStatus.complete),
-      CollectionType.needsRevision => widget.provider.getDocumentsByStatus(ManuscriptDocumentStatus.revised),
-      CollectionType.archived => widget.provider.getDocumentsByStatus(ManuscriptDocumentStatus.archived),
+      CollectionType.manuscript => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.manuscript,
+      ),
+      CollectionType.parts => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.part,
+      ),
+      CollectionType.chapters => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.chapter,
+      ),
+      CollectionType.scenes => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.scene,
+      ),
+      CollectionType.notes => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.note,
+      ),
+      CollectionType.research => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.research,
+      ),
+      CollectionType.frontMatter => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.frontMatter,
+      ),
+      CollectionType.backMatter => widget.provider.getDocumentsByType(
+        ManuscriptDocumentType.backMatter,
+      ),
+      CollectionType.draft => widget.provider.getDocumentsByStatus(
+        ManuscriptDocumentStatus.draft,
+      ),
+      CollectionType.revised => widget.provider.getDocumentsByStatus(
+        ManuscriptDocumentStatus.revised,
+      ),
+      CollectionType.complete => widget.provider.getDocumentsByStatus(
+        ManuscriptDocumentStatus.complete,
+      ),
+      CollectionType.needsRevision => widget.provider.getDocumentsByStatus(
+        ManuscriptDocumentStatus.revised,
+      ),
+      CollectionType.archived => widget.provider.getDocumentsByStatus(
+        ManuscriptDocumentStatus.archived,
+      ),
       CollectionType.recent => _getRecentDocuments(),
       CollectionType.favorites => _getFavorites(),
     };
@@ -299,17 +442,29 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
 
   List<ManuscriptDocument> _getRecentDocuments() {
     final docs = List<ManuscriptDocument>.from(widget.provider.allDocuments);
-    docs.sort((a, b) => (b.modifiedAt ?? DateTime(1970)).compareTo(a.modifiedAt ?? DateTime(1970)));
+    docs.sort(
+      (a, b) => (b.modifiedAt ?? DateTime(1970)).compareTo(
+        a.modifiedAt ?? DateTime(1970),
+      ),
+    );
     return docs.take(20).toList();
   }
 
   List<ManuscriptDocument> _getFavorites() {
-    // TODO: Implement favorites tracking
-    return [];
+    return widget.provider.allDocuments.where((d) => d.isFavorite).toList();
   }
 
   int _getCountForCollection(CollectionType type) {
     return _getDocumentsForCollection(type).length;
+  }
+
+  String get _currentCollectionLabel {
+    if (_selectedCustomCollectionId != null) {
+      for (final c in _collectionsService.getAllCollections()) {
+        if (c.id == _selectedCustomCollectionId) return c.name;
+      }
+    }
+    return _selectedCollection.label;
   }
 
   void _showCreateCollectionDialog() {
@@ -335,34 +490,52 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<ManuscriptDocumentType>(
-                value: filterType,
-                decoration: const InputDecoration(labelText: 'Filter by Type (optional)'),
+                initialValue: filterType,
+                decoration: const InputDecoration(
+                  labelText: 'Filter by Type (optional)',
+                ),
                 hint: const Text('Any Type'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Any Type')),
-                  ...ManuscriptDocumentType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.label))),
+                  ...ManuscriptDocumentType.values.map(
+                    (t) => DropdownMenuItem(value: t, child: Text(t.label)),
+                  ),
                 ],
                 onChanged: (v) => setState(() => filterType = v),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<ManuscriptDocumentStatus>(
-                value: filterStatus,
-                decoration: const InputDecoration(labelText: 'Filter by Status (optional)'),
+                initialValue: filterStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Filter by Status (optional)',
+                ),
                 hint: const Text('Any Status'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Any Status')),
-                  ...ManuscriptDocumentStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Any Status'),
+                  ),
+                  ...ManuscriptDocumentStatus.values.map(
+                    (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                  ),
                 ],
                 onChanged: (v) => setState(() => filterStatus = v),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
               onPressed: () {
                 Navigator.pop(context);
-                _createCustomCollection(nameController.text, filterType, filterStatus);
+                _createCustomCollection(
+                  nameController.text,
+                  filterType,
+                  filterStatus,
+                );
               },
               child: const Text('Create'),
             ),
@@ -372,11 +545,25 @@ class _ManuscriptCollectionsState extends State<ManuscriptCollections> {
     );
   }
 
-  void _createCustomCollection(String name, ManuscriptDocumentType? type, ManuscriptDocumentStatus? status) {
-    // TODO: Implement custom collection persistence
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Custom collections coming soon!')),
+  void _createCustomCollection(
+    String name,
+    ManuscriptDocumentType? type,
+    ManuscriptDocumentStatus? status,
+  ) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Collection name cannot be empty')),
+      );
+      return;
+    }
+
+    _collectionsService.createCollection(
+      name: trimmed,
+      documentType: type,
+      status: status,
     );
+    setState(() {});
   }
 
   IconData _getIconForType(CollectionType type) {
@@ -388,12 +575,13 @@ class _CollectionListTile extends StatelessWidget {
   final ManuscriptDocument document;
   final ManuscriptBinderProvider provider;
   final VoidCallback onTap;
+  final VoidCallback onToggleFavorite;
 
   const _CollectionListTile({
-    super.key,
     required this.document,
     required this.provider,
     required this.onTap,
+    required this.onToggleFavorite,
   });
 
   @override
@@ -423,7 +611,9 @@ class _CollectionListTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           document.title,
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -439,14 +629,20 @@ class _CollectionListTile extends StatelessWidget {
                       if (document.wordCount > 0)
                         Text(
                           '${_formatCount(document.wordCount)} words',
-                          style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
-                      if (document.documentType == ManuscriptDocumentType.chapter ||
-                          document.documentType == ManuscriptDocumentType.part) ...[
+                      if (document.documentType ==
+                              ManuscriptDocumentType.chapter ||
+                          document.documentType ==
+                              ManuscriptDocumentType.part) ...[
                         const SizedBox(width: 8),
                         Text(
                           '${provider.getChildren(document.id).length} children',
-                          style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ],
@@ -455,7 +651,25 @@ class _CollectionListTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(LucideIcons.chevronRight, size: 16, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+            IconButton(
+              onPressed: onToggleFavorite,
+              tooltip: document.isFavorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites',
+              icon: Icon(
+                document.isFavorite ? LucideIcons.star : LucideIcons.star,
+                size: 16,
+                color: document.isFavorite
+                    ? Colors.amber
+                    : cs.onSurfaceVariant.withValues(alpha: 0.4),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
           ],
         ),
       ),

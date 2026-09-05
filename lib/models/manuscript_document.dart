@@ -108,6 +108,27 @@ class ManuscriptDocument extends HiveObject {
   @HiveField(19)
   int characterCount = 0;
 
+  @HiveField(20)
+  String? purpose;
+
+  @HiveField(21)
+  bool isFavorite = false;
+
+  /// The calendar system the assigned scene date was chosen in (Hive key of
+  /// CalendarSystem; 0 = unassigned). Kept so a re-selected date is rendered
+  /// through the correct Chronology (§16).
+  @HiveField(22)
+  int calendarDateSystemKey = 0;
+
+  /// Absolute year of the assigned scene date in its [calendarDateSystemKey].
+  /// 0 = unassigned.
+  @HiveField(23)
+  int calendarDateYear = 0;
+
+  /// Day-of-year (1-based) of the assigned scene date. 0 = unassigned.
+  @HiveField(24)
+  int calendarDateDayOfYear = 0;
+
   ManuscriptDocumentType get documentType =>
       ManuscriptDocumentType.values[documentTypeIndex];
 
@@ -129,6 +150,9 @@ class ManuscriptDocument extends HiveObject {
       documentType == ManuscriptDocumentType.scene ||
       documentType == ManuscriptDocumentType.note ||
       documentType == ManuscriptDocumentType.research;
+
+  /// Whether a calendar date has been assigned to this scene (§16).
+  bool get hasCalendarDate => calendarDateYear > 0;
 
   Map<String, dynamic> toJson() {
     return {
@@ -152,6 +176,11 @@ class ManuscriptDocument extends HiveObject {
       'modifiedAt': modifiedAt?.toIso8601String(),
       'wordCount': wordCount,
       'characterCount': characterCount,
+      'purpose': purpose,
+      'isFavorite': isFavorite,
+      'calendarDateSystemKey': calendarDateSystemKey,
+      'calendarDateYear': calendarDateYear,
+      'calendarDateDayOfYear': calendarDateDayOfYear,
     };
   }
 
@@ -184,7 +213,12 @@ class ManuscriptDocument extends HiveObject {
           ? DateTime.parse(json['modifiedAt'] as String)
           : null
       ..wordCount = json['wordCount'] as int? ?? 0
-      ..characterCount = json['characterCount'] as int? ?? 0;
+      ..characterCount = json['characterCount'] as int? ?? 0
+      ..purpose = json['purpose'] as String?
+      ..isFavorite = json['isFavorite'] as bool? ?? false
+      ..calendarDateSystemKey = json['calendarDateSystemKey'] as int? ?? 0
+      ..calendarDateYear = json['calendarDateYear'] as int? ?? 0
+      ..calendarDateDayOfYear = json['calendarDateDayOfYear'] as int? ?? 0;
     return doc;
   }
 }

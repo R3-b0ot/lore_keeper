@@ -1752,7 +1752,9 @@ class _TraitsPanel extends StatelessWidget {
                               _getLeveledTraitLabel(entry.key, entry.value),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -1778,14 +1780,18 @@ class _TraitsPanel extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(_getPersonalityTraitIcon(entry.key, entry.value)),
+                          Text(
+                            _getPersonalityTraitIcon(entry.key, entry.value),
+                          ),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               _getPersonalityTraitLabel(entry.key, entry.value),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -3355,9 +3361,11 @@ class _ImageUploadPanelState extends State<_ImageUploadPanel>
         buildDefaultDragHandles: false,
         padding: EdgeInsets.zero,
         itemCount: _iterationOrder.length,
-        onReorder: (oldIndex, newIndex) {
+        onReorderItem: (oldIndex, newIndex) {
           setState(() {
-            if (newIndex > oldIndex) newIndex -= 1;
+            if (oldIndex < newIndex) {
+              newIndex -= 1;
+            }
             final item = _iterationOrder.removeAt(oldIndex);
             _iterationOrder.insert(newIndex, item);
             if (_selectedTabIndex == oldIndex) {

@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'classification_node.g.dart';
-
 enum ClassificationRank {
   category,
   lineage,

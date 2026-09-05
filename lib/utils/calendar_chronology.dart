@@ -111,11 +111,11 @@ class CalendarChronology {
       return CalendarChronology._empty(systemKey, system?.name ?? 'Unknown');
     }
 
-    final totalDays = _readPositiveInt(
-      root.attributes,
-      const {'total_days_year', 'total_days', 'days_year'},
-      365,
-    );
+    final totalDays = _readPositiveInt(root.attributes, const {
+      'total_days_year',
+      'total_days',
+      'days_year',
+    }, 365);
 
     String calName = 'Calendar';
     final topChildren = provider.getChildrenOf(top.id);
@@ -140,11 +140,11 @@ class CalendarChronology {
       final eraNodes = provider.getChildrenOf(erasHeader.id);
       for (final eraNode in eraNodes) {
         eraNames.add(eraNode.title);
-        final startYear = _readPositiveInt(
-          eraNode.attributes,
-          const {'start_year', 'start_year_era', 'era_start'},
-          1,
-        );
+        final startYear = _readPositiveInt(eraNode.attributes, const {
+          'start_year',
+          'start_year_era',
+          'era_start',
+        }, 1);
         eraStarts.add(startYear);
       }
     }
@@ -161,16 +161,14 @@ class CalendarChronology {
       final monthNodes = provider.getChildrenOf(monthHeader.id);
       var cursor = 1;
       for (final node in monthNodes) {
-        final days = _readPositiveInt(
-          node.attributes,
-          const {'number_of_days', 'days_month', 'month_days'},
-          30,
+        final days = _readPositiveInt(node.attributes, const {
+          'number_of_days',
+          'days_month',
+          'month_days',
+        }, 30);
+        monthList.add(
+          ChronologyMonth(name: node.title, days: days, startDayOfYear: cursor),
         );
-        monthList.add(ChronologyMonth(
-          name: node.title,
-          days: days,
-          startDayOfYear: cursor,
-        ));
         cursor += days;
       }
     }
@@ -180,11 +178,9 @@ class CalendarChronology {
       var cursor = 1;
       for (int i = 1; i <= 12; i++) {
         final days = (i == 12) ? totalDays - cursor + 1 : perMonth;
-        monthList.add(ChronologyMonth(
-          name: 'Month $i',
-          days: days,
-          startDayOfYear: cursor,
-        ));
+        monthList.add(
+          ChronologyMonth(name: 'Month $i', days: days, startDayOfYear: cursor),
+        );
         cursor += days;
       }
     }
@@ -210,11 +206,14 @@ class CalendarChronology {
     return CalendarChronology(
       systemKey: systemKey,
       daysInYear: 365,
-      months: List.generate(12, (i) => ChronologyMonth(
-        name: 'Month ${i + 1}',
-        days: 30 + (i == 11 ? 5 : 0),
-        startDayOfYear: i * 30 + 1,
-      )),
+      months: List.generate(
+        12,
+        (i) => ChronologyMonth(
+          name: 'Month ${i + 1}',
+          days: 30 + (i == 11 ? 5 : 0),
+          startDayOfYear: i * 30 + 1,
+        ),
+      ),
       eras: [],
       eraStartYears: [],
       calendarName: 'Default',
@@ -230,21 +229,36 @@ class CalendarChronology {
   }
 
   static List<String> _readWeekdays(List<CalendarAttribute> attrs) {
-    final val = _readAttribute(attrs, const {'weekdays', 'week_days', 'days_of_week'});
+    final val = _readAttribute(attrs, const {
+      'weekdays',
+      'week_days',
+      'days_of_week',
+    });
     if (val == null) return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    final parts = val.split(RegExp(r'[,;|]')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final parts = val
+        .split(RegExp(r'[,;|]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     if (parts.length >= 3) return parts;
     return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   static int _readFirstDayOfWeek(List<CalendarAttribute> attrs) {
-    final val = _readAttribute(attrs, const {'first_day_of_week', 'week_start', 'start_of_week'});
+    final val = _readAttribute(attrs, const {
+      'first_day_of_week',
+      'week_start',
+      'start_of_week',
+    });
     if (val == null) return 0;
     final parsed = int.tryParse(val);
     return (parsed != null && parsed >= 0 && parsed <= 6) ? parsed : 0;
   }
 
-  static String? _readAttribute(List<CalendarAttribute> attrs, Set<String> keys) {
+  static String? _readAttribute(
+    List<CalendarAttribute> attrs,
+    Set<String> keys,
+  ) {
     final normalized = <String, String>{};
     for (final attr in attrs) {
       final norm = attr.label

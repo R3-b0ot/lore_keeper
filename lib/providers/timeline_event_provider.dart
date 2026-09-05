@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
 import 'package:uuid/uuid.dart';
 
 class TimelineEventProvider extends ChangeNotifier {
   final int _projectId;
+  final ReferenceEngine? _referenceEngine;
   final Uuid _uuid = const Uuid();
 
   late Box<TimelineEvent> _eventBox;
   bool _isInitialized = false;
   List<TimelineEvent> _events = <TimelineEvent>[];
-  
+
   /// Currently selected calendar system for filtering events in the UI.
   int? _selectedSystemKey;
 
@@ -18,14 +21,17 @@ class TimelineEventProvider extends ChangeNotifier {
   /// both surfaces always reflect a single Timeline selection.
   String? _selectedEventId;
 
-  TimelineEventProvider(this._projectId) {
+  TimelineEventProvider(
+    this._projectId, {
+    ReferenceEngine? referenceEngine,
+  }) : _referenceEngine = referenceEngine {
     _initialize();
   }
 
   bool get isInitialized => _isInitialized;
-  
+
   int? get selectedSystemKey => _selectedSystemKey;
-  
+
   void setSelectedSystemKey(int? systemKey) {
     _selectedSystemKey = systemKey;
     notifyListeners();
@@ -48,7 +54,9 @@ class TimelineEventProvider extends ChangeNotifier {
   /// Returns events filtered by the selected calendar system (if set).
   List<TimelineEvent> get filteredEvents {
     if (_selectedSystemKey == null) return events;
-    return _events.where((e) => e.calendarSystemKey == _selectedSystemKey).toList();
+    return _events
+        .where((e) => e.calendarSystemKey == _selectedSystemKey)
+        .toList();
   }
 
   TimelineEvent? getEventById(String id) {
@@ -186,6 +194,12 @@ class TimelineEventProvider extends ChangeNotifier {
       _selectedEventId = null;
     }
     _reload();
+    // Purge stale manuscript backlinks to the deleted timeline event now that
+    // it is gone from the box (see ReferenceNameResolver.purgeStaleFromDatabase).
+    final engine = _referenceEngine;
+    if (engine != null) {
+      ReferenceNameResolver.purgeStaleFromDatabase(engine);
+    }
     notifyListeners();
   }
 

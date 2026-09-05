@@ -232,34 +232,29 @@ void main() {
       expect(deleteTapped, isFalse);
     });
 
-    testWidgets(
-      'destination is tappable after the book transition completes '
-      '(no invisible pointer-blocking overlay)',
-      (tester) async {
-        var destTapped = false;
-        await tester.pumpWidget(
-          harness(
-            ProjectBook(
-              project: project(),
-              destinationBuilder: (_) => GestureDetector(
-                onTap: () => destTapped = true,
-                child: const Scaffold(
-                  body: Center(child: Text('workspace')),
-                ),
-              ),
+    testWidgets('destination is tappable after the book transition completes '
+        '(no invisible pointer-blocking overlay)', (tester) async {
+      var destTapped = false;
+      await tester.pumpWidget(
+        harness(
+          ProjectBook(
+            project: project(),
+            destinationBuilder: (_) => GestureDetector(
+              onTap: () => destTapped = true,
+              child: const Scaffold(body: Center(child: Text('workspace'))),
             ),
           ),
-        );
+        ),
+      );
 
-        // Open the book and wait for the full transition to complete.
-        await tester.tap(find.byType(ProjectBook));
-        await tester.pumpAndSettle(const Duration(milliseconds: 50));
-        expect(find.text('workspace'), findsOneWidget);
+      // Open the book and wait for the full transition to complete.
+      await tester.tap(find.byType(ProjectBook));
+      await tester.pumpAndSettle(const Duration(milliseconds: 50));
+      expect(find.text('workspace'), findsOneWidget);
 
-        // Tap the destination — must NOT be blocked by a leftover overlay.
-        await tester.tap(find.text('workspace'));
-        expect(destTapped, isTrue);
-      },
-    );
+      // Tap the destination — must NOT be blocked by a leftover overlay.
+      await tester.tap(find.text('workspace'));
+      expect(destTapped, isTrue);
+    });
   });
 }

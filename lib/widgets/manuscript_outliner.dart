@@ -62,7 +62,9 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
   }
 
   void _loadRows() {
-    _containerDocument = widget.provider.getDocument(widget.containerDocumentId);
+    _containerDocument = widget.provider.getDocument(
+      widget.containerDocumentId,
+    );
     _rows = _getAllDescendants(widget.containerDocumentId);
     setState(() {});
   }
@@ -95,7 +97,9 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
         _buildColumnSelector(theme, cs),
         const Divider(height: 1),
         Expanded(
-          child: _rows.isEmpty ? _buildEmptyState(theme, cs) : _buildOutlinerTable(theme, cs),
+          child: _rows.isEmpty
+              ? _buildEmptyState(theme, cs)
+              : _buildOutlinerTable(theme, cs),
         ),
       ],
     );
@@ -106,11 +110,17 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.list, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+          Icon(
+            LucideIcons.list,
+            size: 48,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           Text(
             'Select a container (Part, Chapter, or Manuscript)',
-            style: theme.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -139,13 +149,17 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
               children: [
                 Text(
                   _containerDocument!.title,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   'Outliner • ${_rows.length} item${_rows.length == 1 ? '' : 's'}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -188,7 +202,9 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
                 showCheckmark: false,
                 selectedColor: cs.primaryContainer,
                 labelStyle: TextStyle(
-                  color: isVisible ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                  color: isVisible
+                      ? cs.onPrimaryContainer
+                      : cs.onSurfaceVariant,
                   fontWeight: isVisible ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
@@ -204,9 +220,18 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.list, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+          Icon(
+            LucideIcons.list,
+            size: 64,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
-          Text('No items in outline', style: theme.textTheme.titleMedium?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            'No items in outline',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           FilledButton.icon(
             icon: const Icon(LucideIcons.plus),
@@ -223,12 +248,20 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
+          constraints: BoxConstraints(
+            minWidth: MediaQuery.of(context).size.width - 32,
+          ),
           child: DataTable(
-            headingRowColor: WidgetStateProperty.resolveWith((states) => cs.surfaceContainer),
+            headingRowColor: WidgetStateProperty.resolveWith(
+              (states) => cs.surfaceContainer,
+            ),
             dataRowColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) return cs.primaryContainer;
-              if (states.contains(WidgetState.hovered)) return cs.surfaceContainerHighest;
+              if (states.contains(WidgetState.selected)) {
+                return cs.primaryContainer;
+              }
+              if (states.contains(WidgetState.hovered)) {
+                return cs.surfaceContainerHighest;
+              }
               return null;
             }),
             columnSpacing: 16,
@@ -260,33 +293,62 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
     return _rows.map((doc) {
       return DataRow(
         onSelectChanged: (_) => widget.onDocumentSelected(doc.id),
-        cells: _visibleColumns.map((col) => DataCell(_buildCell(doc, col, theme, cs))).toList(),
+        cells: _visibleColumns
+            .map((col) => DataCell(_buildCell(doc, col, theme, cs)))
+            .toList(),
       );
     }).toList();
   }
 
-  Widget _buildCell(ManuscriptDocument doc, OutlinerColumn col, ThemeData theme, ColorScheme cs) {
+  Widget _buildCell(
+    ManuscriptDocument doc,
+    OutlinerColumn col,
+    ThemeData theme,
+    ColorScheme cs,
+  ) {
     return switch (col) {
       OutlinerColumn.title => _buildTitleCell(doc, theme, cs),
-      OutlinerColumn.pov => _buildTextCell(doc.povCharacterId ?? '—', theme, cs),
-      OutlinerColumn.location => _buildTextCell(doc.locationId ?? '—', theme, cs),
-      OutlinerColumn.timeline => _buildTextCell(doc.timelineEventId ?? '—', theme, cs),
+      OutlinerColumn.pov => _buildTextCell(
+        doc.povCharacterId ?? '—',
+        theme,
+        cs,
+      ),
+      OutlinerColumn.location => _buildTextCell(
+        doc.locationId ?? '—',
+        theme,
+        cs,
+      ),
+      OutlinerColumn.timeline => _buildTextCell(
+        doc.timelineEventId ?? '—',
+        theme,
+        cs,
+      ),
       OutlinerColumn.words => _buildWordsCell(doc, theme, cs),
       OutlinerColumn.status => _StatusBadge(status: doc.status),
       OutlinerColumn.plotline => _buildTextCell(doc.plotline ?? '—', theme, cs),
     };
   }
 
-  Widget _buildTitleCell(ManuscriptDocument doc, ThemeData theme, ColorScheme cs) {
+  Widget _buildTitleCell(
+    ManuscriptDocument doc,
+    ThemeData theme,
+    ColorScheme cs,
+  ) {
     return Row(
       children: [
-        Icon(_getIconForType(doc.documentType), size: 16, color: _getColorForType(doc.documentType, cs)),
+        Icon(
+          _getIconForType(doc.documentType),
+          size: 16,
+          color: _getColorForType(doc.documentType, cs),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             doc.title,
             style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: doc.documentType == ManuscriptDocumentType.manuscript ? FontWeight.bold : FontWeight.normal,
+              fontWeight: doc.documentType == ManuscriptDocumentType.manuscript
+                  ? FontWeight.bold
+                  : FontWeight.normal,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -324,21 +386,34 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
     );
   }
 
-  Widget _buildWordsCell(ManuscriptDocument doc, ThemeData theme, ColorScheme cs) {
-    final totalWords = (doc.wordCount + widget.provider.getDescendants(doc.id).fold(0, (sum, d) => sum + d.wordCount)) as int;
+  Widget _buildWordsCell(
+    ManuscriptDocument doc,
+    ThemeData theme,
+    ColorScheme cs,
+  ) {
+    final totalWords =
+        (doc.wordCount +
+                widget.provider
+                    .getDescendants(doc.id)
+                    .fold(0, (sum, d) => sum + d.wordCount))
+            as int;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           _formatCount(doc.wordCount),
-          style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
         if (totalWords > doc.wordCount) ...[
           const SizedBox(width: 4),
           Text(
             '(${_formatCount(totalWords)} total)',
-            style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
         ],
       ],
@@ -358,26 +433,38 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<ManuscriptDocumentType>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: ManuscriptDocumentType.values
                     .where((t) => _isValidChildType(t))
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                    .map(
+                      (t) => DropdownMenuItem(value: t, child: Text(t.label)),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => selectedType = v!),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title', hintText: 'Enter row title'),
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  hintText: 'Enter row title',
+                ),
                 autofocus: true,
-                onSubmitted: (_) => _createRow(selectedType, titleController.text),
+                onSubmitted: (_) =>
+                    _createRow(selectedType, titleController.text),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(onPressed: () => _createRow(selectedType, titleController.text), child: const Text('Create')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => _createRow(selectedType, titleController.text),
+              child: const Text('Create'),
+            ),
           ],
         ),
       ),
@@ -388,14 +475,16 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
     if (title.trim().isEmpty) return;
     Navigator.pop(context);
 
-    widget.provider.createChild(
-      parentId: widget.containerDocumentId,
-      title: title.trim(),
-      type: type,
-    ).then((doc) {
-      _loadRows();
-      widget.onDocumentSelected(doc.id);
-    });
+    widget.provider
+        .createChild(
+          parentId: widget.containerDocumentId,
+          title: title.trim(),
+          type: type,
+        )
+        .then((doc) {
+          _loadRows();
+          widget.onDocumentSelected(doc.id);
+        });
   }
 
   ManuscriptDocumentType _getDefaultChildType() {
@@ -412,21 +501,23 @@ class _ManuscriptOutlinerState extends State<ManuscriptOutliner> {
     final parentType = _containerDocument!.documentType;
     return switch (parentType) {
       ManuscriptDocumentType.manuscript => [
-          ManuscriptDocumentType.part,
-          ManuscriptDocumentType.chapter,
-          ManuscriptDocumentType.frontMatter,
-          ManuscriptDocumentType.backMatter,
-        ].contains(type),
+        ManuscriptDocumentType.part,
+        ManuscriptDocumentType.chapter,
+        ManuscriptDocumentType.frontMatter,
+        ManuscriptDocumentType.backMatter,
+      ].contains(type),
       ManuscriptDocumentType.part => [
-          ManuscriptDocumentType.chapter,
-          ManuscriptDocumentType.section,
-        ].contains(type),
-      ManuscriptDocumentType.chapter => [ManuscriptDocumentType.scene].contains(type),
+        ManuscriptDocumentType.chapter,
+        ManuscriptDocumentType.section,
+      ].contains(type),
+      ManuscriptDocumentType.chapter => [
+        ManuscriptDocumentType.scene,
+      ].contains(type),
       ManuscriptDocumentType.section => [
-          ManuscriptDocumentType.scene,
-          ManuscriptDocumentType.note,
-          ManuscriptDocumentType.research,
-        ].contains(type),
+        ManuscriptDocumentType.scene,
+        ManuscriptDocumentType.note,
+        ManuscriptDocumentType.research,
+      ].contains(type),
       _ => false,
     };
   }

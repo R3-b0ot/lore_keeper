@@ -10,7 +10,13 @@ enum ReferenceEntityType {
   character('Character'),
   location('Location'),
   item('Item'),
-  organization('Organization');
+  organization('Organization'),
+  species('Species'),
+  faction('Faction'),
+  timelineEvent('Timeline Event'),
+  manuscriptDocument('Manuscript Document'),
+  research('Research'),
+  calendarDate('Calendar Date');
 
   const ReferenceEntityType(this.label);
   final String label;
@@ -21,6 +27,29 @@ enum ReferenceEntityType {
       if (type.label == label) return type;
     }
     return null;
+  }
+
+  /// Map from an [EntityType] constant string back to this inline-reference
+  /// enum, or null when the type is not referenceable inline.
+  ///
+  /// The [EntityType] constants (`character`, `species`, ...) differ from the
+  /// human [label] for a few types (`TimelineEvent` vs `Timeline Event`), so
+  /// a naive [fromLabel] lookup would fail for those. This uses the canonical
+  /// entity-type identity instead of the display label.
+  static ReferenceEntityType? fromEntityType(String entityType) {
+    return switch (entityType) {
+      'Character' => ReferenceEntityType.character,
+      'Location' => ReferenceEntityType.location,
+      'Item' => ReferenceEntityType.item,
+      'Organization' => ReferenceEntityType.organization,
+      'Species' => ReferenceEntityType.species,
+      'Faction' => ReferenceEntityType.faction,
+      'TimelineEvent' => ReferenceEntityType.timelineEvent,
+      'ManuscriptDocument' => ReferenceEntityType.manuscriptDocument,
+      'CustomTrait' => ReferenceEntityType.research,
+      'CalendarNode' => ReferenceEntityType.calendarDate,
+      _ => null,
+    };
   }
 }
 

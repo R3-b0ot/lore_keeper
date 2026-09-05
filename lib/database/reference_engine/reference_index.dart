@@ -31,12 +31,12 @@ class ReferenceIndexEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'source': source.toJson(),
-        'target': target.toJson(),
-        'kind': kind,
-        'containerEntity': containerEntity?.toJson(),
-        'computedAt': computedAt.toIso8601String(),
-      };
+    'source': source.toJson(),
+    'target': target.toJson(),
+    'kind': kind,
+    'containerEntity': containerEntity?.toJson(),
+    'computedAt': computedAt.toIso8601String(),
+  };
 
   factory ReferenceIndexEntry.fromJson(Map<String, dynamic> json) =>
       ReferenceIndexEntry(
@@ -45,7 +45,8 @@ class ReferenceIndexEntry {
         kind: json['kind'] as String,
         containerEntity: json['containerEntity'] != null
             ? EntityRef.fromJson(
-                json['containerEntity'] as Map<String, dynamic>)
+                json['containerEntity'] as Map<String, dynamic>,
+              )
             : null,
         computedAt: DateTime.parse(json['computedAt'] as String),
       );
@@ -61,5 +62,8 @@ class ReferenceIndexEntry {
 
   @override
   int get hashCode =>
-      source.hashCode ^ target.hashCode ^ kind.hashCode ^ containerEntity.hashCode;
+      source.hashCode ^
+      target.hashCode ^
+      kind.hashCode ^
+      containerEntity.hashCode;
 }

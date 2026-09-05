@@ -43,7 +43,10 @@ class MapLayersPanel extends StatelessWidget {
           Expanded(
             child: ReorderableListView.builder(
               itemCount: mapData.layers.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
                 provider.reorderLayers(oldIndex, newIndex);
               },
               itemBuilder: (context, index) {

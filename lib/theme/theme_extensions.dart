@@ -7,11 +7,16 @@ class LoreCardTheme extends ThemeExtension<LoreCardTheme> {
 
   @override
   ThemeExtension<LoreCardTheme> copyWith({Color? backgroundColor}) {
-    return LoreCardTheme(backgroundColor: backgroundColor ?? this.backgroundColor);
+    return LoreCardTheme(
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+    );
   }
 
   @override
-  ThemeExtension<LoreCardTheme> lerp(ThemeExtension<LoreCardTheme>? other, double t) {
+  ThemeExtension<LoreCardTheme> lerp(
+    ThemeExtension<LoreCardTheme>? other,
+    double t,
+  ) {
     if (other is! LoreCardTheme) return this;
     return LoreCardTheme(
       backgroundColor: Color.lerp(backgroundColor, other.backgroundColor, t),
@@ -30,7 +35,10 @@ class FantasyBorderTheme extends ThemeExtension<FantasyBorderTheme> {
   }
 
   @override
-  ThemeExtension<FantasyBorderTheme> lerp(ThemeExtension<FantasyBorderTheme>? other, double t) {
+  ThemeExtension<FantasyBorderTheme> lerp(
+    ThemeExtension<FantasyBorderTheme>? other,
+    double t,
+  ) {
     if (other is! FantasyBorderTheme) return this;
     return FantasyBorderTheme(
       borderColor: Color.lerp(borderColor, other.borderColor, t),

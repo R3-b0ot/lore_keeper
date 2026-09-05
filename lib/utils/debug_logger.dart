@@ -63,7 +63,8 @@ final class LkLog {
         developer.log('[LK] No breadcrumbs recorded.', name: 'LK.breadcrumb');
         return;
       }
-      final buf = StringBuffer()..writeln('[LK] Breadcrumb trail (${_breadcrumbs.length}):');
+      final buf = StringBuffer()
+        ..writeln('[LK] Breadcrumb trail (${_breadcrumbs.length}):');
       for (var i = 0; i < _breadcrumbs.length; i++) {
         final b = _breadcrumbs[i];
         buf.writeln('  $i │ [${b.area}] ${b.message}');

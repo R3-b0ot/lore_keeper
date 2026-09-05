@@ -3,7 +3,6 @@
 import 'dart:convert';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
-import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/reference_engine/reference_index.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
@@ -17,16 +16,13 @@ class ManuscriptReferenceService {
   final int projectId;
   final ReferenceEngine _referenceEngine;
   final Box<ManuscriptDocument> _documentBox;
-  final Box<Character> _characterBox;
 
   ManuscriptReferenceService({
     required this.projectId,
     required ReferenceEngine referenceEngine,
     required Box<ManuscriptDocument> documentBox,
-    required Box<Character> characterBox,
   }) : _referenceEngine = referenceEngine,
-       _documentBox = documentBox,
-       _characterBox = characterBox;
+       _documentBox = documentBox;
 
   /// Extract all inline references from a manuscript document's content.
   ///
@@ -52,7 +48,7 @@ class ManuscriptReferenceService {
           if (link != null && ReferenceTarget.isReference(link)) {
             final target = ReferenceTarget.decode(link);
             if (target != null) {
-              final entityType = _mapReferenceTypeToEntityType(target.type);
+              final entityType = mapReferenceTypeToEntityType(target.type);
               final entityRef = EntityRef.fromKey(
                 key: target.id,
                 entityType: entityType,
@@ -82,19 +78,21 @@ class ManuscriptReferenceService {
     for (final doc in docs) {
       final sourceRef = EntityRef.fromKey(
         key: doc.id,
-        entityType: 'ManuscriptDocument',
+        entityType: EntityType.manuscriptDocument,
         projectId: projectId.toString(),
       );
 
       final refs = extractReferencesFromDocument(doc);
       for (final (target, kind) in refs) {
-        entries.add(ReferenceIndexEntry(
-          source: sourceRef,
-          target: target,
-          kind: kind,
-          containerEntity: sourceRef,
-          computedAt: now,
-        ));
+        entries.add(
+          ReferenceIndexEntry(
+            source: sourceRef,
+            target: target,
+            kind: kind,
+            containerEntity: sourceRef,
+            computedAt: now,
+          ),
+        );
       }
     }
 
@@ -119,7 +117,7 @@ class ManuscriptReferenceService {
   List<ReferenceIndexEntry> getReferencesFrom(ManuscriptDocument doc) {
     final sourceRef = EntityRef.fromKey(
       key: doc.id,
-      entityType: 'ManuscriptDocument',
+      entityType: EntityType.manuscriptDocument,
       projectId: projectId.toString(),
     );
     return _referenceEngine.referencesFrom(sourceRef);
@@ -129,7 +127,7 @@ class ManuscriptReferenceService {
   List<ReferenceIndexEntry> getReferencesInContainer(String containerDocId) {
     final containerRef = EntityRef.fromKey(
       key: containerDocId,
-      entityType: 'ManuscriptDocument',
+      entityType: EntityType.manuscriptDocument,
       projectId: projectId.toString(),
     );
     return _referenceEngine.insideContainer(containerRef);
@@ -144,19 +142,29 @@ class ManuscriptReferenceService {
   Set<String> getReferencedEntityTypes(ManuscriptDocument doc) {
     final sourceRef = EntityRef.fromKey(
       key: doc.id,
-      entityType: 'ManuscriptDocument',
+      entityType: EntityType.manuscriptDocument,
       projectId: projectId.toString(),
     );
     return _referenceEngine.referencedEntityTypes(sourceRef);
   }
 
-  /// Map ReferenceEntityType to EntityType string for the database index.
-  String _mapReferenceTypeToEntityType(ReferenceEntityType type) {
+  /// Map [ReferenceEntityType] to its corresponding [EntityType] string.
+  ///
+  /// Each inline-reference type maps to a distinct entity type so backlinks
+  /// resolve to the correct module (a Location link must never be conflated
+  /// with a Character link).
+  String mapReferenceTypeToEntityType(ReferenceEntityType type) {
     return switch (type) {
       ReferenceEntityType.character => EntityType.character,
-      ReferenceEntityType.location => EntityType.character, // TODO: add Location entity type
-      ReferenceEntityType.item => EntityType.character, // TODO: add Item entity type
-      ReferenceEntityType.organization => EntityType.character, // TODO: add Organization entity type
+      ReferenceEntityType.location => EntityType.location,
+      ReferenceEntityType.item => EntityType.item,
+      ReferenceEntityType.organization => EntityType.organization,
+      ReferenceEntityType.species => EntityType.species,
+      ReferenceEntityType.faction => EntityType.faction,
+      ReferenceEntityType.timelineEvent => EntityType.timelineEvent,
+      ReferenceEntityType.manuscriptDocument => EntityType.manuscriptDocument,
+      ReferenceEntityType.research => EntityType.customTrait,
+      ReferenceEntityType.calendarDate => EntityType.calendarNode,
     };
   }
 }

@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
-import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ManuscriptCorkboard extends StatefulWidget {
@@ -43,7 +42,9 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
   }
 
   void _loadCards() {
-    _containerDocument = widget.provider.getDocument(widget.containerDocumentId);
+    _containerDocument = widget.provider.getDocument(
+      widget.containerDocumentId,
+    );
     _cards = widget.provider.getChildren(widget.containerDocumentId);
     setState(() {});
   }
@@ -59,7 +60,9 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
         _buildHeader(context),
         const Divider(height: 1),
         Expanded(
-          child: _cards.isEmpty ? _buildEmptyState(context) : _buildCorkboardGrid(context),
+          child: _cards.isEmpty
+              ? _buildEmptyState(context)
+              : _buildCorkboardGrid(context),
         ),
       ],
     );
@@ -73,11 +76,17 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.folderOpen, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+          Icon(
+            LucideIcons.folderOpen,
+            size: 48,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           Text(
             'Select a container (Part, Chapter, or Manuscript)',
-            style: theme.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -122,13 +131,17 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
         children: [
           Text(
             _containerDocument!.title,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
             'Corkboard • ${_cards.length} card${_cards.length == 1 ? '' : 's'}',
-            style: theme.textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -151,13 +164,24 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.squarePen, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+          Icon(
+            LucideIcons.squarePen,
+            size: 64,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
-          Text('No cards yet', style: theme.textTheme.titleMedium?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            'No cards yet',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             'Add scenes, notes, or research cards to organize your story',
-            style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.7)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -204,7 +228,10 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
 
     for (int i = 0; i < _cards.length; i++) {
       _cards[i].orderIndex = i;
-      await widget.provider.updateMetadata(_cards[i].id, isExpanded: _cards[i].isExpanded);
+      await widget.provider.updateMetadata(
+        _cards[i].id,
+        isExpanded: _cards[i].isExpanded,
+      );
     }
 
     setState(() {});
@@ -213,21 +240,35 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
 
   void _showAddCardDialog() {
     final titleController = TextEditingController();
-    final selectedTypeNotifier = ValueNotifier<ManuscriptDocumentType>(_getDefaultChildType());
+    final selectedTypeNotifier = ValueNotifier<ManuscriptDocumentType>(
+      _getDefaultChildType(),
+    );
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Add New Card'),
-          content: _buildAddCardDialogContent(setState, selectedTypeNotifier, titleController),
-          actions: _buildAddCardDialogActions(setState, selectedTypeNotifier, titleController),
+          content: _buildAddCardDialogContent(
+            setState,
+            selectedTypeNotifier,
+            titleController,
+          ),
+          actions: _buildAddCardDialogActions(
+            setState,
+            selectedTypeNotifier,
+            titleController,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAddCardDialogContent(StateSetter setState, ValueNotifier<ManuscriptDocumentType> selectedType, TextEditingController titleController) {
+  Widget _buildAddCardDialogContent(
+    StateSetter setState,
+    ValueNotifier<ManuscriptDocumentType> selectedType,
+    TextEditingController titleController,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -238,9 +279,12 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     );
   }
 
-  Widget _buildTypeDropdown(StateSetter setState, ValueNotifier<ManuscriptDocumentType> selectedType) {
+  Widget _buildTypeDropdown(
+    StateSetter setState,
+    ValueNotifier<ManuscriptDocumentType> selectedType,
+  ) {
     return DropdownButtonFormField<ManuscriptDocumentType>(
-      value: selectedType.value,
+      initialValue: selectedType.value,
       decoration: const InputDecoration(labelText: 'Type'),
       items: ManuscriptDocumentType.values
           .where((t) => _isValidChildType(t))
@@ -255,7 +299,10 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     );
   }
 
-  Widget _buildTitleTextField(TextEditingController titleController, ValueNotifier<ManuscriptDocumentType> selectedType) {
+  Widget _buildTitleTextField(
+    TextEditingController titleController,
+    ValueNotifier<ManuscriptDocumentType> selectedType,
+  ) {
     return TextField(
       controller: titleController,
       decoration: const InputDecoration(
@@ -267,10 +314,20 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     );
   }
 
-  List<Widget> _buildAddCardDialogActions(StateSetter setState, ValueNotifier<ManuscriptDocumentType> selectedType, TextEditingController titleController) {
+  List<Widget> _buildAddCardDialogActions(
+    StateSetter setState,
+    ValueNotifier<ManuscriptDocumentType> selectedType,
+    TextEditingController titleController,
+  ) {
     return [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-      FilledButton(onPressed: () => _createCard(selectedType.value, titleController.text), child: const Text('Create')),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => _createCard(selectedType.value, titleController.text),
+        child: const Text('Create'),
+      ),
     ];
   }
 
@@ -278,14 +335,16 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     if (title.trim().isEmpty) return;
     Navigator.pop(context);
 
-    widget.provider.createChild(
-      parentId: widget.containerDocumentId,
-      title: title.trim(),
-      type: type,
-    ).then((doc) {
-      _loadCards();
-      widget.onDocumentSelected(doc.id);
-    });
+    widget.provider
+        .createChild(
+          parentId: widget.containerDocumentId,
+          title: title.trim(),
+          type: type,
+        )
+        .then((doc) {
+          _loadCards();
+          widget.onDocumentSelected(doc.id);
+        });
   }
 
   void _duplicateCard(ManuscriptDocument card) async {
@@ -318,9 +377,15 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
         title: const Text('Delete Card'),
         content: Text('Delete "${card.title}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            onPressed: () { Navigator.pop(context); _deleteCard(card); },
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteCard(card);
+            },
             style: FilledButton.styleFrom(backgroundColor: cs.error),
             child: const Text('Delete'),
           ),
@@ -381,7 +446,11 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     );
   }
 
-  Widget _buildDialogTextField(TextEditingController controller, String label, {int maxLines = 1}) {
+  Widget _buildDialogTextField(
+    TextEditingController controller,
+    String label, {
+    int maxLines = 1,
+  }) {
     return TextField(
       controller: controller,
       decoration: InputDecoration(labelText: label),
@@ -389,9 +458,15 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     );
   }
 
-  List<Widget> _buildMetadataDialogActions(_MetadataControllers controllers, ManuscriptDocument card) {
+  List<Widget> _buildMetadataDialogActions(
+    _MetadataControllers controllers,
+    ManuscriptDocument card,
+  ) {
     return [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
       FilledButton(
         onPressed: () {
           Navigator.pop(context);
@@ -402,14 +477,27 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
     ];
   }
 
-  void _updateMetadata(ManuscriptDocument card, _MetadataControllers controllers) async {
+  void _updateMetadata(
+    ManuscriptDocument card,
+    _MetadataControllers controllers,
+  ) async {
     await widget.provider.updateMetadata(
       card.id,
-      summary: controllers.summary.text.isEmpty ? null : controllers.summary.text,
-      povCharacterId: controllers.pov.text.isEmpty ? null : controllers.pov.text,
-      locationId: controllers.location.text.isEmpty ? null : controllers.location.text,
-      timelineEventId: controllers.timeline.text.isEmpty ? null : controllers.timeline.text,
-      plotline: controllers.plotline.text.isEmpty ? null : controllers.plotline.text,
+      summary: controllers.summary.text.isEmpty
+          ? null
+          : controllers.summary.text,
+      povCharacterId: controllers.pov.text.isEmpty
+          ? null
+          : controllers.pov.text,
+      locationId: controllers.location.text.isEmpty
+          ? null
+          : controllers.location.text,
+      timelineEventId: controllers.timeline.text.isEmpty
+          ? null
+          : controllers.timeline.text,
+      plotline: controllers.plotline.text.isEmpty
+          ? null
+          : controllers.plotline.text,
     );
     _loadCards();
   }
@@ -427,10 +515,24 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
   bool _isValidChildType(ManuscriptDocumentType type) {
     final parentType = _containerDocument!.documentType;
     return switch (parentType) {
-      ManuscriptDocumentType.manuscript => [ManuscriptDocumentType.part, ManuscriptDocumentType.chapter, ManuscriptDocumentType.frontMatter, ManuscriptDocumentType.backMatter].contains(type),
-      ManuscriptDocumentType.part => [ManuscriptDocumentType.chapter, ManuscriptDocumentType.section].contains(type),
-      ManuscriptDocumentType.chapter => [ManuscriptDocumentType.scene].contains(type),
-      ManuscriptDocumentType.section => [ManuscriptDocumentType.scene, ManuscriptDocumentType.note, ManuscriptDocumentType.research].contains(type),
+      ManuscriptDocumentType.manuscript => [
+        ManuscriptDocumentType.part,
+        ManuscriptDocumentType.chapter,
+        ManuscriptDocumentType.frontMatter,
+        ManuscriptDocumentType.backMatter,
+      ].contains(type),
+      ManuscriptDocumentType.part => [
+        ManuscriptDocumentType.chapter,
+        ManuscriptDocumentType.section,
+      ].contains(type),
+      ManuscriptDocumentType.chapter => [
+        ManuscriptDocumentType.scene,
+      ].contains(type),
+      ManuscriptDocumentType.section => [
+        ManuscriptDocumentType.scene,
+        ManuscriptDocumentType.note,
+        ManuscriptDocumentType.research,
+      ].contains(type),
       _ => false,
     };
   }
@@ -534,7 +636,9 @@ class _CorkboardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainer,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3))),
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        ),
       ),
       child: Row(
         children: [
@@ -553,46 +657,99 @@ class _CorkboardCard extends StatelessWidget {
   Widget _buildDragHandle(BuildContext context) {
     return ReorderableDragStartListener(
       index: index,
-      child: Icon(LucideIcons.gripVertical, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+      child: Icon(
+        LucideIcons.gripVertical,
+        size: 16,
+        color: Theme.of(
+          context,
+        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      ),
     );
   }
 
   Widget _buildMenuButton(BuildContext context, ColorScheme cs) {
     return PopupMenuButton<String>(
-      icon: Icon(LucideIcons.moreVertical, size: 16, color: cs.onSurfaceVariant),
+      icon: Icon(
+        LucideIcons.moreVertical,
+        size: 16,
+        color: cs.onSurfaceVariant,
+      ),
       onSelected: _handleMenuSelection,
       itemBuilder: (context) => [
-        PopupMenuItem(value: 'edit', child: _buildMenuItem(LucideIcons.edit, 'Edit Metadata')),
-        PopupMenuItem(value: 'duplicate', child: _buildMenuItem(LucideIcons.copy, 'Duplicate')),
+        PopupMenuItem(
+          value: 'edit',
+          child: _buildMenuItem(LucideIcons.edit, 'Edit Metadata'),
+        ),
+        PopupMenuItem(
+          value: 'duplicate',
+          child: _buildMenuItem(LucideIcons.copy, 'Duplicate'),
+        ),
         const PopupMenuDivider(),
-        PopupMenuItem(value: 'delete', child: _buildMenuItem(LucideIcons.trash2, 'Delete', color: Colors.red)),
+        PopupMenuItem(
+          value: 'delete',
+          child: _buildMenuItem(
+            LucideIcons.trash2,
+            'Delete',
+            color: Colors.red,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildMenuItem(IconData icon, String text, {Color? color}) {
-    return Row(children: [Icon(icon, size: 16, color: color), const SizedBox(width: 8), Text(text, style: TextStyle(color: color))]);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Text(text, style: TextStyle(color: color)),
+      ],
+    );
   }
 
   void _handleMenuSelection(String value) {
     switch (value) {
-      case 'edit': onEditMetadata(); break;
-      case 'duplicate': onDuplicate(); break;
-      case 'delete': onDelete(); break;
+      case 'edit':
+        onEditMetadata();
+        break;
+      case 'duplicate':
+        onDuplicate();
+        break;
+      case 'delete':
+        onDelete();
+        break;
     }
   }
 
-  Widget _buildCardContent(BuildContext context, ThemeData theme, ColorScheme cs) {
+  Widget _buildCardContent(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme cs,
+  ) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(document.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(
+              document.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 8),
             if (document.summary != null && document.summary!.isNotEmpty) ...[
-              Text(document.summary!, style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant), maxLines: 3, overflow: TextOverflow.ellipsis),
+              Text(
+                document.summary!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 8),
             ],
             if (document.isLeaf) _buildMetadataPreview(theme, cs),
@@ -607,11 +764,27 @@ class _CorkboardCard extends StatelessWidget {
   Widget _buildMetadataPreview(ThemeData theme, ColorScheme cs) {
     return Column(
       children: [
-        _MetadataRow(icon: LucideIcons.user, label: 'POV', value: document.povCharacterId ?? '—'),
-        _MetadataRow(icon: LucideIcons.mapPin, label: 'Location', value: document.locationId ?? '—'),
-        _MetadataRow(icon: LucideIcons.calendar, label: 'Timeline', value: document.timelineEventId ?? '—'),
+        _MetadataRow(
+          icon: LucideIcons.user,
+          label: 'POV',
+          value: document.povCharacterId ?? '—',
+        ),
+        _MetadataRow(
+          icon: LucideIcons.mapPin,
+          label: 'Location',
+          value: document.locationId ?? '—',
+        ),
+        _MetadataRow(
+          icon: LucideIcons.calendar,
+          label: 'Timeline',
+          value: document.timelineEventId ?? '—',
+        ),
         if (document.plotline != null && document.plotline!.isNotEmpty)
-          _MetadataRow(icon: LucideIcons.gitBranch, label: 'Plotline', value: document.plotline!),
+          _MetadataRow(
+            icon: LucideIcons.gitBranch,
+            label: 'Plotline',
+            value: document.plotline!,
+          ),
       ],
     );
   }
@@ -621,8 +794,18 @@ class _CorkboardCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         if (document.wordCount > 0)
-          Text('${_formatCount(document.wordCount)} words', style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
-        Text('#${index + 1}', style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
+          Text(
+            '${_formatCount(document.wordCount)} words',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        Text(
+          '#${index + 1}',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ],
     );
   }
@@ -631,7 +814,9 @@ class _CorkboardCard extends StatelessWidget {
     // Handled by PopupMenuButton
   }
 
-  String _formatCount(int count) => count >= 1000 ? '${(count / 1000).toStringAsFixed(1)}k' : count.toString();
+  String _formatCount(int count) => count >= 1000
+      ? '${(count / 1000).toStringAsFixed(1)}k'
+      : count.toString();
 }
 
 class _TypeBadge extends StatelessWidget {
@@ -661,7 +846,14 @@ class _TypeBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600, fontSize: 10)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+        ),
+      ),
     );
   }
 }
@@ -690,7 +882,14 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600, fontSize: 9)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 9,
+        ),
+      ),
     );
   }
 }
@@ -700,7 +899,11 @@ class _MetadataRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MetadataRow({required this.icon, required this.label, required this.value});
+  const _MetadataRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -712,10 +915,27 @@ class _MetadataRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+          Icon(
+            icon,
+            size: 12,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
           const SizedBox(width: 6),
-          Text('$label: ', style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w500)),
-          Expanded(child: Text(value, style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Text(
+            '$label: ',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurface),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

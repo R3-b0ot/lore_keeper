@@ -6,35 +6,40 @@ void main() {
     late ReferenceEngine engine;
 
     // Shared test data
-    late List<CharacterReferenceEntry> characters;
+    late List<EntityReferenceEntry> characters;
 
     setUp(() {
       engine = const ReferenceEngine(maxResults: 20);
       characters = [
-        const CharacterReferenceEntry(
+        const EntityReferenceEntry(
           key: 1,
           name: 'Aria Nightingale',
           aliases: ['Ari', 'The Singer'],
+          entityType: 'Character',
         ),
-        const CharacterReferenceEntry(
+        const EntityReferenceEntry(
           key: 2,
           name: 'Thorin Stonehand',
           aliases: ['Thor', 'Stone'],
+          entityType: 'Character',
         ),
-        const CharacterReferenceEntry(
+        const EntityReferenceEntry(
           key: 3,
           name: 'Lyra',
           aliases: [],
+          entityType: 'Character',
         ),
-        const CharacterReferenceEntry(
+        const EntityReferenceEntry(
           key: 4,
           name: 'Kael Draven',
           aliases: ['Shadow', 'Dark One', 'Kael'],
+          entityType: 'Character',
         ),
-        const CharacterReferenceEntry(
+        const EntityReferenceEntry(
           key: 5,
           name: 'Aria Stark',
           aliases: ['Aria Wolf'],
+          entityType: 'Character',
         ),
       ];
     });
@@ -107,8 +112,9 @@ void main() {
         final results = engine.resolve('Aria', characters);
         expect(results, isNotEmpty);
         // Should include both Aria Nightingale and Aria Stark as prefix matches
-        final ariaResults =
-            results.where((r) => r.matchType == MatchType.prefixName).toList();
+        final ariaResults = results
+            .where((r) => r.matchType == MatchType.prefixName)
+            .toList();
         expect(ariaResults.length, 2);
         expect(ariaResults.every((r) => r.confidence == 0.7), true);
       });
@@ -226,7 +232,10 @@ void main() {
             .where((r) => r.matchType == MatchType.prefixAlias)
             .toList();
         if (nameMatch.isNotEmpty && aliasMatch.isNotEmpty) {
-          expect(nameMatch.first.confidence > aliasMatch.first.confidence, true);
+          expect(
+            nameMatch.first.confidence > aliasMatch.first.confidence,
+            true,
+          );
         }
       });
 
@@ -291,10 +300,7 @@ void main() {
         for (var i = 1; i < allResults.length; i++) {
           expect(allResults[0].length, allResults[i].length);
           for (var j = 0; j < allResults[0].length; j++) {
-            expect(
-              allResults[0][j].displayName,
-              allResults[i][j].displayName,
-            );
+            expect(allResults[0][j].displayName, allResults[i][j].displayName);
           }
         }
       });
@@ -322,12 +328,13 @@ void main() {
         expect(results.first.matchType, MatchType.exactName);
       });
 
-      test('character with empty alias list behaves same as no aliases', () {
+      test('entity with empty alias list behaves same as no aliases', () {
         final entries = [
-          const CharacterReferenceEntry(
+          const EntityReferenceEntry(
             key: 10,
             name: 'Test Character',
             aliases: [],
+            entityType: 'Character',
           ),
         ];
         final results = engine.resolve('Test', entries);

@@ -81,71 +81,81 @@ void main() {
       await Hive.close();
     });
 
-    test('detects legacy_v1 when metadata box missing but data exists',
-        () async {
-      // Seed legacy V1 data: create boxes and write real domain data.
-      final projectBox = await Hive.openBox<Project>(_kProjectBox);
-      await projectBox.add(Project(
-        title: 'The Great Novel',
-        createdAt: DateTime(2024, 1, 15),
-        description: 'A test project',
-        genre: 'Fantasy',
-      ));
+    test(
+      'detects legacy_v1 when metadata box missing but data exists',
+      () async {
+        // Seed legacy V1 data: create boxes and write real domain data.
+        final projectBox = await Hive.openBox<Project>(_kProjectBox);
+        await projectBox.add(
+          Project(
+            title: 'The Great Novel',
+            createdAt: DateTime(2024, 1, 15),
+            description: 'A test project',
+            genre: 'Fantasy',
+          ),
+        );
 
-      final calSystemBox =
-          await Hive.openBox<CalendarSystem>(_kCalendarSystemBox);
-      final systemKey = await calSystemBox.add(CalendarSystem(
-        name: 'Middle-earth Calendar',
-        projectId: 0,
-        rootNodeId: 'root_era',
-        isConfigured: true,
-      ));
+        final calSystemBox = await Hive.openBox<CalendarSystem>(
+          _kCalendarSystemBox,
+        );
+        final systemKey = await calSystemBox.add(
+          CalendarSystem(
+            name: 'Middle-earth Calendar',
+            projectId: 0,
+            rootNodeId: 'root_era',
+            isConfigured: true,
+          ),
+        );
 
-      final calNodeBox = await Hive.openBox<CalendarNode>(_kCalendarNodeBox);
-      await calNodeBox.add(CalendarNode(
-        id: 'root_era',
-        systemKey: systemKey,
-        parentId: null,
-        type: 'era',
-        title: 'Third Age',
-        iconKey: 'shield',
-        colorValue: 0xFF4A90D9,
-        content: 'The Age of Middle-earth',
-        attributes: [
-          CalendarAttribute(label: 'Start', value: 'Year 1'),
-        ],
-        childrenOrder: ['child_1'],
-      ));
+        final calNodeBox = await Hive.openBox<CalendarNode>(_kCalendarNodeBox);
+        await calNodeBox.add(
+          CalendarNode(
+            id: 'root_era',
+            systemKey: systemKey,
+            parentId: null,
+            type: 'era',
+            title: 'Third Age',
+            iconKey: 'shield',
+            colorValue: 0xFF4A90D9,
+            content: 'The Age of Middle-earth',
+            attributes: [CalendarAttribute(label: 'Start', value: 'Year 1')],
+            childrenOrder: ['child_1'],
+          ),
+        );
 
-      final timelineBox =
-          await Hive.openBox<TimelineEvent>(_kTimelineEventBox);
-      await timelineBox.add(TimelineEvent(
-        id: 'evt_1',
-        projectId: 0,
-        name: 'Fellowship Formed',
-        tier: 'major',
-        absoluteYear: 3018,
-        absoluteDayOfYear: 300,
-        iconKey: 'ring',
-        colorValue: 0xFFD4AF37,
-        lore: 'The Fellowship of the Ring departs Rivendell.',
-        calendarSystemKey: systemKey,
-        linkedCharacterIds: ['char_1', 'char_2'],
-      ));
+        final timelineBox = await Hive.openBox<TimelineEvent>(
+          _kTimelineEventBox,
+        );
+        await timelineBox.add(
+          TimelineEvent(
+            id: 'evt_1',
+            projectId: 0,
+            name: 'Fellowship Formed',
+            tier: 'major',
+            absoluteYear: 3018,
+            absoluteDayOfYear: 300,
+            iconKey: 'ring',
+            colorValue: 0xFFD4AF37,
+            lore: 'The Fellowship of the Ring departs Rivendell.',
+            calendarSystemKey: systemKey,
+            linkedCharacterIds: ['char_1', 'char_2'],
+          ),
+        );
 
-      // Close all boxes — simulate app shutdown.
-      await projectBox.close();
-      await calSystemBox.close();
-      await calNodeBox.close();
-      await timelineBox.close();
+        // Close all boxes — simulate app shutdown.
+        await projectBox.close();
+        await calSystemBox.close();
+        await calNodeBox.close();
+        await timelineBox.close();
 
-      // Verify no metadata box exists.
-      expect(await Hive.boxExists(_kMetaBox), isFalse);
+        // Verify no metadata box exists.
+        expect(await Hive.boxExists(_kMetaBox), isFalse);
 
-      // Detection should find legacy data.
-      expect(await _detectLegacyData(), isTrue);
-      expect(await _detectDatabaseState(), equals('legacy_v1'));
-    });
+        // Detection should find legacy data.
+        expect(await _detectLegacyData(), isTrue);
+        expect(await _detectDatabaseState(), equals('legacy_v1'));
+      },
+    );
 
     test('detects fresh when no boxes exist', () async {
       // No boxes created — clean temp directory.
@@ -156,53 +166,59 @@ void main() {
     test('V1→V2 migration preserves all seeded data', () async {
       // ── Phase 1: Seed legacy V1 database ──────────────────────────────
       final projectBox = await Hive.openBox<Project>(_kProjectBox);
-      final projectIdx = await projectBox.add(Project(
-        title: 'The Great Novel',
-        createdAt: DateTime(2024, 1, 15),
-        description: 'A test project',
-        genre: 'Fantasy',
-      ));
+      final projectIdx = await projectBox.add(
+        Project(
+          title: 'The Great Novel',
+          createdAt: DateTime(2024, 1, 15),
+          description: 'A test project',
+          genre: 'Fantasy',
+        ),
+      );
 
-      final calSystemBox =
-          await Hive.openBox<CalendarSystem>(_kCalendarSystemBox);
-      final systemKey = await calSystemBox.add(CalendarSystem(
-        name: 'Middle-earth Calendar',
-        projectId: 0,
-        rootNodeId: 'root_era',
-        isConfigured: true,
-      ));
+      final calSystemBox = await Hive.openBox<CalendarSystem>(
+        _kCalendarSystemBox,
+      );
+      final systemKey = await calSystemBox.add(
+        CalendarSystem(
+          name: 'Middle-earth Calendar',
+          projectId: 0,
+          rootNodeId: 'root_era',
+          isConfigured: true,
+        ),
+      );
 
       final calNodeBox = await Hive.openBox<CalendarNode>(_kCalendarNodeBox);
-      final nodeIdx = await calNodeBox.add(CalendarNode(
-        id: 'root_era',
-        systemKey: systemKey,
-        parentId: null,
-        type: 'era',
-        title: 'Third Age',
-        iconKey: 'shield',
-        colorValue: 0xFF4A90D9,
-        content: 'The Age of Middle-earth',
-        attributes: [
-          CalendarAttribute(label: 'Start', value: 'Year 1'),
-        ],
-        childrenOrder: ['child_1'],
-      ));
+      final nodeIdx = await calNodeBox.add(
+        CalendarNode(
+          id: 'root_era',
+          systemKey: systemKey,
+          parentId: null,
+          type: 'era',
+          title: 'Third Age',
+          iconKey: 'shield',
+          colorValue: 0xFF4A90D9,
+          content: 'The Age of Middle-earth',
+          attributes: [CalendarAttribute(label: 'Start', value: 'Year 1')],
+          childrenOrder: ['child_1'],
+        ),
+      );
 
-      final timelineBox =
-          await Hive.openBox<TimelineEvent>(_kTimelineEventBox);
-      final eventIdx = await timelineBox.add(TimelineEvent(
-        id: 'evt_1',
-        projectId: 0,
-        name: 'Fellowship Formed',
-        tier: 'major',
-        absoluteYear: 3018,
-        absoluteDayOfYear: 300,
-        iconKey: 'ring',
-        colorValue: 0xFFD4AF37,
-        lore: 'The Fellowship of the Ring departs Rivendell.',
-        calendarSystemKey: systemKey,
-        linkedCharacterIds: ['char_1', 'char_2'],
-      ));
+      final timelineBox = await Hive.openBox<TimelineEvent>(_kTimelineEventBox);
+      final eventIdx = await timelineBox.add(
+        TimelineEvent(
+          id: 'evt_1',
+          projectId: 0,
+          name: 'Fellowship Formed',
+          tier: 'major',
+          absoluteYear: 3018,
+          absoluteDayOfYear: 300,
+          iconKey: 'ring',
+          colorValue: 0xFFD4AF37,
+          lore: 'The Fellowship of the Ring departs Rivendell.',
+          calendarSystemKey: systemKey,
+          linkedCharacterIds: ['char_1', 'char_2'],
+        ),
+      );
 
       // Verify seed data is correct.
       expect(projectBox.length, 1);
@@ -213,8 +229,7 @@ void main() {
       expect(calNodeBox.getAt(nodeIdx)!.title, 'Third Age');
       expect(calNodeBox.getAt(nodeIdx)!.attributes.length, 1);
       expect(timelineBox.length, 1);
-      expect(
-          timelineBox.getAt(eventIdx)!.name, 'Fellowship Formed');
+      expect(timelineBox.getAt(eventIdx)!.name, 'Fellowship Formed');
 
       // Close all boxes — simulate app shutdown.
       await projectBox.close();
@@ -256,8 +271,9 @@ void main() {
       expect(p.createdAt, DateTime(2024, 1, 15));
       await projectBox2.close();
 
-      final calSystemBox2 =
-          await Hive.openBox<CalendarSystem>(_kCalendarSystemBox);
+      final calSystemBox2 = await Hive.openBox<CalendarSystem>(
+        _kCalendarSystemBox,
+      );
       expect(calSystemBox2.length, 1);
       final cs = calSystemBox2.getAt(0)!;
       expect(cs.name, 'Middle-earth Calendar');
@@ -281,8 +297,9 @@ void main() {
       expect(cn.childrenOrder, ['child_1']);
       await calNodeBox2.close();
 
-      final timelineBox2 =
-          await Hive.openBox<TimelineEvent>(_kTimelineEventBox);
+      final timelineBox2 = await Hive.openBox<TimelineEvent>(
+        _kTimelineEventBox,
+      );
       expect(timelineBox2.length, 1);
       final te = timelineBox2.getAt(0)!;
       expect(te.id, 'evt_1');

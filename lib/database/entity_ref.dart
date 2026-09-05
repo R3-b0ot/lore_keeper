@@ -39,8 +39,7 @@ class EntityRef {
   }) : id = key.toString();
 
   /// Returns the Hive-compatible key (int or String) stored in [id].
-  dynamic get asKey =>
-      int.tryParse(id) ?? id;
+  dynamic get asKey => int.tryParse(id) ?? id;
 
   @override
   bool operator ==(Object other) =>
@@ -57,16 +56,16 @@ class EntityRef {
   String toString() => 'EntityRef($entityType:$id, project:$projectId)';
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'entityType': entityType,
-        'projectId': projectId,
-      };
+    'id': id,
+    'entityType': entityType,
+    'projectId': projectId,
+  };
 
   factory EntityRef.fromJson(Map<String, dynamic> json) => EntityRef(
-        id: json['id'] as String,
-        entityType: json['entityType'] as String,
-        projectId: json['projectId'] as String,
-      );
+    id: json['id'] as String,
+    entityType: json['entityType'] as String,
+    projectId: json['projectId'] as String,
+  );
 }
 
 /// Entity type constants.
@@ -89,6 +88,12 @@ abstract final class EntityType {
   static const String mapData = 'MapData';
   static const String mapLayer = 'MapLayer';
   static const String customTrait = 'CustomTrait';
+  static const String manuscriptDocument = 'ManuscriptDocument';
+  static const String location = 'Location';
+  static const String item = 'Item';
+  static const String organization = 'Organization';
+  static const String faction = 'Faction';
+  static const String species = 'Species';
 
   static const List<String> all = [
     project,
@@ -106,5 +111,11 @@ abstract final class EntityType {
     mapData,
     mapLayer,
     customTrait,
+    manuscriptDocument,
+    location,
+    item,
+    organization,
+    faction,
+    species,
   ];
 }

@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
 part 'trait_editor_screen.g.dart';
+
 // --- 1. Data Models ---
 
 // Model for simple traits (Congenital, Physical)

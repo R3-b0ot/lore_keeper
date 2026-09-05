@@ -132,7 +132,9 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _twitterController,
                       label: 'Twitter / X',
                       hint: '@username',
-                      icon: SvgPicture.asset('assets/icons/social/x_twitter.svg'),
+                      icon: SvgPicture.asset(
+                        'assets/icons/social/x_twitter.svg',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -141,7 +143,9 @@ class _AboutAuthorFormState extends State<AboutAuthorForm> {
                       controller: _instagramController,
                       label: 'Instagram',
                       hint: 'username',
-                      icon: SvgPicture.asset('assets/icons/social/instagram.svg'),
+                      icon: SvgPicture.asset(
+                        'assets/icons/social/instagram.svg',
+                      ),
                     ),
                   ),
                 ],

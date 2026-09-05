@@ -21,20 +21,20 @@ void main() {
   group('DatabaseMetadata persistence', () {
     late String tempPath;
 
-  setUp(() async {
-    final dir = Directory.systemTemp.createTempSync('lk_meta_test_');
-    tempPath = dir.path;
-    Hive.init(tempPath);
-    if (!Hive.isAdapterRegistered(50)) {
-      Hive.registerAdapter(DatabaseMetadataAdapter());
-    }
-  });
+    setUp(() async {
+      final dir = Directory.systemTemp.createTempSync('lk_meta_test_');
+      tempPath = dir.path;
+      Hive.init(tempPath);
+      if (!Hive.isAdapterRegistered(50)) {
+        Hive.registerAdapter(DatabaseMetadataAdapter());
+      }
+    });
 
-  tearDown(() async {
-    await Hive.close();
-  });
+    tearDown(() async {
+      await Hive.close();
+    });
 
-  test('fresh metadata persists and roundtrips', () async {
+    test('fresh metadata persists and roundtrips', () async {
       final metaBox = await Hive.openBox<DatabaseMetadata>('lorekeeper_meta');
 
       final fresh = DatabaseMetadata.fresh();
@@ -92,14 +92,14 @@ void main() {
   group('DatabaseManager V1→V2 migration', () {
     late String tempPath;
 
-  setUp(() async {
-    final dir = Directory.systemTemp.createTempSync('lk_mig_test_');
-    tempPath = dir.path;
-    Hive.init(tempPath);
-    if (!Hive.isAdapterRegistered(50)) {
-      Hive.registerAdapter(DatabaseMetadataAdapter());
-    }
-  });
+    setUp(() async {
+      final dir = Directory.systemTemp.createTempSync('lk_mig_test_');
+      tempPath = dir.path;
+      Hive.init(tempPath);
+      if (!Hive.isAdapterRegistered(50)) {
+        Hive.registerAdapter(DatabaseMetadataAdapter());
+      }
+    });
 
     tearDown(() async {
       await Hive.close();

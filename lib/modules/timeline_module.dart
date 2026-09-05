@@ -72,7 +72,10 @@ class _TimelineModuleState extends State<TimelineModule> {
   CalendarChronology _chronology(int systemKey) =>
       CalendarChronology.fromProvider(widget.calendarProvider, systemKey);
 
-  _EventPosition _positionFor(TimelineEvent event, CalendarChronology chronology) {
+  _EventPosition _positionFor(
+    TimelineEvent event,
+    CalendarChronology chronology,
+  ) {
     final totalDays = math.max(1, chronology.daysInYear);
     final startDay = math.max(1, math.min(totalDays, event.absoluteDayOfYear));
     final endDay = event.endYear == 0 || event.endDayOfYear == 0
@@ -130,17 +133,25 @@ class _TimelineModuleState extends State<TimelineModule> {
   double _eraPx() => 260.0 * _zoom.clamp(0.5, 1.5);
 
   /// Computes the full track width for the current tier and chronology.
-  double _trackWidth(CalendarChronology chronology, List<TimelineEvent> events) {
+  double _trackWidth(
+    CalendarChronology chronology,
+    List<TimelineEvent> events,
+  ) {
     switch (_tier) {
       case _ZoomTier.era:
         return math.max(1, chronology.eras.length) * _eraPx() + 240.0;
       case _ZoomTier.year:
         if (events.isEmpty) return 1200;
-        final years = events
-            .map((e) => e.absoluteYear)
-            .followedBy(events.map((e) => e.endYear == 0 ? e.absoluteYear : e.endYear))
-            .toList()
-          ..sort();
+        final years =
+            events
+                .map((e) => e.absoluteYear)
+                .followedBy(
+                  events.map(
+                    (e) => e.endYear == 0 ? e.absoluteYear : e.endYear,
+                  ),
+                )
+                .toList()
+              ..sort();
         return ((years.last - years.first + 1) * _yearPx()) + 240.0;
       case _ZoomTier.month:
         return chronology.months.length * _monthPx() + 240.0;
@@ -162,13 +173,20 @@ class _TimelineModuleState extends State<TimelineModule> {
         final eraIdx = chronology.eraAtYear(year);
         return left + (eraIdx * _eraPx()) + (_eraPx() / 2);
       case _ZoomTier.year:
-        final years = events
-            .map((e) => e.absoluteYear)
-            .followedBy(events.map((e) => e.endYear == 0 ? e.absoluteYear : e.endYear))
-            .toList()
-          ..sort();
+        final years =
+            events
+                .map((e) => e.absoluteYear)
+                .followedBy(
+                  events.map(
+                    (e) => e.endYear == 0 ? e.absoluteYear : e.endYear,
+                  ),
+                )
+                .toList()
+              ..sort();
         final minYear = years.first;
-        return left + ((year - minYear) * _yearPx()) + ((dayOfYear - 1) / math.max(1, chronology.daysInYear) * _yearPx());
+        return left +
+            ((year - minYear) * _yearPx()) +
+            ((dayOfYear - 1) / math.max(1, chronology.daysInYear) * _yearPx());
       case _ZoomTier.month:
         final monthIdx = chronology.monthAtDayOfYear(dayOfYear);
         final monthDays = math.max(1, chronology.months[monthIdx].days);
@@ -181,13 +199,22 @@ class _TimelineModuleState extends State<TimelineModule> {
   }
 
   /// X position for an event's start (or center for instant events).
-  double _eventStartX(_EventPosition pos, CalendarChronology chronology, List<TimelineEvent> events) {
+  double _eventStartX(
+    _EventPosition pos,
+    CalendarChronology chronology,
+    List<TimelineEvent> events,
+  ) {
     return _xForDay(pos.startDayOfYear, pos.startYear, chronology, events);
   }
 
   /// X position for an event's end.
-  double _eventEndX(_EventPosition pos, CalendarChronology chronology, List<TimelineEvent> events) {
-    if (pos.endYear == pos.startYear && pos.endDayOfYear == pos.startDayOfYear) {
+  double _eventEndX(
+    _EventPosition pos,
+    CalendarChronology chronology,
+    List<TimelineEvent> events,
+  ) {
+    if (pos.endYear == pos.startYear &&
+        pos.endDayOfYear == pos.startDayOfYear) {
       return _eventStartX(pos, chronology, events);
     }
     return _xForDay(pos.endDayOfYear, pos.endYear, chronology, events);
@@ -219,7 +246,12 @@ class _TimelineModuleState extends State<TimelineModule> {
                           style: theme.textTheme.bodySmall,
                         ),
                       )
-                    : _editor(theme, chronology, selected, positions[selected.id]!),
+                    : _editor(
+                        theme,
+                        chronology,
+                        selected,
+                        positions[selected.id]!,
+                      ),
               ),
             ),
             Expanded(
@@ -228,7 +260,9 @@ class _TimelineModuleState extends State<TimelineModule> {
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.3,
+                      ),
                     ),
                   ),
                   color: theme.colorScheme.surface.withValues(alpha: 0.25),
@@ -236,7 +270,10 @@ class _TimelineModuleState extends State<TimelineModule> {
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 4,
@@ -245,13 +282,17 @@ class _TimelineModuleState extends State<TimelineModule> {
                           Text('Mode: ${_tier.name.toUpperCase()}'),
                           const Icon(LucideIcons.zoomOut, size: 14),
                           ConstrainedBox(
-                            constraints: const BoxConstraints(minWidth: 120, maxWidth: 180),
+                            constraints: const BoxConstraints(
+                              minWidth: 120,
+                              maxWidth: 180,
+                            ),
                             child: Slider(
                               value: _zoom,
                               min: 0.3,
                               max: 3.5,
                               divisions: 32,
-                              onChanged: (value) => setState(() => _zoom = value),
+                              onChanged: (value) =>
+                                  setState(() => _zoom = value),
                             ),
                           ),
                           const Icon(LucideIcons.zoomIn, size: 14),
@@ -264,7 +305,13 @@ class _TimelineModuleState extends State<TimelineModule> {
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
                           width: viewportWidth,
-                          child: _track(theme, chronology, events, positions, viewportWidth),
+                          child: _track(
+                            theme,
+                            chronology,
+                            events,
+                            positions,
+                            viewportWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -278,13 +325,20 @@ class _TimelineModuleState extends State<TimelineModule> {
     );
   }
 
-  Widget _editor(ThemeData theme, CalendarChronology chronology, TimelineEvent e, _EventPosition pos) {
+  Widget _editor(
+    ThemeData theme,
+    CalendarChronology chronology,
+    TimelineEvent e,
+    _EventPosition pos,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           e.name,
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -303,8 +357,12 @@ class _TimelineModuleState extends State<TimelineModule> {
               child: TextFormField(
                 key: ValueKey('ev-name-${e.id}'),
                 initialValue: e.name,
-                decoration: const InputDecoration(labelText: 'Name', isDense: true),
-                onChanged: (value) => widget.eventProvider.updateEvent(e.id, name: value),
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  isDense: true,
+                ),
+                onChanged: (value) =>
+                    widget.eventProvider.updateEvent(e.id, name: value),
               ),
             ),
             DateRangePickerButton(
@@ -312,7 +370,9 @@ class _TimelineModuleState extends State<TimelineModule> {
               startYear: e.absoluteYear,
               startDayOfYear: e.absoluteDayOfYear,
               endYear: e.endYear == 0 ? e.absoluteYear : e.endYear,
-              endDayOfYear: e.endDayOfYear == 0 ? e.absoluteDayOfYear : e.endDayOfYear,
+              endDayOfYear: e.endDayOfYear == 0
+                  ? e.absoluteDayOfYear
+                  : e.endDayOfYear,
               label: 'Date Range',
               onChanged: (date) {
                 widget.eventProvider.updateEvent(
@@ -327,8 +387,13 @@ class _TimelineModuleState extends State<TimelineModule> {
             SizedBox(
               width: math.min(170, MediaQuery.sizeOf(context).width - 48),
               child: DropdownButtonFormField<String>(
-                initialValue: _iconOptions.contains(e.iconKey) ? e.iconKey : _iconOptions.first,
-                decoration: const InputDecoration(labelText: 'Icon', isDense: true),
+                initialValue: _iconOptions.contains(e.iconKey)
+                    ? e.iconKey
+                    : _iconOptions.first,
+                decoration: const InputDecoration(
+                  labelText: 'Icon',
+                  isDense: true,
+                ),
                 items: _iconOptions
                     .map(
                       (iconKey) => DropdownMenuItem<String>(
@@ -352,8 +417,13 @@ class _TimelineModuleState extends State<TimelineModule> {
             SizedBox(
               width: math.min(180, MediaQuery.sizeOf(context).width - 48),
               child: DropdownButtonFormField<int>(
-                initialValue: _colorOptions.contains(e.colorValue) ? e.colorValue : _colorOptions.first,
-                decoration: const InputDecoration(labelText: 'Color', isDense: true),
+                initialValue: _colorOptions.contains(e.colorValue)
+                    ? e.colorValue
+                    : _colorOptions.first,
+                decoration: const InputDecoration(
+                  labelText: 'Color',
+                  isDense: true,
+                ),
                 items: _colorOptions
                     .map(
                       (value) => DropdownMenuItem<int>(
@@ -363,7 +433,10 @@ class _TimelineModuleState extends State<TimelineModule> {
                             Container(
                               width: 12,
                               height: 12,
-                              decoration: BoxDecoration(color: Color(value), shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: Color(value),
+                                shape: BoxShape.circle,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Text('#${value.toRadixString(16).toUpperCase()}'),
@@ -392,7 +465,8 @@ class _TimelineModuleState extends State<TimelineModule> {
               hintText: 'Write event lore here...',
               border: OutlineInputBorder(),
             ),
-            onChanged: (value) => widget.eventProvider.updateEvent(e.id, lore: value),
+            onChanged: (value) =>
+                widget.eventProvider.updateEvent(e.id, lore: value),
           ),
         ),
       ],
@@ -400,8 +474,12 @@ class _TimelineModuleState extends State<TimelineModule> {
   }
 
   String _formatRange(_EventPosition pos, CalendarChronology chronology) {
-    final startLabel = chronology.formatDisplay(pos.startYear, pos.startDayOfYear);
-    if (pos.endYear == pos.startYear && pos.endDayOfYear == pos.startDayOfYear) {
+    final startLabel = chronology.formatDisplay(
+      pos.startYear,
+      pos.startDayOfYear,
+    );
+    if (pos.endYear == pos.startYear &&
+        pos.endDayOfYear == pos.startDayOfYear) {
       return startLabel;
     }
     final endLabel = chronology.formatDisplay(pos.endYear, pos.endDayOfYear);
@@ -424,7 +502,10 @@ class _TimelineModuleState extends State<TimelineModule> {
           left: 0,
           right: 0,
           top: 110,
-          child: Container(height: 2, color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
+          child: Container(
+            height: 2,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+          ),
         ),
         // Era labels
         if (_tier == _ZoomTier.era)
@@ -463,7 +544,9 @@ class _TimelineModuleState extends State<TimelineModule> {
               const SizedBox(width: left),
               ...chronology.months.map(
                 (m) => Container(
-                  width: _tier == _ZoomTier.month ? _monthPx() : (m.days * _dayPx()),
+                  width: _tier == _ZoomTier.month
+                      ? _monthPx()
+                      : (m.days * _dayPx()),
                   padding: const EdgeInsets.only(left: 10, bottom: 18),
                   alignment: Alignment.bottomLeft,
                   child: Text(m.name, style: theme.textTheme.labelLarge),
@@ -482,7 +565,10 @@ class _TimelineModuleState extends State<TimelineModule> {
                   width: _dayPx(),
                   padding: const EdgeInsets.only(left: 2, bottom: 18),
                   alignment: Alignment.bottomCenter,
-                  child: Text('$day', style: theme.textTheme.labelSmall?.copyWith(fontSize: 8)),
+                  child: Text(
+                    '$day',
+                    style: theme.textTheme.labelSmall?.copyWith(fontSize: 8),
+                  ),
                 );
               }),
             ],
@@ -511,7 +597,9 @@ class _TimelineModuleState extends State<TimelineModule> {
                       color: color.withValues(alpha: active ? 0.25 : 0.15),
                       borderRadius: BorderRadius.circular(active ? 12 : 8),
                       border: Border.all(
-                        color: active ? color : theme.colorScheme.outlineVariant,
+                        color: active
+                            ? color
+                            : theme.colorScheme.outlineVariant,
                         width: active ? 2 : 1,
                       ),
                     ),
@@ -519,7 +607,11 @@ class _TimelineModuleState extends State<TimelineModule> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(_icon(e.iconKey), size: active ? 20 : 16, color: color),
+                        Icon(
+                          _icon(e.iconKey),
+                          size: active ? 20 : 16,
+                          color: color,
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
@@ -528,7 +620,9 @@ class _TimelineModuleState extends State<TimelineModule> {
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: active ? color : theme.colorScheme.onSurface,
+                              color: active
+                                  ? color
+                                  : theme.colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -551,13 +645,19 @@ class _TimelineModuleState extends State<TimelineModule> {
     );
   }
 
-  List<int> _visibleYears(CalendarChronology chronology, List<TimelineEvent> events) {
-    final years = events
-        .map((e) => e.absoluteYear)
-        .followedBy(events.map((e) => e.endYear == 0 ? e.absoluteYear : e.endYear))
-        .toSet()
-        .toList()
-      ..sort();
+  List<int> _visibleYears(
+    CalendarChronology chronology,
+    List<TimelineEvent> events,
+  ) {
+    final years =
+        events
+            .map((e) => e.absoluteYear)
+            .followedBy(
+              events.map((e) => e.endYear == 0 ? e.absoluteYear : e.endYear),
+            )
+            .toSet()
+            .toList()
+          ..sort();
     if (years.isEmpty) return [1];
     return years;
   }
@@ -566,13 +666,19 @@ class _TimelineModuleState extends State<TimelineModule> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([widget.calendarProvider, widget.eventProvider]),
+      listenable: Listenable.merge([
+        widget.calendarProvider,
+        widget.eventProvider,
+      ]),
       builder: (context, _) {
-        if (!widget.calendarProvider.isInitialized || !widget.eventProvider.isInitialized) {
+        if (!widget.calendarProvider.isInitialized ||
+            !widget.eventProvider.isInitialized) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final systems = widget.calendarProvider.systems.where((s) => s.isConfigured).toList();
+        final systems = widget.calendarProvider.systems
+            .where((s) => s.isConfigured)
+            .toList();
         if (systems.isEmpty) {
           return const Center(child: Text('No configured calendar systems.'));
         }
@@ -604,7 +710,9 @@ class _TimelineModuleState extends State<TimelineModule> {
         };
 
         return Container(
-          color: theme.brightness == Brightness.dark ? AppColors.bgMain : AppColors.bgMainLight,
+          color: theme.brightness == Brightness.dark
+              ? AppColors.bgMain
+              : AppColors.bgMainLight,
           child: _panel(theme, chronology, events, positions, selected),
         );
       },

@@ -32,7 +32,7 @@ class ReferenceEngine {
   final List<ReferenceIndexEntry> _index = [];
 
   ReferenceEngine({AiProvider? aiProvider})
-      : _aiProvider = aiProvider ?? const NullAiProvider();
+    : _aiProvider = aiProvider ?? const NullAiProvider();
 
   /// The AI provider backing this engine.
   AiProvider get aiProvider => _aiProvider;
@@ -72,7 +72,7 @@ class ReferenceEngine {
   /// This is a full rebuild: the existing index is cleared first.
   Future<void> rebuildIndex({
     required Future<List<ReferenceIndexEntry>> Function(String entityType)
-        extractReferences,
+    extractReferences,
   }) async {
     _index.clear();
     for (final entityType in EntityType.all) {
@@ -100,24 +100,25 @@ class ReferenceEngine {
   List<ReferenceIndexEntry> search(String query) {
     final lower = query.toLowerCase();
     return _index
-        .where((e) =>
-            e.source.id.toLowerCase().contains(lower) ||
-            e.target.id.toLowerCase().contains(lower) ||
-            e.kind.toLowerCase().contains(lower) ||
-            e.source.entityType.toLowerCase().contains(lower) ||
-            e.target.entityType.toLowerCase().contains(lower))
+        .where(
+          (e) =>
+              e.source.id.toLowerCase().contains(lower) ||
+              e.target.id.toLowerCase().contains(lower) ||
+              e.kind.toLowerCase().contains(lower) ||
+              e.source.entityType.toLowerCase().contains(lower) ||
+              e.target.entityType.toLowerCase().contains(lower),
+        )
         .toList();
   }
 
   /// Find all distinct entity types referenced by [entityRef].
-  Set<String> referencedEntityTypes(EntityRef entityRef) =>
-      _index
-          .where((e) => e.source == entityRef || e.target == entityRef)
-          .map((e) =>
-              e.source == entityRef
-                  ? e.target.entityType
-                  : e.source.entityType)
-          .toSet();
+  Set<String> referencedEntityTypes(EntityRef entityRef) => _index
+      .where((e) => e.source == entityRef || e.target == entityRef)
+      .map(
+        (e) =>
+            e.source == entityRef ? e.target.entityType : e.source.entityType,
+      )
+      .toSet();
 
   // ── AI Integration ──────────────────────────────────────────────────────
 

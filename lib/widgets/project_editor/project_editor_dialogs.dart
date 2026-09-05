@@ -113,10 +113,7 @@ class _CreateCharacterDialogState extends State<_CreateCharacterDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Create'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Create')),
       ],
     );
   }
@@ -161,7 +158,9 @@ class _EditCharacterDialogState extends State<_EditCharacterDialog> {
 
   void _confirm() {
     if (_formKey.currentState?.validate() ?? false) {
-      Navigator.of(context).pop(ConfirmCharacterName(_nameController.text.trim()));
+      Navigator.of(
+        context,
+      ).pop(ConfirmCharacterName(_nameController.text.trim()));
     }
   }
 
@@ -180,8 +179,7 @@ class _EditCharacterDialogState extends State<_EditCharacterDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop(const DeleteCharacter()),
+          onPressed: () => Navigator.of(context).pop(const DeleteCharacter()),
           child: Text(
             'Delete Character',
             style: TextStyle(color: AppColors.getError(context)),
@@ -192,10 +190,7 @@ class _EditCharacterDialogState extends State<_EditCharacterDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _confirm,
-          child: const Text('Confirm'),
-        ),
+        FilledButton(onPressed: _confirm, child: const Text('Confirm')),
       ],
     );
   }

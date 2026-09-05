@@ -20,6 +20,7 @@ class WorldBuildingTabs extends StatefulWidget {
 
   /// Current tab index (controlled mode). If provided, the widget uses this index.
   final int? initialTabIndex;
+
   /// Callback when the user switches tabs.
   final ValueChanged<int>? onTabChanged;
 

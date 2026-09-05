@@ -36,13 +36,18 @@ class ManuscriptDocumentAdapter extends TypeAdapter<ManuscriptDocument> {
       ..createdAt = fields[16] as DateTime?
       ..modifiedAt = fields[17] as DateTime?
       ..wordCount = fields[18] as int
-      ..characterCount = fields[19] as int;
+      ..characterCount = fields[19] as int
+      ..purpose = fields[20] as String?
+      ..isFavorite = fields[21] as bool? ?? false
+      ..calendarDateSystemKey = fields[22] as int? ?? 0
+      ..calendarDateYear = fields[23] as int? ?? 0
+      ..calendarDateDayOfYear = fields[24] as int? ?? 0;
   }
 
   @override
   void write(BinaryWriter writer, ManuscriptDocument obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(25)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -82,7 +87,17 @@ class ManuscriptDocumentAdapter extends TypeAdapter<ManuscriptDocument> {
       ..writeByte(18)
       ..write(obj.wordCount)
       ..writeByte(19)
-      ..write(obj.characterCount);
+      ..write(obj.characterCount)
+      ..writeByte(20)
+      ..write(obj.purpose)
+      ..writeByte(21)
+      ..write(obj.isFavorite)
+      ..writeByte(22)
+      ..write(obj.calendarDateSystemKey)
+      ..writeByte(23)
+      ..write(obj.calendarDateYear)
+      ..writeByte(24)
+      ..write(obj.calendarDateDayOfYear);
   }
 
   @override

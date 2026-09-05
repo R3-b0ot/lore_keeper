@@ -32,17 +32,41 @@ void main() {
       test('day 1', () => expect(chronology.monthAtDayOfYear(1), equals(0)));
       test('day 35', () => expect(chronology.monthAtDayOfYear(35), equals(0)));
       test('day 36', () => expect(chronology.monthAtDayOfYear(36), equals(1)));
-      test('day 360', () => expect(chronology.monthAtDayOfYear(360), equals(9)));
-      test('day 0 invalid', () => expect(chronology.monthAtDayOfYear(0), equals(-1)));
-      test('day 361 invalid', () => expect(chronology.monthAtDayOfYear(361), equals(-1)));
+      test(
+        'day 360',
+        () => expect(chronology.monthAtDayOfYear(360), equals(9)),
+      );
+      test(
+        'day 0 invalid',
+        () => expect(chronology.monthAtDayOfYear(0), equals(-1)),
+      );
+      test(
+        'day 361 invalid',
+        () => expect(chronology.monthAtDayOfYear(361), equals(-1)),
+      );
     });
 
     group('dayOfMonthAtDayOfYear', () {
-      test('day 1', () => expect(chronology.dayOfMonthAtDayOfYear(1), equals(1)));
-      test('day 35', () => expect(chronology.dayOfMonthAtDayOfYear(35), equals(35)));
-      test('day 36', () => expect(chronology.dayOfMonthAtDayOfYear(36), equals(1)));
-      test('day 65', () => expect(chronology.dayOfMonthAtDayOfYear(65), equals(30)));
-      test('day 360', () => expect(chronology.dayOfMonthAtDayOfYear(360), equals(40)));
+      test(
+        'day 1',
+        () => expect(chronology.dayOfMonthAtDayOfYear(1), equals(1)),
+      );
+      test(
+        'day 35',
+        () => expect(chronology.dayOfMonthAtDayOfYear(35), equals(35)),
+      );
+      test(
+        'day 36',
+        () => expect(chronology.dayOfMonthAtDayOfYear(36), equals(1)),
+      );
+      test(
+        'day 65',
+        () => expect(chronology.dayOfMonthAtDayOfYear(65), equals(30)),
+      );
+      test(
+        'day 360',
+        () => expect(chronology.dayOfMonthAtDayOfYear(360), equals(40)),
+      );
       test('invalid', () {
         expect(chronology.dayOfMonthAtDayOfYear(0), equals(-1));
         expect(chronology.dayOfMonthAtDayOfYear(361), equals(-1));
@@ -57,7 +81,15 @@ void main() {
       test('year 2500', () => expect(chronology.eraAtYear(2500), equals(2)));
       test('year 3000', () => expect(chronology.eraAtYear(3000), equals(2)));
       test('no eras', () {
-        final noEras = CalendarChronology(systemKey: 2, daysInYear: 365, months: [], eras: [], eraStartYears: [], calendarName: 'Test', systemName: 'Test');
+        final noEras = CalendarChronology(
+          systemKey: 2,
+          daysInYear: 365,
+          months: [],
+          eras: [],
+          eraStartYears: [],
+          calendarName: 'Test',
+          systemName: 'Test',
+        );
         expect(noEras.eraAtYear(100), equals(-1));
       });
     });
@@ -90,25 +122,63 @@ void main() {
 
     group('dayOfYearFromParts', () {
       test('valid', () {
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 1), equals(1));
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 35), equals(35));
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 1, dayOfMonth: 1), equals(36));
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 9, dayOfMonth: 40), equals(360));
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 1),
+          equals(1),
+        );
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 35),
+          equals(35),
+        );
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 1, dayOfMonth: 1),
+          equals(36),
+        );
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 9, dayOfMonth: 40),
+          equals(360),
+        );
       });
       test('invalid month', () {
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: -1, dayOfMonth: 1), equals(-1));
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 10, dayOfMonth: 1), equals(-1));
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: -1, dayOfMonth: 1),
+          equals(-1),
+        );
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 10, dayOfMonth: 1),
+          equals(-1),
+        );
       });
       test('invalid day', () {
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 0), equals(-1));
-        expect(chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 36), equals(-1));
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 0),
+          equals(-1),
+        );
+        expect(
+          chronology.dayOfYearFromParts(year: 1, monthIndex: 0, dayOfMonth: 36),
+          equals(-1),
+        );
       });
     });
 
     group('ChronologyMonth', () {
       test('endDayOfYear', () {
-        expect(ChronologyMonth(name: 'Test', days: 30, startDayOfYear: 1).endDayOfYear, equals(30));
-        expect(ChronologyMonth(name: 'Test2', days: 35, startDayOfYear: 36).endDayOfYear, equals(70));
+        expect(
+          ChronologyMonth(
+            name: 'Test',
+            days: 30,
+            startDayOfYear: 1,
+          ).endDayOfYear,
+          equals(30),
+        );
+        expect(
+          ChronologyMonth(
+            name: 'Test2',
+            days: 35,
+            startDayOfYear: 36,
+          ).endDayOfYear,
+          equals(70),
+        );
       });
     });
   });

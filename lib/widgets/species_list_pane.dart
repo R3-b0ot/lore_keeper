@@ -62,9 +62,9 @@ class _SpeciesListPaneState extends State<SpeciesListPane> {
         await widget.speciesProvider.createRootCategory(result);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
     }
@@ -170,19 +170,24 @@ class _SpeciesListPaneState extends State<SpeciesListPane> {
                           final entry = nodes[index];
                           final node = entry.node;
                           final isSelected =
-                              widget.speciesProvider.selectedNode?.id == node.id;
-                          final canDelete = node.parentId != null &&
-                              !(node.rank == 'category' && node.parentId == null);
+                              widget.speciesProvider.selectedNode?.id ==
+                              node.id;
+                          final canDelete =
+                              node.parentId != null &&
+                              !(node.rank == 'category' &&
+                                  node.parentId == null);
 
                           return _SpeciesTreeTile(
                             node: node,
                             level: entry.level,
                             isSelected: isSelected,
                             canDelete: canDelete,
-                            hasChildren:
-                                widget.speciesProvider.hasChildren(node.id),
-                            isExpanded:
-                                widget.speciesProvider.isExpanded(node.id),
+                            hasChildren: widget.speciesProvider.hasChildren(
+                              node.id,
+                            ),
+                            isExpanded: widget.speciesProvider.isExpanded(
+                              node.id,
+                            ),
                             onTap: () {
                               widget.speciesProvider.selectNode(node.id);
                             },
@@ -242,9 +247,9 @@ class _SpeciesListPaneState extends State<SpeciesListPane> {
         await widget.speciesProvider.deleteNode(nodeId);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
     }

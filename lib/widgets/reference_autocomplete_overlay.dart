@@ -19,10 +19,7 @@ class ReferenceAutocompleteOverlay extends StatefulWidget {
   final ReferenceAutocompleteController controller;
 
   /// Creates the autocomplete overlay.
-  const ReferenceAutocompleteOverlay({
-    super.key,
-    required this.controller,
-  });
+  const ReferenceAutocompleteOverlay({super.key, required this.controller});
 
   @override
   State<ReferenceAutocompleteOverlay> createState() =>
@@ -63,9 +60,7 @@ class _ReferenceAutocompleteOverlayState
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.15),
@@ -97,16 +92,16 @@ class _ReferenceAutocompleteOverlayState
                         ? 'Characters'
                         : '"${controller.query}"',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                      color: cs.onSurfaceVariant,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Text(
                   '${candidates.length}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                      ),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                  ),
                 ),
               ],
             ),
@@ -158,7 +153,8 @@ class _CandidateTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final matchedIsDifferent =
-        candidate.matchedName.toLowerCase() != candidate.displayName.toLowerCase();
+        candidate.matchedName.toLowerCase() !=
+        candidate.displayName.toLowerCase();
 
     return MouseRegion(
       onEnter: (_) => onHover(),
@@ -179,11 +175,7 @@ class _CandidateTile extends StatelessWidget {
                   color: cs.primary.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  LucideIcons.user,
-                  size: 14,
-                  color: cs.primary,
-                ),
+                child: Icon(LucideIcons.user, size: 14, color: cs.primary),
               ),
               const SizedBox(width: 10),
 
@@ -196,18 +188,18 @@ class _CandidateTile extends StatelessWidget {
                     Text(
                       candidate.displayName,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (matchedIsDifferent)
                       Text(
                         'aka ${candidate.matchedName}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                            ),
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                   ],

@@ -8,12 +8,17 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/services/reference_attribute.dart';
 import 'package:lore_keeper/services/reference_engine.dart';
 
-/// Callback type for providing characters to the controller.
-typedef CharactersProvider = List<Character> Function();
+/// Callback type for providing reference entries to the controller.
+///
+/// Each provider returns the [EntityReferenceEntry]s already scoped to the
+/// current project for one entity type. Returning a uniform entry type (rather
+/// than a raw model) keeps the controller model-agnostic so it can serve
+/// Characters, Species, Timeline Events, Manuscript Documents, etc. without
+/// coupling to any single Hive model.
+typedef EntityProvider = List<EntityReferenceEntry> Function();
 
 /// Controller for the @mention autocomplete feature.
 ///
@@ -23,7 +28,7 @@ typedef CharactersProvider = List<Character> Function();
 class ReferenceAutocompleteController {
   final ReferenceEngine _engine;
   final QuillController _quillController;
-  final CharactersProvider _charactersProvider;
+  final Map<String, EntityProvider> _entityProviders;
 
   bool _isActive = false;
   String _query = '';
@@ -37,11 +42,11 @@ class ReferenceAutocompleteController {
   /// Creates a reference autocomplete controller.
   ReferenceAutocompleteController({
     required QuillController quillController,
-    required CharactersProvider charactersProvider,
+    required Map<String, EntityProvider> entityProviders,
     ReferenceEngine? engine,
-  })  : _quillController = quillController,
-        _charactersProvider = charactersProvider,
-        _engine = engine ?? const ReferenceEngine();
+  }) : _quillController = quillController,
+       _entityProviders = entityProviders,
+       _engine = engine ?? const ReferenceEngine();
 
   /// Whether the autocomplete overlay is currently visible.
   bool get isActive => _isActive;
@@ -125,16 +130,13 @@ class ReferenceAutocompleteController {
     // Length to replace: from @ to current cursor position.
     final replaceLength = cursor - atIndex;
 
-    _quillController.replaceText(
-      atIndex,
-      replaceLength,
-      replacement,
-      null,
-    );
+    _quillController.replaceText(atIndex, replaceLength, replacement, null);
 
     // Apply the reference link attribute for styling + metadata.
     final target = ReferenceTarget(
-      type: ReferenceEntityType.character,
+      type:
+          ReferenceEntityType.fromEntityType(candidate.entry.entityType) ??
+          ReferenceEntityType.manuscriptDocument,
       id: candidate.entry.key,
     );
     _quillController.formatText(
@@ -224,13 +226,15 @@ class ReferenceAutocompleteController {
     final entries = _buildEntries();
     if (_query.trim().isEmpty) {
       final results = entries
-          .map((entry) => ReferenceCandidate(
-                entry: entry,
-                displayName: entry.name,
-                matchedName: entry.name,
-                matchType: MatchType.exactName,
-                confidence: 1.0,
-              ))
+          .map(
+            (entry) => ReferenceCandidate(
+              entry: entry,
+              displayName: entry.name,
+              matchedName: entry.name,
+              matchType: MatchType.exactName,
+              confidence: 1.0,
+            ),
+          )
           .toList();
       results.sort((a, b) => a.displayName.compareTo(b.displayName));
       _candidates = results.length <= _engine.maxResults
@@ -247,22 +251,11 @@ class ReferenceAutocompleteController {
     _notifyStateChanged();
   }
 
-  List<CharacterReferenceEntry> _buildEntries() {
-    final characters = _charactersProvider();
-    final entries = <CharacterReferenceEntry>[];
-    for (final c in characters) {
-      final aliases = <String>[
-        if (c.aliases != null) ...c.aliases!,
-        if (c.iterations.isNotEmpty) ...[
-          if (c.iterations.last.name != null) c.iterations.last.name!,
-          if (c.iterations.last.aliases != null) ...c.iterations.last.aliases!,
-        ],
-      ];
-      entries.add(CharacterReferenceEntry(
-        key: c.key,
-        name: c.name,
-        aliases: aliases,
-      ));
+  List<EntityReferenceEntry> _buildEntries() {
+    final entries = <EntityReferenceEntry>[];
+
+    for (final providerEntry in _entityProviders.entries) {
+      entries.addAll(providerEntry.value());
     }
     return entries;
   }

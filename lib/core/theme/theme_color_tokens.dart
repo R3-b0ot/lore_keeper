@@ -126,15 +126,26 @@ class ThemeColorTokens extends ThemeExtension<ThemeColorTokens> {
     if (other is! ThemeColorTokens) return this;
     return ThemeColorTokens(
       background: Color.lerp(background, other.background, t)!,
-      backgroundDarker: Color.lerp(backgroundDarker, other.backgroundDarker, t)!,
+      backgroundDarker: Color.lerp(
+        backgroundDarker,
+        other.backgroundDarker,
+        t,
+      )!,
       backgroundDark: Color.lerp(backgroundDark, other.backgroundDark, t)!,
       backgroundLight: Color.lerp(backgroundLight, other.backgroundLight, t)!,
-      backgroundLighter: Color.lerp(backgroundLighter, other.backgroundLighter, t)!,
+      backgroundLighter: Color.lerp(
+        backgroundLighter,
+        other.backgroundLighter,
+        t,
+      )!,
       floating: Color.lerp(floating, other.floating, t)!,
       selection: Color.lerp(selection, other.selection, t)!,
       currentLine: Color.lerp(currentLine, other.currentLine, t)!,
-      lineHighlightFallback:
-          Color.lerp(lineHighlightFallback, other.lineHighlightFallback, t)!,
+      lineHighlightFallback: Color.lerp(
+        lineHighlightFallback,
+        other.lineHighlightFallback,
+        t,
+      )!,
       foreground: Color.lerp(foreground, other.foreground, t)!,
       comment: Color.lerp(comment, other.comment, t)!,
       pink: Color.lerp(pink, other.pink, t)!,
@@ -145,12 +156,18 @@ class ThemeColorTokens extends ThemeExtension<ThemeColorTokens> {
       yellow: Color.lerp(yellow, other.yellow, t)!,
       red: Color.lerp(red, other.red, t)!,
       functionalRed: Color.lerp(functionalRed, other.functionalRed, t)!,
-      functionalOrange:
-          Color.lerp(functionalOrange, other.functionalOrange, t)!,
+      functionalOrange: Color.lerp(
+        functionalOrange,
+        other.functionalOrange,
+        t,
+      )!,
       functionalGreen: Color.lerp(functionalGreen, other.functionalGreen, t)!,
       functionalCyan: Color.lerp(functionalCyan, other.functionalCyan, t)!,
-      functionalPurple:
-          Color.lerp(functionalPurple, other.functionalPurple, t)!,
+      functionalPurple: Color.lerp(
+        functionalPurple,
+        other.functionalPurple,
+        t,
+      )!,
     );
   }
 }

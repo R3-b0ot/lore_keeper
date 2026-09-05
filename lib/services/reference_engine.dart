@@ -1,61 +1,65 @@
 /// Pure Dart reference-resolution layer for the @Name Reference Engine.
 ///
-/// This engine resolves typed name queries against character identities.
+/// This engine resolves typed name queries against entity identities.
 /// It operates on plain data — no Flutter widgets, BuildContext, Hive boxes,
 /// Quill editors, or navigation dependencies.
 ///
-/// The future Quill autocomplete layer will build [CharacterReferenceEntry]
+/// The future Quill autocomplete layer will build [EntityReferenceEntry]
 /// lists from Hive data and call [ReferenceEngine.resolve].
 library;
 
 /// Match quality classification.
 enum MatchType {
-  /// Query matches the character's display name exactly.
+  /// Query matches the entity's display name exactly.
   exactName,
 
   /// Query matches an alias exactly.
   exactAlias,
 
-  /// Query is a prefix of the character's display name.
+  /// Query is a prefix of the entity's display name.
   prefixName,
 
   /// Query is a prefix of an alias.
   prefixAlias,
 
-  /// Query is a substring of the character's display name.
+  /// Query is a substring of the entity's display name.
   substringName,
 
   /// Query is a substring of an alias.
   substringAlias,
 }
 
-/// A flat representation of a referenceable character identity.
+/// A flat representation of a referenceable entity identity.
 ///
-/// This decouples the resolver from the Hive [Character] model.
+/// This decouples the resolver from the specific Hive models.
 /// The Quill autocomplete layer builds these from Hive data before calling
 /// [ReferenceEngine.resolve].
-class CharacterReferenceEntry {
-  /// The character's unique identity key (Hive key).
+class EntityReferenceEntry {
+  /// The entity's unique identity key (Hive key or UUID).
   final dynamic key;
 
-  /// The character's primary display name.
+  /// The entity's primary display name.
   final String name;
 
-  /// All alternate names (character-level + current iteration aliases).
+  /// All alternate names (aliases, iterations, etc.).
   final List<String> aliases;
 
+  /// The entity type (Character, Location, etc.) - maps to EntityType constants.
+  final String entityType;
+
   /// Creates a reference entry.
-  const CharacterReferenceEntry({
+  const EntityReferenceEntry({
     required this.key,
     required this.name,
     this.aliases = const [],
+    required this.entityType,
   });
 }
 
 /// A single resolved candidate from the engine.
 class ReferenceCandidate {
-  /// The matched character identity.
-  final CharacterReferenceEntry entry;
+  /// The matched entity identity.
+  final EntityReferenceEntry entry;
 
   /// The display name to show in autocomplete.
   final String displayName;
@@ -85,25 +89,20 @@ class ReferenceCandidate {
       'matchType: $matchType, confidence: $confidence)';
 }
 
-/// Pure Dart character reference resolver.
+/// Pure Dart entity reference resolver.
 ///
-/// Matches a typed query against character names and aliases with a
+/// Matches a typed query against entity names and aliases with a
 /// deterministic ranking: exact name > exact alias > prefix name > prefix
 /// alias > substring name > substring alias.
 ///
 /// Usage:
 /// ```dart
 /// final engine = ReferenceEngine();
-/// final entries = characters.map((c) => CharacterReferenceEntry(
-///   key: c.key,
-///   name: c.name,
-///   aliases: [
-///     if (c.aliases != null) ...c.aliases!,
-///     if (c.iterations.isNotEmpty) ...[
-///       if (c.iterations.last.name != null) c.iterations.last.name!,
-///       if (c.iterations.last.aliases != null) ...c.iterations.last.aliases!,
-///     ],
-///   ],
+/// final entries = entities.map((e) => EntityReferenceEntry(
+///   key: e.key,
+///   name: e.name,
+///   aliases: [...],
+///   entityType: 'Character',
 /// )).toList();
 /// final results = engine.resolve('Ari', entries);
 /// ```
@@ -114,7 +113,7 @@ class ReferenceEngine {
   /// Creates a reference engine.
   const ReferenceEngine({this.maxResults = 20});
 
-  /// Resolve a query against the given character entries.
+  /// Resolve a query against the given entity entries.
   ///
   /// Returns a list of [ReferenceCandidate] sorted by relevance:
   /// - Confidence descending (1.0 > 0.9 > 0.7 > 0.6 > 0.3 > 0.2)
@@ -124,14 +123,14 @@ class ReferenceEngine {
   /// Returns an empty list if [query] is empty or no candidates match.
   List<ReferenceCandidate> resolve(
     String query,
-    List<CharacterReferenceEntry> characters,
+    List<EntityReferenceEntry> entries,
   ) {
-    if (query.isEmpty || characters.isEmpty) return const [];
+    if (query.isEmpty || entries.isEmpty) return const [];
 
     final q = query.toLowerCase();
     final results = <ReferenceCandidate>[];
 
-    for (final entry in characters) {
+    for (final entry in entries) {
       _matchEntry(q, entry, results);
     }
 
@@ -143,85 +142,97 @@ class ReferenceEngine {
 
   void _matchEntry(
     String q,
-    CharacterReferenceEntry entry,
+    EntityReferenceEntry entry,
     List<ReferenceCandidate> results,
   ) {
     final nameLower = entry.name.toLowerCase();
 
     // Exact full-name match
     if (nameLower == q) {
-      results.add(ReferenceCandidate(
-        entry: entry,
-        displayName: entry.name,
-        matchedName: entry.name,
-        matchType: MatchType.exactName,
-        confidence: 1.0,
-      ));
+      results.add(
+        ReferenceCandidate(
+          entry: entry,
+          displayName: entry.name,
+          matchedName: entry.name,
+          matchType: MatchType.exactName,
+          confidence: 1.0,
+        ),
+      );
       return;
     }
 
     // Exact alias match
     for (final alias in entry.aliases) {
       if (alias.toLowerCase() == q) {
-        results.add(ReferenceCandidate(
-          entry: entry,
-          displayName: entry.name,
-          matchedName: alias,
-          matchType: MatchType.exactAlias,
-          confidence: 0.9,
-        ));
+        results.add(
+          ReferenceCandidate(
+            entry: entry,
+            displayName: entry.name,
+            matchedName: alias,
+            matchType: MatchType.exactAlias,
+            confidence: 0.9,
+          ),
+        );
         return;
       }
     }
 
     // Prefix match on name
     if (nameLower.startsWith(q)) {
-      results.add(ReferenceCandidate(
-        entry: entry,
-        displayName: entry.name,
-        matchedName: entry.name,
-        matchType: MatchType.prefixName,
-        confidence: 0.7,
-      ));
+      results.add(
+        ReferenceCandidate(
+          entry: entry,
+          displayName: entry.name,
+          matchedName: entry.name,
+          matchType: MatchType.prefixName,
+          confidence: 0.7,
+        ),
+      );
       return;
     }
 
     // Prefix match on any alias
     for (final alias in entry.aliases) {
       if (alias.toLowerCase().startsWith(q)) {
-        results.add(ReferenceCandidate(
-          entry: entry,
-          displayName: entry.name,
-          matchedName: alias,
-          matchType: MatchType.prefixAlias,
-          confidence: 0.6,
-        ));
+        results.add(
+          ReferenceCandidate(
+            entry: entry,
+            displayName: entry.name,
+            matchedName: alias,
+            matchType: MatchType.prefixAlias,
+            confidence: 0.6,
+          ),
+        );
         return;
       }
     }
 
     // Substring match on name
     if (nameLower.contains(q)) {
-      results.add(ReferenceCandidate(
-        entry: entry,
-        displayName: entry.name,
-        matchedName: entry.name,
-        matchType: MatchType.substringName,
-        confidence: 0.3,
-      ));
+      results.add(
+        ReferenceCandidate(
+          entry: entry,
+          displayName: entry.name,
+          matchedName: entry.name,
+          matchType: MatchType.substringName,
+          confidence: 0.3,
+        ),
+      );
       return;
     }
 
     // Substring match on any alias
     for (final alias in entry.aliases) {
       if (alias.toLowerCase().contains(q)) {
-        results.add(ReferenceCandidate(
-          entry: entry,
-          displayName: entry.name,
-          matchedName: alias,
-          matchType: MatchType.substringAlias,
-          confidence: 0.2,
-        ));
+        results.add(
+          ReferenceCandidate(
+            entry: entry,
+            displayName: entry.name,
+            matchedName: alias,
+            matchType: MatchType.substringAlias,
+            confidence: 0.2,
+          ),
+        );
         return;
       }
     }

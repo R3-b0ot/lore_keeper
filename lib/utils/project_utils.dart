@@ -17,7 +17,9 @@ import 'package:lore_keeper/screens/project_editor_screen.dart';
 /// Returns the result passed back from the editor screen, or null if cancellation occurred.
 Future<dynamic> openProject(BuildContext context, Project project) async {
   final result = await Navigator.of(context).push(
-    MaterialPageRoute(builder: (context) => ProjectEditorScreen(project: project)),
+    MaterialPageRoute(
+      builder: (context) => ProjectEditorScreen(project: project),
+    ),
   );
   return result;
 }

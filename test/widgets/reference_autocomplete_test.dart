@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/character.dart';
+import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/services/reference_engine.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_overlay.dart';
@@ -27,11 +28,13 @@ List<Character> _testCharacters() {
   voldemort.aliases = ['The Dark Prince', 'He Who Must Not Be Named'];
 
   // Add an iteration alias to voldemort.
-  voldemort.iterations.add(CharacterIteration(
-    iterationName: 'Iteration 1',
-    name: 'Tom Riddle',
-    aliases: ['The Boy Who Lived'],
-  ));
+  voldemort.iterations.add(
+    CharacterIteration(
+      iterationName: 'Iteration 1',
+      name: 'Tom Riddle',
+      aliases: ['The Boy Who Lived'],
+    ),
+  );
 
   return [aria, thorin, lyra, kael, ariaStark, voldemort];
 }
@@ -51,12 +54,30 @@ QuillController _makeController(String text, {int? cursorOffset}) {
   return controller;
 }
 
+/// Converts test [Character]s into [EntityReferenceEntry]s for the controller,
+/// mirroring how the app builds autocomplete candidate entries.
+List<EntityReferenceEntry> _charEntries(List<Character> characters) {
+  return characters.map((c) {
+    final aliases = <String>[if (c.aliases != null) ...c.aliases!];
+    for (final it in c.iterations) {
+      if (it.name != null) aliases.add(it.name!);
+      if (it.aliases != null) aliases.addAll(it.aliases!);
+    }
+    return EntityReferenceEntry(
+      key: c.key,
+      name: c.name,
+      aliases: aliases,
+      entityType: EntityType.character,
+    );
+  }).toList();
+}
+
 /// Creates a KeyDownEvent for testing.
 KeyDownEvent _keyDown(LogicalKeyboardKey key) => KeyDownEvent(
-      physicalKey: PhysicalKeyboardKey(0),
-      logicalKey: key,
-      timeStamp: Duration.zero,
-    );
+  physicalKey: PhysicalKeyboardKey(0),
+  logicalKey: key,
+  timeStamp: Duration.zero,
+);
 
 // ---------------------------------------------------------------------------
 // Controller tests
@@ -73,7 +94,9 @@ void main() {
       quillController = _makeController('');
       controller = ReferenceAutocompleteController(
         quillController: quillController,
-        charactersProvider: () => characters,
+        entityProviders: {
+          EntityType.character: () => _charEntries(characters)
+        },
       );
       stateChangeCount = 0;
       controller.onStateChanged = () => stateChangeCount++;
@@ -342,13 +365,17 @@ void main() {
 
       test('returns false when not active', () {
         controller.dismiss();
-        expect(controller.handleKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)),
-            isFalse);
+        expect(
+          controller.handleKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)),
+          isFalse,
+        );
       });
 
       test('ignores non-navigation keys', () {
-        expect(controller.handleKeyEvent(_keyDown(LogicalKeyboardKey.keyA)),
-            isFalse);
+        expect(
+          controller.handleKeyEvent(_keyDown(LogicalKeyboardKey.keyA)),
+          isFalse,
+        );
       });
     });
 
@@ -430,8 +457,7 @@ void main() {
         expect(index, isNot(-1));
         controller.selectCandidate(index);
 
-        final plainText =
-            quillController.document.toPlainText().trimRight();
+        final plainText = quillController.document.toPlainText().trimRight();
         expect(plainText, 'Lyra');
         expect(quillController.selection.baseOffset, 'Lyra'.length);
       });
@@ -454,8 +480,7 @@ void main() {
 
         controller.selectCandidate(index);
 
-        final plainText =
-            quillController.document.toPlainText().trimRight();
+        final plainText = quillController.document.toPlainText().trimRight();
         // Must be the alias, NOT the canonical name.
         expect(plainText, 'The Dark Prince');
         expect(plainText.contains('Voldemort'), isFalse);
@@ -480,8 +505,7 @@ void main() {
 
         controller.selectCandidate(index);
 
-        final plainText =
-            quillController.document.toPlainText().trimRight();
+        final plainText = quillController.document.toPlainText().trimRight();
         expect(plainText, 'Tom Riddle');
         expect(plainText.contains('Voldemort'), isFalse);
       });
@@ -537,8 +561,7 @@ void main() {
 
         controller.selectCandidate(controller.candidates.indexOf(candidate));
 
-        final plainText =
-            quillController.document.toPlainText().trimRight();
+        final plainText = quillController.document.toPlainText().trimRight();
         // Text is the alias.
         expect(plainText, 'Thor');
         // But the candidate entry still points to the canonical identity.
@@ -763,8 +786,7 @@ void main() {
             } else if (text == 'Hello ') {
               // Plain text should NOT have a link attribute.
               expect(
-                op.attributes == null ||
-                    !op.attributes!.containsKey('link'),
+                op.attributes == null || !op.attributes!.containsKey('link'),
                 isTrue,
               );
             }
@@ -804,7 +826,9 @@ void main() {
       qc = _makeController('');
       ctrl = ReferenceAutocompleteController(
         quillController: qc,
-        charactersProvider: _testCharacters,
+        entityProviders: {
+          EntityType.character: () => _charEntries(_testCharacters())
+        },
       );
     });
 
@@ -979,7 +1003,9 @@ void main() {
       quillController = _makeController('');
       controller = ReferenceAutocompleteController(
         quillController: quillController,
-        charactersProvider: _testCharacters,
+        entityProviders: {
+          EntityType.character: () => _charEntries(_testCharacters())
+        },
       );
     });
 

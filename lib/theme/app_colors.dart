@@ -100,13 +100,13 @@ class AppColors {
 
   static Color getWarning(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? warningDark
-          : warningLight;
+      ? warningDark
+      : warningLight;
 
   static Color getSuccess(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? successDark
-          : successLight;
+      ? successDark
+      : successLight;
 
   // --- Refined Shadows (Calm & Subtle) ---
   static const BoxShadow shadow = BoxShadow(
@@ -155,13 +155,13 @@ class AppColors {
   );
 
   static TextStyle panelTitleStyle(BuildContext context) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? textMain
-            : textMainLight,
-      );
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: Theme.of(context).brightness == Brightness.dark
+        ? textMain
+        : textMainLight,
+  );
 
   static const LinearGradient actionCardGradient = LinearGradient(
     begin: Alignment.topLeft,

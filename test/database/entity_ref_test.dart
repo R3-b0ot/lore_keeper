@@ -85,18 +85,10 @@ void main() {
     });
 
     test('toJson produces expected structure', () {
-      const ref = EntityRef(
-        id: '42',
-        entityType: 'Character',
-        projectId: '1',
-      );
+      const ref = EntityRef(id: '42', entityType: 'Character', projectId: '1');
 
       final json = ref.toJson();
-      expect(json, {
-        'id': '42',
-        'entityType': 'Character',
-        'projectId': '1',
-      });
+      expect(json, {'id': '42', 'entityType': 'Character', 'projectId': '1'});
     });
   });
 

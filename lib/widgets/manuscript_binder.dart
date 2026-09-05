@@ -35,7 +35,12 @@ class _ReorderableChildren extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: children.length,
-      onReorder: onReorder,
+      onReorderItem: (oldIndex, newIndex) {
+        if (oldIndex < newIndex) {
+          newIndex -= 1;
+        }
+        onReorder(oldIndex, newIndex);
+      },
       itemBuilder: (context, index) {
         final child = children[index];
         return _BinderNode(
@@ -88,9 +93,7 @@ class ManuscriptBinder extends StatelessWidget {
         children: [
           _buildToolbar(context),
           const Divider(height: 1),
-          Expanded(
-            child: _buildTreeView(context),
-          ),
+          Expanded(child: _buildTreeView(context)),
         ],
       ),
     );
@@ -125,12 +128,14 @@ class ManuscriptBinder extends StatelessWidget {
           _ToolbarButton(
             icon: LucideIcons.folderPlus,
             tooltip: 'Add Folder (Part)',
-            onPressed: () => _showAddDocumentDialog(context, ManuscriptDocumentType.part),
+            onPressed: () =>
+                _showAddDocumentDialog(context, ManuscriptDocumentType.part),
           ),
           _ToolbarButton(
             icon: LucideIcons.fileText,
             tooltip: 'Add Chapter',
-            onPressed: () => _showAddDocumentDialog(context, ManuscriptDocumentType.chapter),
+            onPressed: () =>
+                _showAddDocumentDialog(context, ManuscriptDocumentType.chapter),
           ),
           _ToolbarButton(
             icon: LucideIcons.maximize,
@@ -185,29 +190,34 @@ class ManuscriptBinder extends StatelessWidget {
     );
   }
 
-  void _showAddDocumentDialog(BuildContext context, ManuscriptDocumentType? presetType) {
+  void _showAddDocumentDialog(
+    BuildContext context,
+    ManuscriptDocumentType? presetType,
+  ) {
     final titleController = TextEditingController();
-    ManuscriptDocumentType selectedType = presetType ?? ManuscriptDocumentType.chapter;
+    ManuscriptDocumentType selectedType =
+        presetType ?? ManuscriptDocumentType.chapter;
     String? parentId = selectedDocumentId ?? provider.manuscriptRoot?.id;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(presetType != null ? 'New ${presetType.label}' : 'New Document'),
+          title: Text(
+            presetType != null ? 'New ${presetType.label}' : 'New Document',
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (presetType == null) ...[
                 DropdownButtonFormField<ManuscriptDocumentType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: ManuscriptDocumentType.values
                       .where((t) => t != ManuscriptDocumentType.manuscript)
-                      .map((t) => DropdownMenuItem(
-                            value: t,
-                            child: Text(t.label),
-                          ))
+                      .map(
+                        (t) => DropdownMenuItem(value: t, child: Text(t.label)),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => selectedType = v!),
                 ),
@@ -220,7 +230,12 @@ class ManuscriptBinder extends StatelessWidget {
                   hintText: 'Enter document title',
                 ),
                 autofocus: true,
-                onSubmitted: (_) => _createDocument(context, parentId, selectedType, titleController.text),
+                onSubmitted: (_) => _createDocument(
+                  context,
+                  parentId,
+                  selectedType,
+                  titleController.text,
+                ),
               ),
             ],
           ),
@@ -230,7 +245,12 @@ class ManuscriptBinder extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => _createDocument(context, parentId, selectedType, titleController.text),
+              onPressed: () => _createDocument(
+                context,
+                parentId,
+                selectedType,
+                titleController.text,
+              ),
               child: const Text('Create'),
             ),
           ],
@@ -239,20 +259,23 @@ class ManuscriptBinder extends StatelessWidget {
     );
   }
 
-  void _createDocument(BuildContext context, String? parentId, ManuscriptDocumentType type, String title) {
+  void _createDocument(
+    BuildContext context,
+    String? parentId,
+    ManuscriptDocumentType type,
+    String title,
+  ) {
     if (title.trim().isEmpty) return;
     if (parentId == null) return;
 
     Navigator.pop(context);
 
-    provider.createChild(
-      parentId: parentId,
-      title: title.trim(),
-      type: type,
-    ).then((doc) {
-      onDocumentSelected(doc.id);
-      onDocumentRenamed?.call(doc.id);
-    });
+    provider
+        .createChild(parentId: parentId, title: title.trim(), type: type)
+        .then((doc) {
+          onDocumentSelected(doc.id);
+          onDocumentRenamed?.call(doc.id);
+        });
   }
 }
 
@@ -605,7 +628,9 @@ class _DocumentRow extends StatelessWidget {
               if (hasChildren)
                 IconButton(
                   icon: Icon(
-                    isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                    isExpanded
+                        ? LucideIcons.chevronDown
+                        : LucideIcons.chevronRight,
                     size: 16,
                     color: cs.onSurfaceVariant,
                   ),
@@ -627,8 +652,11 @@ class _DocumentRow extends StatelessWidget {
                   document.title,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: isSelected ? cs.onPrimaryContainer : cs.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    fontStyle: document.status == ManuscriptDocumentStatus.archived
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    fontStyle:
+                        document.status == ManuscriptDocumentStatus.archived
                         ? FontStyle.italic
                         : FontStyle.normal,
                   ),

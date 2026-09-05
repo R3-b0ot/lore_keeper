@@ -9,7 +9,10 @@ class DateRangePickerDialog extends StatefulWidget {
   final int startDayOfYear;
   final int endYear;
   final int endDayOfYear;
-  final ValueChanged<({int startYear, int startDayOfYear, int endYear, int endDayOfYear})> onRangeSelected;
+  final ValueChanged<
+    ({int startYear, int startDayOfYear, int endYear, int endDayOfYear})
+  >
+  onRangeSelected;
   final String title;
 
   const DateRangePickerDialog({
@@ -46,17 +49,27 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
     _endYear = widget.endYear;
     _endDayOfYear = widget.endDayOfYear;
 
-    _viewStartMonth = widget.chronology.monthAtDayOfYear(_startDayOfYear).clamp(0, widget.chronology.months.length - 1);
+    _viewStartMonth = widget.chronology
+        .monthAtDayOfYear(_startDayOfYear)
+        .clamp(0, widget.chronology.months.length - 1);
     _viewStartYear = _startYear;
-    _viewEndMonth = widget.chronology.monthAtDayOfYear(_endDayOfYear).clamp(0, widget.chronology.months.length - 1);
+    _viewEndMonth = widget.chronology
+        .monthAtDayOfYear(_endDayOfYear)
+        .clamp(0, widget.chronology.months.length - 1);
     _viewEndYear = _endYear;
   }
 
   void _applyPreset(int daysOffset, {bool isFuture = false}) {
-    final baseYear = _selectionMode == DateSelectionMode.start ? _startYear : _endYear;
-    final baseDayOfYear = _selectionMode == DateSelectionMode.start ? _startDayOfYear : _endDayOfYear;
+    final baseYear = _selectionMode == DateSelectionMode.start
+        ? _startYear
+        : _endYear;
+    final baseDayOfYear = _selectionMode == DateSelectionMode.start
+        ? _startDayOfYear
+        : _endDayOfYear;
     final baseDate = _dayOfYearToDate(baseYear, baseDayOfYear);
-    final newDate = baseDate.add(Duration(days: isFuture ? daysOffset : -daysOffset));
+    final newDate = baseDate.add(
+      Duration(days: isFuture ? daysOffset : -daysOffset),
+    );
     final newYear = newDate.year;
     final newDayOfYear = _dateToDayOfYear(newDate, newYear);
 
@@ -65,21 +78,37 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
         _startYear = newYear;
         _startDayOfYear = newDayOfYear;
         // Ensure start doesn't exceed end
-        if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) > 0) {
+        if (_compareDates(
+              _startYear,
+              _startDayOfYear,
+              _endYear,
+              _endDayOfYear,
+            ) >
+            0) {
           _endYear = _startYear;
           _endDayOfYear = _startDayOfYear;
         }
-        _viewStartMonth = widget.chronology.monthAtDayOfYear(_startDayOfYear).clamp(0, widget.chronology.months.length - 1);
+        _viewStartMonth = widget.chronology
+            .monthAtDayOfYear(_startDayOfYear)
+            .clamp(0, widget.chronology.months.length - 1);
         _viewStartYear = _startYear;
       } else {
         _endYear = newYear;
         _endDayOfYear = newDayOfYear;
         // Ensure end doesn't precede start
-        if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) > 0) {
+        if (_compareDates(
+              _startYear,
+              _startDayOfYear,
+              _endYear,
+              _endDayOfYear,
+            ) >
+            0) {
           _startYear = _endYear;
           _startDayOfYear = _endDayOfYear;
         }
-        _viewEndMonth = widget.chronology.monthAtDayOfYear(_endDayOfYear).clamp(0, widget.chronology.months.length - 1);
+        _viewEndMonth = widget.chronology
+            .monthAtDayOfYear(_endDayOfYear)
+            .clamp(0, widget.chronology.months.length - 1);
         _viewEndYear = _endYear;
       }
     });
@@ -152,7 +181,8 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
       _startDayOfYear = dayOfYear;
       _selectionMode = DateSelectionMode.end;
       // Ensure start doesn't exceed end
-      if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) > 0) {
+      if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) >
+          0) {
         _endYear = _startYear;
         _endDayOfYear = _startDayOfYear;
         _viewEndMonth = _viewStartMonth;
@@ -169,7 +199,8 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
       _endDayOfYear = dayOfYear;
       _selectionMode = DateSelectionMode.start;
       // Ensure end doesn't precede start
-      if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) > 0) {
+      if (_compareDates(_startYear, _startDayOfYear, _endYear, _endDayOfYear) >
+          0) {
         _startYear = _endYear;
         _startDayOfYear = _endDayOfYear;
         _viewStartMonth = _viewEndMonth;
@@ -179,14 +210,20 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
   }
 
   bool _isStartSelected(int year, int dayOfYear) =>
-      _selectionMode == DateSelectionMode.start && year == _startYear && dayOfYear == _startDayOfYear;
+      _selectionMode == DateSelectionMode.start &&
+      year == _startYear &&
+      dayOfYear == _startDayOfYear;
 
   bool _isEndSelected(int year, int dayOfYear) =>
-      _selectionMode == DateSelectionMode.end && year == _endYear && dayOfYear == _endDayOfYear;
+      _selectionMode == DateSelectionMode.end &&
+      year == _endYear &&
+      dayOfYear == _endDayOfYear;
 
   bool _isInRange(int year, int dayOfYear) {
     if (_startYear == _endYear) {
-      return year == _startYear && dayOfYear >= _startDayOfYear && dayOfYear <= _endDayOfYear;
+      return year == _startYear &&
+          dayOfYear >= _startDayOfYear &&
+          dayOfYear <= _endDayOfYear;
     }
     if (year == _startYear) return dayOfYear >= _startDayOfYear;
     if (year == _endYear) return dayOfYear <= _endDayOfYear;
@@ -220,11 +257,18 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
               padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
               child: Row(
                 children: [
-                  Text(widget.title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    widget.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const Spacer(),
                   IconButton(
                     tooltip: 'Close',
@@ -245,7 +289,8 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
                     _PresetSidebar(
                       chronology: widget.chronology,
                       selectionMode: _selectionMode,
-                      onModeChanged: (mode) => setState(() => _selectionMode = mode),
+                      onModeChanged: (mode) =>
+                          setState(() => _selectionMode = mode),
                       onPresetSelected: _applyPreset,
                     ),
                     const VerticalDivider(width: 1, thickness: 1),
@@ -284,7 +329,9 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -343,7 +390,12 @@ class _PresetSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           // Past presets
-          Text('Past', style: theme.textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            'Past',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           _PresetButton(
             label: 'Last 7 Days',
@@ -362,7 +414,12 @@ class _PresetSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           // Future presets
-          Text('Future', style: theme.textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            'Future',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           _PresetButton(
             label: 'Next 7 Days',
@@ -389,10 +446,7 @@ class _ModeToggle extends StatelessWidget {
   final DateSelectionMode selectionMode;
   final ValueChanged<DateSelectionMode> onModeChanged;
 
-  const _ModeToggle({
-    required this.selectionMode,
-    required this.onModeChanged,
-  });
+  const _ModeToggle({required this.selectionMode, required this.onModeChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +456,12 @@ class _ModeToggle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Select', style: theme.textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+        Text(
+          'Select',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: cs.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -452,7 +511,9 @@ class _ModeButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? cs.primary : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant),
+          border: Border.all(
+            color: isSelected ? cs.primary : cs.outlineVariant,
+          ),
         ),
         child: Center(
           child: Text(
@@ -493,7 +554,9 @@ class _PresetButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant),
+          border: Border.all(
+            color: isSelected ? cs.primary : cs.outlineVariant,
+          ),
         ),
         child: Text(
           label,
@@ -695,17 +758,19 @@ class _MonthCalendar extends StatelessWidget {
             children: chronology.weekdays
                 .asMap()
                 .entries
-                .map((e) => Expanded(
-                      child: Center(
-                        child: Text(
-                          e.value,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant,
-                          ),
+                .map(
+                  (e) => Expanded(
+                    child: Center(
+                      child: Text(
+                        e.value,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 4),
@@ -757,7 +822,9 @@ class _MonthCalendar extends StatelessWidget {
                         '$day',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: textColor,
-                          fontWeight: selected || inRange ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: selected || inRange
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
                       ),
                     ),
@@ -773,7 +840,8 @@ class _MonthCalendar extends StatelessWidget {
 
   int get firstWeekday => chronology.weekdayAt(viewYear, month.startDayOfYear);
   int get daysInMonth => month.days;
-  ChronologyMonth get month => chronology.months[viewMonth.clamp(0, chronology.months.length - 1)];
+  ChronologyMonth get month =>
+      chronology.months[viewMonth.clamp(0, chronology.months.length - 1)];
 }
 
 /// Month/Year selector with dropdowns
@@ -807,7 +875,10 @@ class _MonthYearSelector extends StatelessWidget {
           items: List.generate(chronology.months.length, (i) {
             return DropdownMenuItem<int>(
               value: i,
-              child: Text(chronology.months[i].name, style: theme.textTheme.bodyMedium),
+              child: Text(
+                chronology.months[i].name,
+                style: theme.textTheme.bodyMedium,
+              ),
             );
           }),
           onChanged: (v) => v != null ? onMonthChanged(v, viewYear) : null,
@@ -844,7 +915,10 @@ class DateRangePickerButton extends StatelessWidget {
   final int endYear;
   final int endDayOfYear;
   final String label;
-  final ValueChanged<({int startYear, int startDayOfYear, int endYear, int endDayOfYear})> onChanged;
+  final ValueChanged<
+    ({int startYear, int startDayOfYear, int endYear, int endDayOfYear})
+  >
+  onChanged;
 
   const DateRangePickerButton({
     super.key,
@@ -862,13 +936,21 @@ class DateRangePickerButton extends StatelessWidget {
     final theme = Theme.of(context);
 
     final startMonthIdx = chronology.monthAtDayOfYear(startDayOfYear);
-    final startDayOfMonth = startMonthIdx >= 0 ? chronology.dayOfMonthAtDayOfYear(startDayOfYear) : 1;
-    final startMonthName = startMonthIdx >= 0 ? chronology.months[startMonthIdx].name : 'Unknown';
+    final startDayOfMonth = startMonthIdx >= 0
+        ? chronology.dayOfMonthAtDayOfYear(startDayOfYear)
+        : 1;
+    final startMonthName = startMonthIdx >= 0
+        ? chronology.months[startMonthIdx].name
+        : 'Unknown';
     final startWeekday = chronology.weekdayNameAt(startYear, startDayOfYear);
 
     final endMonthIdx = chronology.monthAtDayOfYear(endDayOfYear);
-    final endDayOfMonth = endMonthIdx >= 0 ? chronology.dayOfMonthAtDayOfYear(endDayOfYear) : 1;
-    final endMonthName = endMonthIdx >= 0 ? chronology.months[endMonthIdx].name : 'Unknown';
+    final endDayOfMonth = endMonthIdx >= 0
+        ? chronology.dayOfMonthAtDayOfYear(endDayOfYear)
+        : 1;
+    final endMonthName = endMonthIdx >= 0
+        ? chronology.months[endMonthIdx].name
+        : 'Unknown';
     final endWeekday = chronology.weekdayNameAt(endYear, endDayOfYear);
 
     final isSameDay = startYear == endYear && startDayOfYear == endDayOfYear;

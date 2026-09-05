@@ -252,11 +252,13 @@ class DiffViewDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: panel.items
-                          .map((item) => Text(
-                                '• $item',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ))
+                          .map(
+                            (item) => Text(
+                              '• $item',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          )
                           .toList(),
                     ),
                 ],

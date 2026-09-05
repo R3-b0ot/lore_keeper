@@ -152,7 +152,7 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                 child: ReorderableListView(
                   padding: const EdgeInsets.only(bottom: 24),
                   buildDefaultDragHandles: false,
-                  onReorder: (oldIndex, newIndex) {
+                  onReorderItem: (oldIndex, newIndex) {
                     if (_filterController.text.isNotEmpty) return;
 
                     int frontMatterHeaderCount =
@@ -186,6 +186,10 @@ class _ChapterListPaneState extends State<ChapterListPane> {
                         adjustedNew < 0 ||
                         adjustedNew > chapters.length) {
                       return;
+                    }
+
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
                     }
 
                     widget.chapterProvider.reorderChapter(

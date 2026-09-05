@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/models/classification_node.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
 import 'package:uuid/uuid.dart';
 
 class SpeciesNodeEntry {
@@ -12,6 +14,7 @@ class SpeciesNodeEntry {
 class SpeciesProvider extends ChangeNotifier {
   static const _root = '__root__';
   final int _projectId;
+  final ReferenceEngine? _referenceEngine;
   final _uuid = const Uuid();
   late Box<ClassificationNode> _box;
   bool _ready = false;
@@ -23,7 +26,8 @@ class SpeciesProvider extends ChangeNotifier {
   String? _faunaRootId;
   String? _floraRootId;
 
-  SpeciesProvider(this._projectId) {
+  SpeciesProvider(this._projectId, {ReferenceEngine? referenceEngine})
+      : _referenceEngine = referenceEngine {
     _initialize();
   }
 
@@ -248,6 +252,12 @@ class SpeciesProvider extends ChangeNotifier {
     }
 
     _rebuild();
+    // Purge stale manuscript backlinks to the deleted species nodes now that
+    // they are gone from the box (see ReferenceNameResolver.purgeStaleFromDatabase).
+    final engine = _referenceEngine;
+    if (engine != null) {
+      ReferenceNameResolver.purgeStaleFromDatabase(engine);
+    }
     notifyListeners();
   }
 

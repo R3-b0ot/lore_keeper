@@ -24,7 +24,7 @@ class ProjectEditorModuleResolver {
   bool get supportsSecondColumn =>
       moduleIndex == 1 || // Manuscripts
       moduleIndex == 2 || // Characters
-      moduleIndex == 3;   // World Building
+      moduleIndex == 3; // World Building
 
   ProjectEditorModuleResolution resolve() {
     return ProjectEditorModuleResolution(

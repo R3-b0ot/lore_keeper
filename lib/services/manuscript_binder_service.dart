@@ -5,18 +5,43 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
+import 'package:lore_keeper/services/reference_integrity_service.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/database/entity_ref.dart';
 
 class ManuscriptBinderService {
   final int projectId;
   final Box<ManuscriptDocument> _documentBox;
   final Box<Project> _projectBox;
+  late final ReferenceIntegrityService _referenceIntegrityService;
+  ReferenceNameResolver? _fullResolver;
 
   ManuscriptBinderService({
     required this.projectId,
     required Box<ManuscriptDocument> documentBox,
     required Box<Project> projectBox,
+    required ReferenceEngine referenceEngine,
   }) : _documentBox = documentBox,
-       _projectBox = projectBox;
+       _projectBox = projectBox {
+    _referenceIntegrityService = ReferenceIntegrityService(
+      engine: referenceEngine,
+      entityExists: (ref) {
+        // Fast path: manuscript documents resolve from the injected box so
+        // the service stays testable without a live database singleton.
+        if (ref.entityType == EntityType.manuscriptDocument) {
+          return documentBox.get(ref.id) != null;
+        }
+        // Cross-module types (characters, species, timeline events) defer to
+        // the canonical project-scoped resolver built from the live database.
+        // Built lazily so tests that never touch other types avoid the
+        // (uninitialized) database singleton.
+        return (_fullResolver ??= ReferenceNameResolver.fromDatabase(
+          projectId,
+        )).entityExists(ref);
+      },
+    );
+  }
 
   // ========================================================================
   // QUERIES
@@ -26,7 +51,9 @@ class ManuscriptBinderService {
   ManuscriptDocument? getManuscriptRoot() {
     try {
       return _documentBox.values.firstWhere(
-        (d) => d.projectId == projectId && d.documentType == ManuscriptDocumentType.manuscript,
+        (d) =>
+            d.projectId == projectId &&
+            d.documentType == ManuscriptDocumentType.manuscript,
       );
     } catch (_) {
       return null;
@@ -35,9 +62,7 @@ class ManuscriptBinderService {
 
   /// Get all documents for this project
   List<ManuscriptDocument> getAllDocuments() {
-    return _documentBox.values
-        .where((d) => d.projectId == projectId)
-        .toList()
+    return _documentBox.values.where((d) => d.projectId == projectId).toList()
       ..sort((a, b) {
         // Sort by parent first, then by orderIndex
         if (a.parentId != b.parentId) {
@@ -114,6 +139,7 @@ class ManuscriptBinderService {
     String? plotline,
     List<String>? characterIds,
     List<String>? tagIds,
+    String? purpose,
   }) async {
     final parent = _documentBox.get(parentId);
     if (parent == null || parent.projectId != projectId) {
@@ -129,7 +155,8 @@ class ManuscriptBinderService {
     // Shift existing siblings
     await _shiftSiblings(parentId, newOrderIndex, 1);
 
-    final id = '${type.label.toLowerCase().replaceAll(' ', '_')}_${const Uuid().v4()}';
+    final id =
+        '${type.label.toLowerCase().replaceAll(' ', '_')}_${const Uuid().v4()}';
     final now = DateTime.now();
 
     final doc = ManuscriptDocument()
@@ -148,11 +175,15 @@ class ManuscriptBinderService {
       ..plotline = plotline
       ..characterIds = characterIds ?? []
       ..tagIds = tagIds ?? []
+      ..purpose = purpose
       ..isExpanded = true
       ..createdAt = now
       ..modifiedAt = now
-      ..wordCount = _countWords(richTextJson ?? ManuscriptModule.emptyRichTextJson)
-      ..characterCount = (richTextJson ?? ManuscriptModule.emptyRichTextJson).length;
+      ..wordCount = _countWords(
+        richTextJson ?? ManuscriptModule.emptyRichTextJson,
+      )
+      ..characterCount =
+          (richTextJson ?? ManuscriptModule.emptyRichTextJson).length;
 
     await _documentBox.put(id, doc);
 
@@ -219,7 +250,10 @@ class ManuscriptBinderService {
   }
 
   /// Update document status
-  Future<void> updateStatus(String documentId, ManuscriptDocumentStatus status) async {
+  Future<void> updateStatus(
+    String documentId,
+    ManuscriptDocumentStatus status,
+  ) async {
     final doc = getDocumentForProject(documentId);
     if (doc == null) return;
 
@@ -228,8 +262,34 @@ class ManuscriptBinderService {
     await doc.save();
   }
 
+  /// Update the scene's purpose (the narrative intent / role it plays).
+  Future<void> updatePurpose(String documentId, String? purpose) async {
+    final doc = getDocumentForProject(documentId);
+    if (doc == null) return;
+
+    doc.purpose = (purpose == null || purpose.trim().isEmpty)
+        ? null
+        : purpose.trim();
+    doc.modifiedAt = DateTime.now();
+    await doc.save();
+  }
+
+  /// Toggle a document's favorite flag (persisted and project-scoped).
+  ///
+  /// Favorites must survive restarts and be exposed through Collections
+  /// (spec §11). The flag lives on the document so it serializes with it.
+  Future<void> setFavorite(String documentId, bool isFavorite) async {
+    final doc = getDocumentForProject(documentId);
+    if (doc == null) return;
+
+    doc.isFavorite = isFavorite;
+    doc.modifiedAt = DateTime.now();
+    await doc.save();
+  }
+
   /// Update document metadata
-  Future<void> updateMetadata(String documentId, {
+  Future<void> updateMetadata(
+    String documentId, {
     String? summary,
     String? povCharacterId,
     String? locationId,
@@ -238,6 +298,7 @@ class ManuscriptBinderService {
     List<String>? characterIds,
     List<String>? tagIds,
     bool? isExpanded,
+    String? purpose,
   }) async {
     final doc = getDocumentForProject(documentId);
     if (doc == null) return;
@@ -250,7 +311,48 @@ class ManuscriptBinderService {
     if (characterIds != null) doc.characterIds = characterIds;
     if (tagIds != null) doc.tagIds = tagIds;
     if (isExpanded != null) doc.isExpanded = isExpanded;
+    if (purpose != null) doc.purpose = purpose;
 
+    doc.modifiedAt = DateTime.now();
+    await doc.save();
+  }
+
+  /// Assign or clear the scene's linked timeline event.
+  ///
+  /// Unlike [updateMetadata], this allows explicitly clearing (unlinking) the
+  /// linked event by passing [timelineEventId] as `null`. The link is stored on
+  /// the document and resolved via the ReferenceEngine (spec §15, §17) so no
+  /// duplicate relationship table is created.
+  Future<void> updateTimelineEvent(
+    String documentId,
+    String? timelineEventId,
+  ) async {
+    final doc = getDocumentForProject(documentId);
+    if (doc == null) return;
+
+    doc.timelineEventId = timelineEventId;
+    doc.modifiedAt = DateTime.now();
+    await doc.save();
+  }
+
+  /// Assign or clear the scene's calendar date (§16).
+  ///
+  /// [systemKey], [year] and [dayOfYear] are stored together so the assigned
+  /// date stays rendered through the correct Chronology. Null clears the date.
+  /// No second calendar implementation is introduced; the values describe a
+  /// point in the project's existing CalendarSystem/Chronology.
+  Future<void> updateCalendarDate(
+    String documentId, {
+    int? systemKey,
+    int? year,
+    int? dayOfYear,
+  }) async {
+    final doc = getDocumentForProject(documentId);
+    if (doc == null) return;
+
+    doc.calendarDateSystemKey = systemKey ?? 0;
+    doc.calendarDateYear = year ?? 0;
+    doc.calendarDateDayOfYear = dayOfYear ?? 0;
     doc.modifiedAt = DateTime.now();
     await doc.save();
   }
@@ -332,14 +434,19 @@ class ManuscriptBinderService {
   // ========================================================================
 
   /// Delete a document and optionally its children
-  Future<void> deleteDocument(String documentId, {bool deleteChildren = false}) async {
+  Future<void> deleteDocument(
+    String documentId, {
+    bool deleteChildren = false,
+  }) async {
     final doc = getDocumentForProject(documentId);
     if (doc == null) return;
 
     final children = getChildren(documentId);
 
     if (children.isNotEmpty && !deleteChildren) {
-      throw StateError('Document has children. Use deleteChildren: true to delete recursively.');
+      throw StateError(
+        'Document has children. Use deleteChildren: true to delete recursively.',
+      );
     }
 
     // Delete children first if requested
@@ -364,6 +471,16 @@ class ManuscriptBinderService {
       }
     }
 
+    // Remove reference index entries where this document is the source (outbound refs)
+    // and remove inbound backlinks pointing to this document
+    final docRef = EntityRef.fromKey(
+      key: doc.id,
+      entityType: EntityType.manuscriptDocument,
+      projectId: projectId.toString(),
+    );
+    _referenceIntegrityService.removeSource(docRef);
+    _referenceIntegrityService.removeTarget(docRef);
+
     await doc.delete();
     _updateProjectModifiedTime();
   }
@@ -372,35 +489,35 @@ class ManuscriptBinderService {
   // HELPERS
   // ========================================================================
 
-  void _validateTypeHierarchy(ManuscriptDocumentType parentType, ManuscriptDocumentType childType) {
-    final validChildren = <ManuscriptDocumentType, List<ManuscriptDocumentType>>{
-      ManuscriptDocumentType.manuscript: [
-        ManuscriptDocumentType.part,
-        ManuscriptDocumentType.chapter,
-        ManuscriptDocumentType.frontMatter,
-        ManuscriptDocumentType.backMatter,
-      ],
-      ManuscriptDocumentType.part: [
-        ManuscriptDocumentType.chapter,
-        ManuscriptDocumentType.section,
-      ],
-      ManuscriptDocumentType.chapter: [
-        ManuscriptDocumentType.scene,
-      ],
-      ManuscriptDocumentType.section: [
-        ManuscriptDocumentType.scene,
-        ManuscriptDocumentType.note,
-        ManuscriptDocumentType.research,
-      ],
-      ManuscriptDocumentType.frontMatter: [],
-      ManuscriptDocumentType.backMatter: [],
-      ManuscriptDocumentType.scene: [
-        ManuscriptDocumentType.note,
-      ],
-      ManuscriptDocumentType.note: [],
-      ManuscriptDocumentType.research: [],
-      ManuscriptDocumentType.custom: [],
-    };
+  void _validateTypeHierarchy(
+    ManuscriptDocumentType parentType,
+    ManuscriptDocumentType childType,
+  ) {
+    final validChildren =
+        <ManuscriptDocumentType, List<ManuscriptDocumentType>>{
+          ManuscriptDocumentType.manuscript: [
+            ManuscriptDocumentType.part,
+            ManuscriptDocumentType.chapter,
+            ManuscriptDocumentType.frontMatter,
+            ManuscriptDocumentType.backMatter,
+          ],
+          ManuscriptDocumentType.part: [
+            ManuscriptDocumentType.chapter,
+            ManuscriptDocumentType.section,
+          ],
+          ManuscriptDocumentType.chapter: [ManuscriptDocumentType.scene],
+          ManuscriptDocumentType.section: [
+            ManuscriptDocumentType.scene,
+            ManuscriptDocumentType.note,
+            ManuscriptDocumentType.research,
+          ],
+          ManuscriptDocumentType.frontMatter: [],
+          ManuscriptDocumentType.backMatter: [],
+          ManuscriptDocumentType.scene: [ManuscriptDocumentType.note],
+          ManuscriptDocumentType.note: [],
+          ManuscriptDocumentType.research: [],
+          ManuscriptDocumentType.custom: [],
+        };
 
     final allowed = validChildren[parentType] ?? [];
     if (!allowed.contains(childType)) {

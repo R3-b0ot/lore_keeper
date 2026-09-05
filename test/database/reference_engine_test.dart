@@ -30,44 +30,20 @@ void main() {
 
     test('equality considers all fields', () {
       final a = ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: 'X',
-          projectId: 'P',
-        ),
-        target: const EntityRef(
-          id: '2',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
+        source: const EntityRef(id: '1', entityType: 'X', projectId: 'P'),
+        target: const EntityRef(id: '2', entityType: 'Y', projectId: 'P'),
         kind: 'mentions',
         computedAt: DateTime(2024),
       );
       final b = ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: 'X',
-          projectId: 'P',
-        ),
-        target: const EntityRef(
-          id: '2',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
+        source: const EntityRef(id: '1', entityType: 'X', projectId: 'P'),
+        target: const EntityRef(id: '2', entityType: 'Y', projectId: 'P'),
         kind: 'mentions',
         computedAt: DateTime(2025),
       );
       final c = ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: 'X',
-          projectId: 'P',
-        ),
-        target: const EntityRef(
-          id: '3',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
+        source: const EntityRef(id: '1', entityType: 'X', projectId: 'P'),
+        target: const EntityRef(id: '3', entityType: 'Y', projectId: 'P'),
         kind: 'mentions',
         computedAt: DateTime(2024),
       );
@@ -103,8 +79,7 @@ void main() {
       expect(restored.source, equals(original.source));
       expect(restored.target, equals(original.target));
       expect(restored.kind, original.kind);
-      expect(
-          restored.containerEntity, equals(original.containerEntity));
+      expect(restored.containerEntity, equals(original.containerEntity));
     });
   });
 
@@ -121,39 +96,35 @@ void main() {
     });
 
     test('addEntry increases length', () {
-      engine.addEntry(ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: EntityType.character,
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: const EntityRef(
+            id: '1',
+            entityType: EntityType.character,
+            projectId: 'P',
+          ),
+          target: const EntityRef(
+            id: '2',
+            entityType: EntityType.chapter,
+            projectId: 'P',
+          ),
+          kind: 'mentions',
+          computedAt: DateTime(2024),
         ),
-        target: const EntityRef(
-          id: '2',
-          entityType: EntityType.chapter,
-          projectId: 'P',
-        ),
-        kind: 'mentions',
-        computedAt: DateTime(2024),
-      ));
+      );
 
       expect(engine.length, 1);
     });
 
     test('clear empties the index', () {
-      engine.addEntry(ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: 'X',
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: const EntityRef(id: '1', entityType: 'X', projectId: 'P'),
+          target: const EntityRef(id: '2', entityType: 'Y', projectId: 'P'),
+          kind: 'test',
+          computedAt: DateTime(2024),
         ),
-        target: const EntityRef(
-          id: '2',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
-        kind: 'test',
-        computedAt: DateTime(2024),
-      ));
+      );
 
       expect(engine.length, 1);
       engine.clear();
@@ -206,20 +177,14 @@ void main() {
     });
 
     test('search matches by kind', () {
-      engine.addEntry(ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: 'X',
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: const EntityRef(id: '1', entityType: 'X', projectId: 'P'),
+          target: const EntityRef(id: '2', entityType: 'Y', projectId: 'P'),
+          kind: 'semantic_similarity',
+          computedAt: DateTime(2024),
         ),
-        target: const EntityRef(
-          id: '2',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
-        kind: 'semantic_similarity',
-        computedAt: DateTime(2024),
-      ));
+      );
 
       final results = engine.search('semantic');
       expect(results, hasLength(1));
@@ -234,41 +199,37 @@ void main() {
         entityType: EntityType.chapter,
         projectId: 'P',
       );
-      engine.addEntry(ReferenceIndexEntry(
-        source: const EntityRef(
-          id: '1',
-          entityType: EntityType.character,
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: const EntityRef(
+            id: '1',
+            entityType: EntityType.character,
+            projectId: 'P',
+          ),
+          target: const EntityRef(
+            id: '2',
+            entityType: EntityType.character,
+            projectId: 'P',
+          ),
+          kind: 'appears_in',
+          containerEntity: container,
+          computedAt: DateTime(2024),
         ),
-        target: const EntityRef(
-          id: '2',
-          entityType: EntityType.character,
-          projectId: 'P',
-        ),
-        kind: 'appears_in',
-        containerEntity: container,
-        computedAt: DateTime(2024),
-      ));
+      );
 
       final results = engine.insideContainer(container);
       expect(results, hasLength(1));
     });
 
     test('rebuildIndex clears and repopulates', () async {
-      engine.addEntry(ReferenceIndexEntry(
-        source: const EntityRef(
-          id: 'old',
-          entityType: 'X',
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: const EntityRef(id: 'old', entityType: 'X', projectId: 'P'),
+          target: const EntityRef(id: 'old', entityType: 'Y', projectId: 'P'),
+          kind: 'old',
+          computedAt: DateTime(2024),
         ),
-        target: const EntityRef(
-          id: 'old',
-          entityType: 'Y',
-          projectId: 'P',
-        ),
-        kind: 'old',
-        computedAt: DateTime(2024),
-      ));
+      );
 
       await engine.rebuildIndex(
         extractReferences: (entityType) async {
@@ -305,26 +266,30 @@ void main() {
         projectId: 'P',
       );
 
-      engine.addEntry(ReferenceIndexEntry(
-        source: ref,
-        target: const EntityRef(
-          id: '2',
-          entityType: EntityType.chapter,
-          projectId: 'P',
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: ref,
+          target: const EntityRef(
+            id: '2',
+            entityType: EntityType.chapter,
+            projectId: 'P',
+          ),
+          kind: 'mentions',
+          computedAt: DateTime(2024),
         ),
-        kind: 'mentions',
-        computedAt: DateTime(2024),
-      ));
-      engine.addEntry(ReferenceIndexEntry(
-        source: ref,
-        target: const EntityRef(
-          id: '3',
-          entityType: EntityType.mapData,
-          projectId: 'P',
+      );
+      engine.addEntry(
+        ReferenceIndexEntry(
+          source: ref,
+          target: const EntityRef(
+            id: '3',
+            entityType: EntityType.mapData,
+            projectId: 'P',
+          ),
+          kind: 'located_in',
+          computedAt: DateTime(2024),
         ),
-        kind: 'located_in',
-        computedAt: DateTime(2024),
-      ));
+      );
 
       final types = engine.referencedEntityTypes(ref);
       expect(types, contains(EntityType.chapter));
@@ -337,19 +302,13 @@ void main() {
       final engine = ReferenceEngine();
       expect(engine.hasAi, isFalse);
 
-      const ref = EntityRef(
-        id: '1',
-        entityType: 'X',
-        projectId: 'P',
-      );
+      const ref = EntityRef(id: '1', entityType: 'X', projectId: 'P');
       expect(await engine.aiSuggestRelated(ref), isNull);
       expect(await engine.aiEmbed('hello'), isNull);
     });
 
     test('ai is available when provider is ready', () async {
-      final engine = ReferenceEngine(
-        aiProvider: const NullAiProvider(),
-      );
+      final engine = ReferenceEngine(aiProvider: const NullAiProvider());
       expect(engine.hasAi, isFalse);
     });
   });

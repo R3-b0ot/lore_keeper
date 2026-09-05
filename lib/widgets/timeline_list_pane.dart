@@ -54,8 +54,10 @@ class _TimelineListPaneState extends State<TimelineListPane> {
     final id = await widget.eventProvider.createEvent(
       name: 'New Event',
       absoluteYear: 1,
-      absoluteDayOfYear:
-          (chronology.daysInYear / 2).round().clamp(1, chronology.daysInYear),
+      absoluteDayOfYear: (chronology.daysInYear / 2).round().clamp(
+        1,
+        chronology.daysInYear,
+      ),
       iconKey: 'star',
       colorValue: 0xFF6366F1,
       calendarSystemKey: systemKey,
@@ -270,10 +272,12 @@ class _EventList extends StatelessWidget {
         final filtered = filter.isEmpty
             ? events
             : events
-                .where((e) =>
-                    e.name.toLowerCase().contains(filter) ||
-                    e.lore.toLowerCase().contains(filter))
-                .toList();
+                  .where(
+                    (e) =>
+                        e.name.toLowerCase().contains(filter) ||
+                        e.lore.toLowerCase().contains(filter),
+                  )
+                  .toList();
 
         if (filtered.isEmpty) {
           return Center(
@@ -283,11 +287,15 @@ class _EventList extends StatelessWidget {
                 Icon(
                   LucideIcons.calendarDays,
                   size: 48,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.4,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  filter.isEmpty ? 'No events for selected calendar' : 'No matching events',
+                  filter.isEmpty
+                      ? 'No events for selected calendar'
+                      : 'No matching events',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -363,11 +371,7 @@ class _EventTile extends StatelessWidget {
                       : color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  LucideIcons.calendar,
-                  size: 16,
-                  color: color,
-                ),
+                child: Icon(LucideIcons.calendar, size: 16, color: color),
               ),
               const SizedBox(width: 10),
               Expanded(

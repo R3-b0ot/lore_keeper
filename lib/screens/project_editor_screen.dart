@@ -12,7 +12,6 @@ import 'package:lore_keeper/providers/species_provider.dart';
 import 'package:lore_keeper/widgets/species_tree.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
-import 'package:lore_keeper/widgets/chapter_list_pane.dart';
 import 'package:lore_keeper/widgets/character_list_pane.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
@@ -33,6 +32,10 @@ import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 import 'package:lore_keeper/widgets/calendar_list_pane.dart';
 import 'package:lore_keeper/widgets/magic_list_pane.dart';
 import 'package:lore_keeper/widgets/timeline_list_pane.dart';
+
+import 'package:lore_keeper/widgets/manuscript_list_pane.dart';
+import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
+import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -83,6 +86,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   TimelineEventProvider? _timelineEventProvider;
   SpeciesProvider? _speciesProvider;
   LinkProvider? _linkProvider;
+
+  ManuscriptBinderProvider? _manuscriptBinderProvider;
+  ReferenceEngine? _referenceEngine;
+  String _selectedManuscriptDocumentId = '';
 
   // New navigation structure: Overview | Manuscripts | Characters | World Building | Lore Map
   // Internal index mapping:
@@ -147,7 +154,17 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _selectedCharacterKey = widget.initialCharacterKey ?? '';
 
     _chapterListProvider = ChapterListProvider(widget.project.key);
-    _characterListProvider = CharacterListProvider(widget.project.key);
+
+    // Shared ReferenceEngine for cross-module reference integrity. Created
+    // before the entity/binder providers so every deletion flow and the
+    // manuscript pipeline observe ONE index.
+    final sharedReferenceEngine = ReferenceEngine();
+    _referenceEngine = sharedReferenceEngine;
+
+    _characterListProvider = CharacterListProvider(
+      widget.project.key,
+      referenceEngine: sharedReferenceEngine,
+    );
     _linkProvider = LinkProvider();
     _chapterListProvider!.addListener(() {
       if (mounted &&
@@ -169,8 +186,22 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
     _magicTreeProvider = MagicTreeProvider(widget.project.key);
     _calendarTreeProvider = CalendarTreeProvider(widget.project.key);
-    _timelineEventProvider = TimelineEventProvider(widget.project.key);
-    _speciesProvider = SpeciesProvider(widget.project.key);
+    _timelineEventProvider = TimelineEventProvider(
+      widget.project.key,
+      referenceEngine: sharedReferenceEngine,
+    );
+    _speciesProvider = SpeciesProvider(
+      widget.project.key,
+      referenceEngine: sharedReferenceEngine,
+    );
+
+    // Shared binder provider for the Manuscript list pane (Column 2)
+    // and editor (Column 3).
+    _manuscriptBinderProvider = ManuscriptBinderProvider(
+      widget.project.key,
+      referenceEngine: sharedReferenceEngine,
+    );
+    _manuscriptBinderProvider!.addListener(_onBinderProviderChanged);
 
     // Wire calendar system selection → timeline events filter
     _calendarTreeProvider!.addListener(() {
@@ -298,6 +329,41 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     Navigator.of(context).pop();
   }
 
+  /// Sync from the shared binder provider when data changes.
+  void _onBinderProviderChanged() {
+    if (!mounted || _manuscriptBinderProvider == null) return;
+    // If the currently selected document no longer exists (e.g. deleted),
+    // clear the selection.
+    if (_selectedManuscriptDocumentId.isNotEmpty &&
+        _manuscriptBinderProvider!.getDocument(_selectedManuscriptDocumentId) ==
+            null) {
+      setState(() => _selectedManuscriptDocumentId = '');
+    }
+  }
+
+  /// Called when a document is selected in the Manuscript list pane (Column 2).
+  void _onManuscriptDocumentSelected(String documentId) {
+    setState(() => _selectedManuscriptDocumentId = documentId);
+
+    // Keep legacy chapter key in sync for deep-linking / other consumers.
+    final doc = _manuscriptBinderProvider!.getDocument(documentId);
+    if (doc != null) {
+      final chapterKey = _chapterKeyFromDocumentId(documentId);
+      if (chapterKey != null) {
+        _selectedChapterKey = chapterKey;
+      }
+    }
+  }
+
+  /// Derive a legacy chapter key from a manuscript document ID.
+  String? _chapterKeyFromDocumentId(String documentId) {
+    if (documentId.startsWith('chapter_')) {
+      return documentId.substring('chapter_'.length);
+    }
+    // Non-chapter documents (parts, scenes, notes) don't have a legacy key.
+    return null;
+  }
+
   void _openSettings() {
     showProjectSettingsDialog(
       context,
@@ -334,14 +400,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     }
   }
 
-  void _onChapterCreated(String newKey) {
-    setState(() {
-      _selectedChapterKey = newKey;
-    });
-  }
-
   @override
   void dispose() {
+    _manuscriptBinderProvider?.removeListener(_onBinderProviderChanged);
+    _manuscriptBinderProvider?.dispose();
     _chapterListProvider?.dispose();
     _characterListProvider?.dispose();
 
@@ -406,13 +468,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   // New indices: 0=Overview, 1=Manuscripts, 2=Characters, 3=World Building, 4=Lore Map
   Widget _buildSecondColumn({required bool isMobile}) {
     if (_moduleIndex == 1) {
-      // Manuscripts
-      return ChapterListPane(
-        chapterProvider: _chapterListProvider!,
-        selectedChapterKey: _selectedChapterKey,
-        onChapterSelected: _onChapterSelected,
-        onChapterCreated: (key) => _onChapterCreated(key),
-        isMobile: isMobile,
+      // Manuscripts — Column 2 hosts the Binder / Corkboard / Outliner / Collections
+      return ManuscriptListPane(
+        provider: _manuscriptBinderProvider!,
+        selectedDocumentId: _selectedManuscriptDocumentId,
+        onDocumentSelected: _onManuscriptDocumentSelected,
       );
     } else if (_moduleIndex == 2) {
       // Characters
@@ -493,23 +553,28 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         },
       );
     } else if (_moduleIndex == 1) {
-      // Manuscripts
-      return _selectedChapterKey.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ManuscriptModule(
-              projectId: widget.project.key,
-              selectedChapterKey: _selectedChapterKey,
-              chapterProvider: _chapterListProvider!,
-              characterProvider: _characterListProvider!,
-              onChapterSelected: _onChapterSelected,
-              onControllerReady: (controller) {
-                _manuscriptController = controller;
-              },
-              onGrammarCheckReady: (grammarCheck) {
-                _runManuscriptGrammarCheck = grammarCheck;
-              },
-              onReferenceNavigate: _onReferenceNavigate,
-            );
+      // Manuscripts — editor + inspector (Column 3 & 4).
+      // Binder / Corkboard / Outliner / Collections live in Column 2.
+      return ManuscriptModule(
+        projectId: widget.project.key,
+        selectedChapterKey: _selectedChapterKey,
+        chapterProvider: _chapterListProvider!,
+        characterProvider: _characterListProvider!,
+        onChapterSelected: _onChapterSelected,
+        onControllerReady: (controller) {
+          _manuscriptController = controller;
+        },
+        onGrammarCheckReady: (grammarCheck) {
+          _runManuscriptGrammarCheck = grammarCheck;
+        },
+        onReferenceNavigate: _onReferenceNavigate,
+        binderProvider: _manuscriptBinderProvider,
+        speciesProvider: _speciesProvider,
+        timelineProvider: _timelineEventProvider,
+        sharedReferenceEngine: _referenceEngine,
+        selectedDocumentId: _selectedManuscriptDocumentId,
+        onDocumentSelected: _onManuscriptDocumentSelected,
+      );
     } else if (_moduleIndex == 2) {
       // Characters
       return _selectedCharacterKey.isEmpty
