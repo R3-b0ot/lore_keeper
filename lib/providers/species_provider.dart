@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lore_keeper/database/ai/species_ai/ai_species_service.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
@@ -27,7 +28,7 @@ class SpeciesProvider extends ChangeNotifier {
   String? _floraRootId;
 
   SpeciesProvider(this._projectId, {ReferenceEngine? referenceEngine})
-      : _referenceEngine = referenceEngine {
+    : _referenceEngine = referenceEngine {
     _initialize();
   }
 
@@ -231,6 +232,46 @@ class SpeciesProvider extends ChangeNotifier {
     }
     notifyListeners();
     return node;
+  }
+
+  Future<ClassificationNode> createAiGeneratedSpecies(
+    AiGeneratedSpecies generated,
+  ) async {
+    // Walk the AI-proposed classification exactly like manual creation:
+    // existing nodes are merged (reused under the same parent+rank+name),
+    // missing nodes are created. This IS the merge-if-exists rule in step 5.
+    final leaf = await createClassificationPath([
+      for (final s in generated.path)
+        (
+          rank: s.rank,
+          name: s.name,
+          iconKey: s.iconKey,
+          colorValue: s.colorValue,
+          content: '',
+        ),
+    ]);
+
+    final rankName = leaf.rank;
+    final isSpeciesLeaf =
+        rankName == ClassificationRank.species.name ||
+        rankName == ClassificationRank.subspecies.name;
+    if (isSpeciesLeaf) {
+      await updateNodeDetails(
+        leaf.id,
+        scientificName: generated.scientificName,
+        status: generated.status,
+        origin: generated.origin,
+        description: generated.content,
+        physiology: generated.physiology,
+        averageLifespan: generated.averageLifespan,
+        averageHeight: generated.averageHeight,
+        reproduction: generated.reproduction,
+        diet: generated.diet,
+        sentience: generated.sentience,
+        population: generated.population,
+      );
+    }
+    return leaf;
   }
 
   Future<void> deleteNode(String id) async {

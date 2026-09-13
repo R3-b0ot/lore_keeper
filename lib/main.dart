@@ -11,6 +11,7 @@ import 'package:lore_keeper/models/section.dart';
 import 'package:lore_keeper/services/relationship_service.dart';
 import 'package:lore_keeper/providers/theme_provider.dart';
 import 'package:lore_keeper/core/theme/theme_bootstrap.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:lore_keeper/screens/dashboard/dashboard_screen.dart';
 import 'package:lore_keeper/services/resource_manager.dart';
@@ -55,8 +56,13 @@ void main() async {
   await ResourceManager().initialize();
   runApp(
     riverpod.ProviderScope(
-      child: ChangeNotifierProvider(
-        create: (_) => ThemeNotifier(),
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+          ChangeNotifierProvider(
+            create: (context) => GlobalSettingsController()..load(),
+          ),
+        ],
         child: const LoreKeeperApp(),
       ),
     ),
@@ -89,21 +95,40 @@ class LoreKeeperApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeNotifier>(
-      builder: (context, themeNotifier, child) {
-        return MaterialApp(
-          title: 'Lore Keeper',
-          debugShowCheckedModeBanner: false,
-          theme: themeNotifier.lightTheme,
-          darkTheme: themeNotifier.darkTheme,
-          themeMode: themeNotifier.themeMode,
-          home: const DashboardScreen(),
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            FlutterQuillLocalizations.delegate,
-          ],
+    return Consumer2<ThemeNotifier, GlobalSettingsController>(
+      builder: (context, themeNotifier, settings, child) {
+        final scale = settings.scaleTokens;
+
+        // Apply interface/density/scale tokens to both light and dark themes.
+        ThemeData applyScale(ThemeData theme) =>
+            theme.copyWith(extensions: [...theme.extensions.values, scale]);
+
+        // Wrap with MediaQuery to apply global text scaling (wraps, never
+        // clips). Respects the platform/system text scale as the base.
+        return Builder(
+          builder: (context) {
+            final base = MediaQuery.textScalerOf(context);
+            final textScale = base.scale(1.0) * scale.textScale;
+            return MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: MaterialApp(
+                title: 'Lore Keeper',
+                debugShowCheckedModeBanner: false,
+                theme: applyScale(themeNotifier.lightTheme),
+                darkTheme: applyScale(themeNotifier.darkTheme),
+                themeMode: themeNotifier.themeMode,
+                home: const DashboardScreen(),
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  FlutterQuillLocalizations.delegate,
+                ],
+              ),
+            );
+          },
         );
       },
     );

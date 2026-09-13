@@ -1,30 +1,31 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:lore_keeper/theme/app_colors.dart';
-import 'package:flutter/services.dart';
-import 'dart:async'; // For debounce timer
-import 'package:intl/intl.dart'; // Import for DateFormat
-import 'package:flutter_quill/flutter_quill.dart';
+import 'package:lore_keeper/widgets/responsive_layout.dart';
+import 'package:lore_keeper/models/chapter.dart';
+import 'package:lore_keeper/models/character.dart';
+import 'package:provider/provider.dart';
+import 'package:hive/hive.dart';
+
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
-import 'package:lore_keeper/models/chapter.dart';
-import 'package:hive/hive.dart';
-import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
-import 'package:lore_keeper/providers/theme_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:lore_keeper/widgets/genre_selection_dialog.dart';
-import 'package:lore_keeper/widgets/dictionary_manager_dialog.dart';
-import 'package:lore_keeper/widgets/responsive_layout.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
+import 'package:lore_keeper/settings/settings_shell.dart';
 
-// -------------------------------------------------------------
-// --- Settings Dialog Widget
-// -------------------------------------------------------------
-
-class SettingsDialog extends StatefulWidget {
+/// Settings dialog entry point.
+///
+/// This is the top-level container that the rest of the application opens via
+/// `showDialog`. It hosts the new [SettingsShell] and supplies:
+/// - real project context (so project-scope settings can persist to the
+///   [Project] model),
+/// - a real delete-project callback (preserving the legacy deletion flow),
+/// - the dictionary-manager callback.
+///
+/// The dialog exposes the same constructor shape as the legacy dialog so all
+/// existing call sites (dashboard, project editor) keep working unchanged.
+class SettingsDialog extends StatelessWidget {
   final Project? project;
   final int? moduleIndex;
   final ChapterListProvider? chapterProvider;
@@ -40,125 +41,16 @@ class SettingsDialog extends StatefulWidget {
     this.onDictionaryOpened,
   });
 
-  @override
-  State<SettingsDialog> createState() => _SettingsDialogState();
-}
-
-class _SettingsDialogState extends State<SettingsDialog> {
-  int _selectedCategoryIndex = 0; // This can't be final as it changes
-  late final List<String> _categories;
-  Set<String> _oxford5000Words = {};
-  bool _isLoadingWords = true;
-  Timer? _debounce;
-
-  // Controllers for Metadata editing
-  late TextEditingController _titleController;
-  late TextEditingController _bookTitleController;
-  late TextEditingController _authorsController;
-  String _selectedGenre = '';
-  late double _historyLimit;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCommonWords();
-    // Determine categories based on whether it's global or project settings
-    if (widget.project == null) {
-      _categories = ['About', 'Appearance'];
-    } else {
-      _categories = [
-        'Information',
-        'Cast Overview',
-        'Metadata',
-        'Proofing',
-        'History',
-        'Appearance',
-        'About',
-      ];
-      _titleController = TextEditingController(text: widget.project!.title);
-      _bookTitleController = TextEditingController(
-        text: widget.project!.bookTitle ?? '',
-      );
-      _authorsController = TextEditingController(
-        text: widget.project!.authors ?? '',
-      );
-      _selectedGenre = widget.project!.genre ?? 'N/A';
-      _historyLimit = (widget.project!.historyLimit ?? 10).toDouble();
-
-      // Add listeners for autosave
-      _titleController.addListener(_onFieldChanged);
-      _bookTitleController.addListener(_onFieldChanged);
-      _authorsController.addListener(_onFieldChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-
-    if (widget.project != null) {
-      _titleController.dispose();
-      _bookTitleController.dispose();
-      _authorsController.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _loadCommonWords() async {
-    try {
-      debugPrint('Loading common words from local asset...');
-      final String jsonString = await rootBundle.loadString(
-        // rootBundle is now defined
-        'assets/oxford_5000.json',
-      );
-      final List<dynamic> jsonList = json.decode(jsonString);
-
-      if (mounted) {
-        setState(() {
-          _oxford5000Words = Set<String>.from(
-            jsonList.map((e) => e.toString().toLowerCase()),
-          );
-          _isLoadingWords = false;
-        });
-        debugPrint(
-          'Loaded ${_oxford5000Words.length} common words from asset.',
-        );
-      }
-    } catch (e) {
-      debugPrint('Failed to load common words: $e');
-      if (mounted) {
-        setState(() => _isLoadingWords = false);
-      }
-    }
-  }
-
-  void _onFieldChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 750), _saveMetadata);
-  }
-
-  Future<void> _saveMetadata() async {
-    if (widget.project == null) return;
-
-    widget.project!.title = _titleController.text;
-    widget.project!.bookTitle = _bookTitleController.text;
-    widget.project!.authors = _authorsController.text;
-    widget.project!.genre = _selectedGenre;
-    widget.project!.historyLimit = _historyLimit.toInt();
-    await widget.project!.save();
-    debugPrint("Project metadata saved for '${widget.project!.title}'.");
-  }
-
-  Future<void> _deleteProject() async {
-    final project = widget.project;
-    if (project == null) return;
-
+  /// Legacy deletion flow shared with the danger-zone pane.
+  Future<void> _deleteProject(BuildContext context, Project project) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Project'),
         content: Text(
-          'Are you sure you want to permanently delete "${project.title}"? This will also delete all chapters, characters, and links associated with it. This action cannot be undone.',
+          'Are you sure you want to permanently delete "${project.title}"? '
+          'This will also delete all chapters, characters, and links '
+          'associated with it. This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -180,7 +72,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     if (confirmed == true && context.mounted) {
       final projectId = project.key;
 
-      // 1. Delete Chapters
+      // 1. Delete chapters.
       final chapterBox = Hive.box<Chapter>('chapters');
       final chapterKeysToDelete = chapterBox.values
           .where((c) => c.parentProjectId == projectId)
@@ -188,7 +80,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           .toList();
       await chapterBox.deleteAll(chapterKeysToDelete);
 
-      // 2. Delete Characters
+      // 2. Delete characters.
       final characterBox = Hive.box<Character>('characters');
       final characterKeysToDelete = characterBox.values
           .where((c) => c.parentProjectId == projectId)
@@ -196,719 +88,46 @@ class _SettingsDialogState extends State<SettingsDialog> {
           .toList();
       await characterBox.deleteAll(characterKeysToDelete);
 
-      // 3. Delete the Project itself
+      // 3. Delete the project itself.
       await project.delete();
 
-      // 4. Navigate back to the home screen
-      if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    }
-  }
-
-  Widget _buildSettingsContent() {
-    switch (_categories[_selectedCategoryIndex]) {
-      case 'Information':
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Project Information',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildInfoCategory('Overview', {
-                'Project Title': widget.project?.title ?? 'N/A',
-                'Created On': widget.project?.createdAt != null
-                    ? DateFormat.yMMMd().format(widget.project!.createdAt)
-                    : 'N/A',
-                'Last Modified': widget.project?.lastModified != null
-                    ? DateFormat.yMMMd().format(widget.project!.lastModified!)
-                    : 'N/A',
-              }),
-              const Divider(height: 32),
-              if (widget.chapterProvider != null)
-                _buildManuscriptInfo(widget.chapterProvider!),
-            ],
-          ),
-        );
-      case 'Cast Overview':
-        return _buildCastOverview(widget.characterProvider!);
-      case 'Metadata':
-        return _buildMetadataContent();
-      case 'About':
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'About Lore Keeper',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildCreditTile('flutter_quill', 'For the rich text editor.'),
-              _buildCreditTile(
-                'language_tool',
-                'For grammar and style checking.',
-              ),
-              _buildCreditTile(
-                'hive / hive_flutter',
-                'For fast, local database storage.',
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () => _showLicenses(context),
-                  child: const Text('View All Licenses'),
-                ),
-              ),
-            ],
-          ),
-        );
-      case 'Proofing':
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Custom Dictionary',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Manage the words you have added to your project\'s dictionary.',
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _openDictionaryManager,
-                icon: const Icon(LucideIcons.book),
-                label: const Text('Manage Dictionary'),
-              ),
-            ],
-          ),
-        );
-      case 'History':
-        return _buildHistorySettings();
-      case 'Appearance':
-        return Consumer<ThemeNotifier>(
-          builder: (context, themeNotifier, child) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Theme Pack',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    title: const Text('Minimal'),
-                    subtitle: const Text('The default minimalist lore theme.'),
-                    leading: Radio<String>.adaptive(
-                      value: 'minimal',
-                      groupValue: themeNotifier.themePack,
-                      onChanged: (String? value) =>
-                          themeNotifier.setThemePack('minimal'),
-                    ),
-                    onTap: () => themeNotifier.setThemePack('minimal'),
-                  ),
-                  ListTile(
-                    title: const Text('Dracula'),
-                    subtitle: const Text('The classic Dracula theme colors.'),
-                    leading: Radio<String>.adaptive(
-                      value: 'dracula',
-                      groupValue: themeNotifier.themePack,
-                      onChanged: (String? value) =>
-                          themeNotifier.setThemePack('dracula'),
-                    ),
-                    onTap: () => themeNotifier.setThemePack('dracula'),
-                  ),
-                  const Divider(height: 32),
-                  const Text(
-                    'Theme Mode',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    title: const Text('System Default'),
-                    leading: Radio<ThemeMode>.adaptive(
-                      value: ThemeMode.system,
-                      groupValue: themeNotifier.themeMode,
-                      onChanged: (ThemeMode? value) =>
-                          themeNotifier.setTheme(ThemeMode.system),
-                    ),
-                    onTap: () => themeNotifier.setTheme(ThemeMode.system),
-                  ),
-                  ListTile(
-                    title: Text(
-                      themeNotifier.themePack == 'dracula'
-                          ? 'Light (Alucard)'
-                          : 'Light',
-                    ),
-                    leading: Radio<ThemeMode>.adaptive(
-                      value: ThemeMode.light,
-                      groupValue: themeNotifier.themeMode,
-                      onChanged: (ThemeMode? value) =>
-                          themeNotifier.setTheme(ThemeMode.light),
-                    ),
-                    onTap: () => themeNotifier.setTheme(ThemeMode.light),
-                  ),
-                  ListTile(
-                    title: Text(
-                      themeNotifier.themePack == 'dracula'
-                          ? 'Dark (Dracula)'
-                          : 'Dark',
-                    ),
-                    leading: Radio<ThemeMode>.adaptive(
-                      value: ThemeMode.dark,
-                      groupValue: themeNotifier.themeMode,
-                      onChanged: (ThemeMode? value) =>
-                          themeNotifier.setTheme(ThemeMode.dark),
-                    ),
-                    onTap: () => themeNotifier.setTheme(ThemeMode.dark),
-                  ),
-
-                  if (themeNotifier.themePack == 'minimal') ...[
-                    const Divider(height: 32),
-                    const Text(
-                      'Contrast Level',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ListTile(
-                      title: const Text('Standard (AA Compliant)'),
-                      subtitle: const Text(
-                        'Balanced contrast suitable for most users.',
-                      ),
-                      leading: Radio<AccessibilityRating>.adaptive(
-                        value: AccessibilityRating.aa,
-                        groupValue: themeNotifier.accessibilityRating,
-                        onChanged: (AccessibilityRating? value) => themeNotifier
-                            .setAccessibilityRating(AccessibilityRating.aa),
-                      ),
-                      onTap: () => themeNotifier.setAccessibilityRating(
-                        AccessibilityRating.aa,
-                      ),
-                    ),
-                    ListTile(
-                      title: const Text('High Contrast (AAA Compliant)'),
-                      subtitle: const Text(
-                        'Enhanced contrast for better readability.',
-                      ),
-                      leading: Radio<AccessibilityRating>.adaptive(
-                        value: AccessibilityRating.aaa,
-                        groupValue: themeNotifier.accessibilityRating,
-                        onChanged: (AccessibilityRating? value) => themeNotifier
-                            .setAccessibilityRating(AccessibilityRating.aaa),
-                      ),
-                      onTap: () => themeNotifier.setAccessibilityRating(
-                        AccessibilityRating.aaa,
-                      ),
-                    ),
-                  ],
-
-                  // Preview Box
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Contrast Preview',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      default:
-        return const Center(child: Text('Select a category'));
-    }
-  }
-
-  Widget _buildMetadataContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Project Metadata',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 24),
-          TextFormField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: 'Project Title',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _bookTitleController,
-            decoration: const InputDecoration(
-              labelText: 'Book Title',
-              hintText: 'The formal title of your manuscript',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _authorsController,
-            decoration: const InputDecoration(
-              labelText: 'Author(s)',
-              hintText: 'e.g., John Doe, Jane Smith',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ListTile(
-            title: const Text('Genre'),
-            subtitle: Text(_selectedGenre),
-            trailing: const Icon(LucideIcons.pencil),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Theme.of(context).colorScheme.outline),
-            ),
-            onTap: () async {
-              final newGenre = await showDialog<String>(
-                context: context,
-                builder: (context) =>
-                    GenreSelectionDialog(initialGenre: _selectedGenre),
-              );
-              if (newGenre != null && newGenre != _selectedGenre) {
-                setState(() {
-                  _selectedGenre = newGenre;
-                });
-                _onFieldChanged(); // Trigger save
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          ListTile(
-            leading: Icon(
-              LucideIcons.trash2,
-              color: AppColors.getError(context),
-            ),
-            title: Text(
-              'Delete Project',
-              style: TextStyle(color: AppColors.getError(context)),
-            ),
-            subtitle: const Text(
-              'This will permanently delete the project and all its contents.',
-            ),
-            onTap: _deleteProject,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistorySettings() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Change History',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('History Limit'),
-            subtitle: Text(
-              'Keep the last ${_historyLimit.toInt()} versions of each item.',
-            ),
-          ),
-          Slider(
-            value: _historyLimit,
-            min: 1,
-            max: 50,
-            divisions: 49,
-            label: _historyLimit.round().toString(),
-            onChanged: (double value) {
-              setState(() {
-                _historyLimit = value;
-              });
-            },
-            onChangeEnd: (double value) {
-              // Trigger save when user finishes sliding
-              _onFieldChanged();
-            },
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'Warning: Increasing the history limit will store more data for each change, which can significantly increase the size of your project file over time.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onTertiaryContainer,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCastOverview(CharacterListProvider characterProvider) {
-    final characters = characterProvider.characters;
-    final totalCharacters = characters.length;
-
-    // Gender Breakdown
-    final genderCounts = <String, int>{};
-    for (final char in characters) {
-      // Use the gender from the first iteration as a representative value
-      if (char.iterations.isNotEmpty) {
-        final gender = char.iterations.first.gender ?? 'Unknown';
-        genderCounts[gender] = (genderCounts[gender] ?? 0) + 1;
+      // 4. Navigate back to the home screen.
+      if (context.mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
-
-    // Characters without Bio
-    final noBioCount = characters
-        .where(
-          (c) =>
-              c.iterations.isEmpty ||
-              (c.iterations.first.bio ?? '').trim().isEmpty,
-        )
-        .length;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoCategory('Ensemble', {
-            'Total Characters': totalCharacters.toString(),
-            'Characters without Bio': noBioCount.toString(),
-          }),
-          const Divider(height: 32),
-          _buildInfoCategory(
-            'Gender Breakdown',
-            genderCounts.map((key, value) => MapEntry(key, value.toString())),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildManuscriptInfo(ChapterListProvider chapterProvider) {
-    // Calculate statistics
-    final chapters = chapterProvider.chapters;
-    int totalChapters = chapters.length;
-    int totalWords = 0;
-    int totalSentences = 0;
-    int totalCharacters = 0;
-    Set<String> uniqueWords = {};
-
-    for (var chapter in chapters) {
-      if (chapter.richTextJson != null && chapter.richTextJson!.isNotEmpty) {
-        try {
-          final doc = Document.fromJson(jsonDecode(chapter.richTextJson!));
-          final text = doc.toPlainText().trim();
-          if (text.isNotEmpty) {
-            final words = text.split(RegExp(r'\s+'));
-            totalWords += words.length;
-            totalCharacters += text.length;
-            totalSentences += RegExp(
-              r'[\.!?]+',
-            ).allMatches(text).length.clamp(1, 9999);
-            uniqueWords.addAll(words.map((w) => w.toLowerCase()));
-          }
-        } catch (e) {
-          debugPrint('Error processing chapter for stats: $e');
-        }
-      }
-    }
-
-    double avgWordCount = totalChapters > 0 ? totalWords / totalChapters : 0;
-    double readingTime = totalWords / 200; // Avg reading speed: 200 wpm
-    double speakingTime = totalWords / 130; // Avg speaking speed: 130 wpm
-    double avgSentenceLength = totalSentences > 0
-        ? totalWords / totalSentences
-        : 0;
-    double avgWordLength = totalWords > 0 ? totalCharacters / totalWords : 0;
-
-    // Flesch Reading Ease Score
-    double fleschScore = 0;
-    if (totalWords > 100) {
-      fleschScore =
-          206.835 -
-          (1.015 * avgSentenceLength) -
-          // Syllables are hard, using avg word length as proxy
-          (84.6 *
-              (totalCharacters /
-                  totalWords)); // Syllables are hard, using avg word length as proxy
-    }
-
-    // Vocabulary - Rare Words Calculation
-    int rareWords = uniqueWords
-        .where((word) => !_oxford5000Words.contains(word.toLowerCase()))
-        .length;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoCategory('Overview', {
-            'Total Chapters': totalChapters.toString(),
-            'Total Word Count': totalWords.toString(),
-            'Average Word Count': avgWordCount.toStringAsFixed(0),
-            'Characters': totalCharacters.toString(),
-            'Sentences': totalSentences.toString(),
-            'Estimated Reading Time': '${readingTime.toStringAsFixed(1)} min',
-            'Estimated Speaking Time': '${speakingTime.toStringAsFixed(1)} min',
-          }),
-          const Divider(height: 32),
-          _buildInfoCategory(
-            'Readability',
-            {
-              'Average Word Length': avgWordLength.toStringAsFixed(2),
-              'Average Sentence Length': avgSentenceLength.toStringAsFixed(1),
-              'Readability Score': fleschScore.toStringAsFixed(1),
-            },
-            infoWidgets: {
-              'Readability Score': Tooltip(
-                message:
-                    'In the Flesch reading-ease test, higher scores indicate material that is easier to read.',
-                child: Icon(
-                  LucideIcons.info,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            },
-          ),
-          const Divider(height: 32),
-          _buildInfoCategory(
-            'Vocabulary',
-            {
-              'Unique Words': uniqueWords.length.toString(),
-              'Rare Words': _isLoadingWords
-                  ? 'Loading...'
-                  : rareWords.toString(),
-            },
-            descriptions: {
-              'Unique Words':
-                  'Measures vocabulary diversity by calculating the number of unique words.',
-              'Rare Words':
-                  'Measures depth of vocabulary by identifying words that are not among the 5,000 most common English words.',
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCategory(
-    String title,
-    Map<String, String> data, {
-    Map<String, Widget>? infoWidgets,
-    Map<String, String>? descriptions,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        ...data.entries.map((entry) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      entry.key,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (infoWidgets != null &&
-                        infoWidgets.containsKey(entry.key))
-                      infoWidgets[entry.key]!,
-                    Text(
-                      entry.value,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
-                ),
-                if (descriptions != null && descriptions.containsKey(entry.key))
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(
-                      descriptions[entry.key]!,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildCreditTile(String title, String subtitle) {
-    // Renamed from _buildCreditTile to buildCreditTile
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-      ),
-    );
-  }
-
-  void _showLicenses(BuildContext context) {
-    // Renamed from _showLicenses to showLicenses
-    showLicensePage(
-      context: context,
-      applicationName: 'Lore Keeper',
-      applicationVersion: '1.0.0',
-    );
-  }
-
-  void _openDictionaryManager() {
-    // Renamed from _openDictionaryManager to openDictionaryManager
-    // First, notify the parent that we are opening the dictionary.
-    widget.onDictionaryOpened?.call();
-
-    // Then, show the dictionary dialog.
-    showDialog(
-      context: context,
-      // Use rootNavigator: true to show it above the settings dialog
-      useRootNavigator: true,
-      builder: (dialogContext) {
-        return DictionaryManagerDialog(projectId: widget.project!.key);
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return AlertDialog(
-      title: Text(
-        widget.project != null
-            ? 'Settings for "${widget.project!.title}"'
-            : 'Application Settings',
-      ),
-      contentPadding: const EdgeInsets.all(0),
-      content: ConstrainedBox(
-        constraints: adaptiveDialogConstraints(context, maxWidth: 920),
-        // NOTE: LayoutBuilder cannot be used here because AlertDialog
-        // may be asked for intrinsic dimensions in debug/layout passes.
-        // This breaks with: "LayoutBuilder does not support returning intrinsic dimensions".
-        child: Builder(
-          builder: (context) {
-            final compact = screenWidth < 640;
-            final categoryList = SizedBox(
-              width: compact
-                  ? double.infinity
-                  : (screenWidth > 600 ? 200 : 150),
-              height: compact ? 160 : null,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final isSelected = _selectedCategoryIndex == index;
-                  return ListTile(
-                    title: Text(
-                      _categories[index],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedTileColor: Theme.of(
-                      context,
-                    ).colorScheme.primary.withAlpha(26),
-                    onTap: () {
-                      setState(() {
-                        _selectedCategoryIndex = index;
-                      });
-                    },
-                  );
-                },
-              ),
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  categoryList,
-                  const Divider(height: 1),
-                  Expanded(child: _buildSettingsContent()),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                categoryList,
-                const VerticalDivider(width: 1),
-                Expanded(child: _buildSettingsContent()),
-              ],
-            );
-          },
-        ),
-      ),
-
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
+    return Consumer<GlobalSettingsController>(
+      builder: (context, settings, _) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: adaptiveDialogConstraints(
+              context,
+              maxWidth: 1180,
+              maxHeightFactor: 0.9,
+            ),
+            child: SettingsShell(
+              project: project,
+              moduleIndex: moduleIndex,
+              chapterProvider: chapterProvider,
+              characterProvider: characterProvider,
+              onDictionaryOpened: onDictionaryOpened,
+              onDeleteProject: project != null
+                  ? () => _deleteProject(context, project!)
+                  : null,
+            ),
+          ),
+        );
+      },
     );
   }
 }
+
+/// Indicator used by callers that want a stable icon reference for settings
+/// (kept for compatibility with legacy top-bar behaviour).
+const IconData settingsIcon = LucideIcons.settings;

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:lore_keeper/database/ai/ai_provider.dart';
+import 'package:lore_keeper/database/ai/ai_provider_factory.dart';
+import 'package:lore_keeper/database/ai/species_ai/ai_species_service.dart';
 import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/providers/species_provider.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
 
 /// Left panel - Classification Tree for Species Module.
 /// Matches the Magic list pane style with tree navigation.
@@ -59,14 +64,14 @@ class _SpeciesTreeState extends State<SpeciesTree> {
               },
             ),
             const SizedBox(height: 8),
-            Opacity(
-              opacity: 0.5,
-              child: _CreateOptionTile(
-                icon: LucideIcons.sparkles,
-                title: 'Ask AI',
-                subtitle: 'Coming soon',
-                onTap: null,
-              ),
+            _CreateOptionTile(
+              icon: LucideIcons.sparkles,
+              title: 'AI-Assisted Species',
+              subtitle: 'Describe a creature — AI builds the taxonomy',
+              onTap: () {
+                Navigator.of(context).pop();
+                _showAiAssistedCreateFlow();
+              },
             ),
             const SizedBox(height: 8),
             Opacity(
@@ -96,6 +101,47 @@ class _SpeciesTreeState extends State<SpeciesTree> {
       builder: (context) =>
           _SpeciesClassificationDialog(speciesProvider: widget.speciesProvider),
     );
+  }
+
+  /// The full AI-assisted species flow (steps 1-5):
+  ///
+  /// 1. Prompt the user for a common name + description.
+  /// 2. Generate a detailed scientific breakdown through the configured AI
+  ///    provider (built from global settings, independent of the app's shared
+  ///    Reference Engine instance).
+  /// 3. Review + edit the proposal, with live Existing/New badges per node.
+  /// 4. Save — existing classification nodes are merged, missing ones created.
+  Future<void> _showAiAssistedCreateFlow() async {
+    final settings = context.read<GlobalSettingsController>();
+    final provider = buildAiProviderFromSettings(
+      enabled: settings.aiEnabled,
+      provider: settings.aiProvider,
+      endpoint: settings.aiEndpoint,
+      model: settings.aiModel,
+    );
+    final service = AiSpeciesService();
+
+    final generated = await showDialog<AiGeneratedSpecies>(
+      context: context,
+      builder: (context) =>
+          _AiSpeciesPromptDialog(service: service, provider: provider),
+    );
+    await provider.unload();
+    if (generated == null || !mounted) return;
+
+    final saved = await showDialog<ClassificationNode>(
+      context: context,
+      builder: (context) => _AiSpeciesReviewDialog(
+        initial: generated,
+        speciesProvider: widget.speciesProvider,
+      ),
+    );
+
+    if (saved != null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Species "${saved.name}" added')));
+    }
   }
 
   @override
@@ -1003,5 +1049,685 @@ class _SpeciesClassificationDialogState
       default:
         return LucideIcons.folder;
     }
+  }
+}
+
+/// Step 1+2 of the AI-assisted flow: collect a common name + description,
+/// then generate the draft through the AI provider.
+class _AiSpeciesPromptDialog extends StatefulWidget {
+  final AiSpeciesService service;
+  final AiProvider provider;
+
+  const _AiSpeciesPromptDialog({required this.service, required this.provider});
+
+  @override
+  State<_AiSpeciesPromptDialog> createState() => _AiSpeciesPromptDialogState();
+}
+
+class _AiSpeciesPromptDialogState extends State<_AiSpeciesPromptDialog> {
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  bool get _canGenerate =>
+      _nameController.text.trim().isNotEmpty &&
+      _descriptionController.text.trim().isNotEmpty &&
+      !_busy;
+
+  Future<void> _generate() async {
+    if (!_canGenerate) return;
+    setState(() => _busy = true);
+    try {
+      final result = await widget.service.generate(
+        provider: widget.provider,
+        commonName: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+      );
+      if (!mounted) return;
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'AI is not available right now. Enable an AI provider in '
+              'Settings, or create the species manually.',
+            ),
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).pop(result);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Generation failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(LucideIcons.sparkles, size: 20),
+          SizedBox(width: 8),
+          Text('AI-Assisted Species'),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Describe a creature. The AI builds the full scientific '
+                  'breakdown — existing classification nodes are reused, new '
+                  'ones are created when you save.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                autofocus: true,
+                enabled: !_busy,
+                decoration: const InputDecoration(
+                  labelText: 'Common name',
+                  hintText: 'e.g. Moonfire Lynx',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionController,
+                enabled: !_busy,
+                minLines: 4,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText:
+                      'e.g. A six-legged feline native to the volcanic '
+                      'badlands of Kharos, whose fur glows faintly.',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _canGenerate ? _generate : null,
+          child: _busy
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8),
+                    Text('Generating…'),
+                  ],
+                )
+              : const Text('Generate'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Steps 3-5 of the AI-assisted flow: review and edit the generated draft,
+/// with per-node Existing/New badges, then save (merge existing / create new).
+class _AiSpeciesReviewDialog extends StatefulWidget {
+  final AiGeneratedSpecies initial;
+  final SpeciesProvider speciesProvider;
+
+  const _AiSpeciesReviewDialog({
+    required this.initial,
+    required this.speciesProvider,
+  });
+
+  @override
+  State<_AiSpeciesReviewDialog> createState() => _AiSpeciesReviewDialogState();
+}
+
+class _AiSpeciesReviewDialogState extends State<_AiSpeciesReviewDialog> {
+  static const _ranks = [
+    'category',
+    'lineage',
+    'kingdom',
+    'phylum',
+    'classRank',
+    'order',
+    'family',
+    'genus',
+    'species',
+    'subspecies',
+  ];
+
+  late final Map<String, TextEditingController> _rankControllers;
+  final _scientificNameController = TextEditingController();
+  final _originController = TextEditingController();
+  final _lifespanController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _reproductionController = TextEditingController();
+  final _dietController = TextEditingController();
+  final _sentienceController = TextEditingController();
+  final _populationController = TextEditingController();
+  final _physiologyController = TextEditingController();
+  final _contentController = TextEditingController();
+  late String _status;
+  bool _saving = false;
+
+  _AiSpeciesReviewDialogState() {
+    _rankControllers = {
+      for (final rank in _ranks) rank: TextEditingController(),
+    };
+    for (final step in widget.initial.path) {
+      final c = _rankControllers[step.rank];
+      if (c != null) c.text = step.name;
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _rankControllers.values) {
+      c.dispose();
+    }
+    _scientificNameController.dispose();
+    _originController.dispose();
+    _lifespanController.dispose();
+    _heightController.dispose();
+    _reproductionController.dispose();
+    _dietController.dispose();
+    _sentienceController.dispose();
+    _populationController.dispose();
+    _physiologyController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    _scientificNameController.text = initial.scientificName ?? '';
+    _originController.text = initial.origin ?? '';
+    _lifespanController.text = initial.averageLifespan;
+    _heightController.text = initial.averageHeight;
+    _reproductionController.text = initial.reproduction;
+    _dietController.text = initial.diet;
+    _sentienceController.text = initial.sentience;
+    _populationController.text = initial.population ?? '';
+    _physiologyController.text = initial.physiology;
+    _contentController.text = initial.content;
+    _status = initial.status;
+  }
+
+  bool get _canSubmit {
+    final speciesText = _rankControllers['species']?.text.trim() ?? '';
+    final subspeciesText = _rankControllers['subspecies']?.text.trim() ?? '';
+    final categoryText = _rankControllers['category']?.text.trim() ?? '';
+    return (speciesText.isNotEmpty || subspeciesText.isNotEmpty) &&
+        categoryText.isNotEmpty &&
+        !_saving;
+  }
+
+  String? _nullableText(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Future<void> _save() async {
+    if (!_canSubmit) return;
+    setState(() => _saving = true);
+    try {
+      final path = <GeneratedClassificationStep>[];
+      for (final rank in _ranks) {
+        final text = _rankControllers[rank]!.text.trim();
+        if (text.isEmpty) continue;
+        path.add(GeneratedClassificationStep(rank: rank, name: text));
+      }
+      final generated = AiGeneratedSpecies(
+        path: path,
+        scientificName: _nullableText(_scientificNameController.text),
+        status: _status,
+        origin: _nullableText(_originController.text),
+        averageLifespan: _lifespanController.text.trim(),
+        averageHeight: _heightController.text.trim(),
+        reproduction: _reproductionController.text.trim(),
+        diet: _dietController.text.trim(),
+        sentience: _sentienceController.text.trim(),
+        population: _nullableText(_populationController.text),
+        physiology: _physiologyController.text.trim(),
+        content: _contentController.text.trim(),
+      );
+      final node = await widget.speciesProvider.createAiGeneratedSpecies(
+        generated,
+      );
+      if (mounted) Navigator.of(context).pop(node);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  String _rankDisplayName(String rank) {
+    return rank == 'classRank'
+        ? 'Class'
+        : rank[0].toUpperCase() + rank.substring(1);
+  }
+
+  String _rankHint(String rank) {
+    switch (rank) {
+      case 'category':
+        return 'Fauna or Flora';
+      case 'lineage':
+        return 'e.g. Terran Life, Xylorian Life';
+      case 'kingdom':
+        return 'e.g. Animalia, Plantae';
+      case 'phylum':
+        return 'e.g. Chordata, Arthropoda';
+      case 'classRank':
+        return 'e.g. Mammalia, Insecta';
+      case 'order':
+        return 'e.g. Primates, Coleoptera';
+      case 'family':
+        return 'e.g. Hominidae, Formicidae';
+      case 'genus':
+        return 'e.g. Homo, Formica';
+      case 'species':
+        return 'e.g. Homo sapiens';
+      case 'subspecies':
+        return 'e.g. Homo sapiens cyberneticus (optional)';
+      default:
+        return '';
+    }
+  }
+
+  /// Live resolution of each step exactly as `createClassificationPath` will
+  /// see it on save: a node matches only under the resolved parent, so a New
+  /// ancestor makes every deeper descendant New as well.
+  ClassificationNode? _resolveNode(String rank, ClassificationNode? parent) {
+    final text = _rankControllers[rank]!.text.trim();
+    if (text.isEmpty) return null;
+    final normalized = ClassificationNode.normalizeName(text);
+    if (rank == 'category') {
+      return widget.speciesProvider.findRootCategory(normalized);
+    }
+    if (parent == null) return null;
+    return widget.speciesProvider.tryFindExistingChild(
+      parent.id,
+      rank,
+      normalized,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(LucideIcons.sparkles, size: 20),
+          SizedBox(width: 8),
+          Text('Review AI Draft'),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 620),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Review and edit the AI draft. Existing nodes are merged '
+                  '(reused), missing nodes are created on save.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Classification',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ..._buildClassificationRows(),
+              const SizedBox(height: 16),
+              Text(
+                'Scientific Details',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _detailField(
+                _scientificNameController,
+                'Scientific name',
+                'e.g. Panthera lynx or a fictional binomial',
+              ),
+              const SizedBox(height: 10),
+              _detailField(_originController, 'Origin', 'Homeworld or region'),
+              const SizedBox(height: 10),
+              Text(
+                'Status',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: _status,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Extant', child: Text('Extant')),
+                  DropdownMenuItem(value: 'Extinct', child: Text('Extinct')),
+                  DropdownMenuItem(
+                    value: 'Endangered',
+                    child: Text('Endangered'),
+                  ),
+                  DropdownMenuItem(value: 'Mythical', child: Text('Mythical')),
+                  DropdownMenuItem(value: 'Unknown', child: Text('Unknown')),
+                ],
+                onChanged: _saving
+                    ? null
+                    : (value) {
+                        if (value != null) setState(() => _status = value);
+                      },
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _detailField(
+                      _lifespanController,
+                      'Avg. lifespan',
+                      'e.g. 40-60 years',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _detailField(
+                      _heightController,
+                      'Avg. height',
+                      'e.g. 180-220 cm',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _detailField(
+                      _reproductionController,
+                      'Reproduction',
+                      'e.g. Sexual',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _detailField(
+                      _dietController,
+                      'Diet',
+                      'e.g. Omnivorous',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _detailField(
+                      _sentienceController,
+                      'Sentience',
+                      'e.g. Sapient',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _detailField(
+                      _populationController,
+                      'Population',
+                      'e.g. ~14 Billion',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _detailField(
+                _physiologyController,
+                'Physiology',
+                '2-4 sentence physiology',
+                maxLines: 3,
+              ),
+              const SizedBox(height: 10),
+              _detailField(
+                _contentController,
+                'Article',
+                'Encyclopedia entry (shown in the wiki page)',
+                maxLines: 6,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _canSubmit ? _save : null,
+          icon: const Icon(LucideIcons.check, size: 18),
+          label: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildClassificationRows() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final rows = <Widget>[];
+    ClassificationNode? parent;
+    const optionalRank = 'subspecies';
+
+    for (final rank in _ranks) {
+      final controller = _rankControllers[rank]!;
+      final node = _resolveNode(rank, parent);
+      parent = node;
+      final text = controller.text.trim();
+      final isOptional = rank == optionalRank;
+
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _rankDisplayName(rank),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  if (isOptional) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '(optional)',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                  if (text.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    if (node != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.check,
+                              size: 12,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Existing',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.plus,
+                              size: 12,
+                              color: colorScheme.tertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'New',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.tertiary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: controller,
+                enabled: !_saving,
+                decoration: InputDecoration(
+                  hintText: _rankHint(rank),
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  Widget _detailField(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      enabled: !_saving,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        isDense: true,
+        border: const OutlineInputBorder(),
+      ),
+    );
   }
 }

@@ -33,6 +33,17 @@ abstract class AiProvider {
   /// Returns null if the model cannot produce embeddings.
   Future<List<double>?> embed(String text);
 
+  /// Run a chat-style text completion against [systemPrompt] and [userPrompt].
+  ///
+  /// Returns the assistant text, or null when the provider cannot generate.
+  /// Providers that only embed (no generative model) return null.
+  Future<String?> chat({
+    required String systemPrompt,
+    required String userPrompt,
+    double? temperature,
+    int? maxTokens,
+  });
+
   /// Suggest related entities for the given [entityRef].
   /// Returns a list of suggested [EntityRef]s ranked by relevance.
   /// Returns null if suggestions cannot be generated.
@@ -81,6 +92,14 @@ class NullAiProvider implements AiProvider {
 
   @override
   Future<List<double>?> embed(String text) async => null;
+
+  @override
+  Future<String?> chat({
+    required String systemPrompt,
+    required String userPrompt,
+    double? temperature,
+    int? maxTokens,
+  }) async => null;
 
   @override
   Future<List<AiSuggestion>?> suggestRelated(EntityRef entityRef) async => null;
