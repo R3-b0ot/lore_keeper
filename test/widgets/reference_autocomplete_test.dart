@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_overlay.dart';
 
@@ -94,9 +94,7 @@ void main() {
       quillController = _makeController('');
       controller = ReferenceAutocompleteController(
         quillController: quillController,
-        entityProviders: {
-          EntityType.character: () => _charEntries(characters)
-        },
+        entityProviders: {EntityType.character: () => _charEntries(characters)},
       );
       stateChangeCount = 0;
       controller.onStateChanged = () => stateChangeCount++;
@@ -827,7 +825,7 @@ void main() {
       ctrl = ReferenceAutocompleteController(
         quillController: qc,
         entityProviders: {
-          EntityType.character: () => _charEntries(_testCharacters())
+          EntityType.character: () => _charEntries(_testCharacters()),
         },
       );
     });
@@ -1004,7 +1002,7 @@ void main() {
       controller = ReferenceAutocompleteController(
         quillController: quillController,
         entityProviders: {
-          EntityType.character: () => _charEntries(_testCharacters())
+          EntityType.character: () => _charEntries(_testCharacters()),
         },
       );
     });

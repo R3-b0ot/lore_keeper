@@ -13,6 +13,9 @@ import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
 import 'package:lore_keeper/widgets/manuscript_outliner.dart';
 import 'package:lore_keeper/widgets/manuscript_collections.dart';
 
+/// Canonical stable key for widget-test topology assertions (spec §5.2).
+const Key kManuscriptListPaneKey = Key('manuscript-list-pane');
+
 enum ManuscriptListViewMode { binder, corkboard, outliner, collections }
 
 /// The Manuscript List Pane that lives in Column 2 of the Project Editor.

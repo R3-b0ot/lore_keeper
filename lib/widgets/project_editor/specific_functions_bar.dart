@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+/// Canonical stable key for widget-test topology assertions (spec §5.2).
+const Key kSpecificFunctionsBarKey = Key('specific-functions-bar');
+
 /// Consolidates editor-specific actions so the main screen stays focused
 /// on layout and state orchestration.
 class SpecificFunctionsBar extends StatelessWidget {

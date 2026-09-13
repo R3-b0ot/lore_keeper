@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 
 /// A positioned dropdown overlay showing autocomplete candidates.

@@ -17,7 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_keeper/models/character.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 import 'package:lore_keeper/widgets/reference_autocomplete_controller.dart';
 
 const _kProjectId = 1000;
@@ -93,7 +93,7 @@ List<EntityReferenceEntry> _s3(List<Character> chars) {
 }
 
 List<ReferenceCandidate> _s4(String q, List<EntityReferenceEntry> e) =>
-    const ReferenceEngine(maxResults: 26).resolve(q, e);
+    const EntityNameMatcher(maxResults: 26).resolve(q, e);
 
 (bool, String, List<ReferenceCandidate>) _ctrl(String l, List<Character> cs) {
   final q = QuillController.basic();
@@ -167,7 +167,7 @@ void main() {
     setUp(() => entries = _s3(_buildAZDataset()));
     for (final l in letters) {
       test('resolve("$l") finds $l-character', () {
-        final c = const ReferenceEngine(maxResults: 26).resolve(l, entries);
+        final c = const EntityNameMatcher(maxResults: 26).resolve(l, entries);
         expect(
           c.any((x) => x.displayName.startsWith(l)),
           isTrue,

@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 
 void main() {
-  group('ReferenceEngine', () {
-    late ReferenceEngine engine;
+  group('EntityNameMatcher', () {
+    late EntityNameMatcher engine;
 
     // Shared test data
     late List<EntityReferenceEntry> characters;
 
     setUp(() {
-      engine = const ReferenceEngine(maxResults: 20);
+      engine = const EntityNameMatcher(maxResults: 20);
       characters = [
         const EntityReferenceEntry(
           key: 1,
@@ -268,13 +268,13 @@ void main() {
 
     group('maxResults', () {
       test('respects maxResults limit', () {
-        final limitedEngine = const ReferenceEngine(maxResults: 2);
+        final limitedEngine = const EntityNameMatcher(maxResults: 2);
         final results = limitedEngine.resolve('a', characters);
         expect(results.length, lessThanOrEqualTo(2));
       });
 
       test('returns all results when under limit', () {
-        final limitedEngine = const ReferenceEngine(maxResults: 100);
+        final limitedEngine = const EntityNameMatcher(maxResults: 100);
         final results = limitedEngine.resolve('a', characters);
         expect(results.length, greaterThanOrEqualTo(3));
       });

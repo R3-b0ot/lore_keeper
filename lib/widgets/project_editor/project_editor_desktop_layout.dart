@@ -109,6 +109,7 @@ class ProjectEditorDesktopLayout extends StatelessWidget {
                 width: 48,
                 color: Theme.of(context).colorScheme.surface,
                 child: SpecificFunctionsBar(
+                  key: kSpecificFunctionsBarKey,
                   onHistoryPressed: onToggleHistoryPanel,
                   isHistoryVisible: isHistoryPanelVisible,
                   showHistoryButton: showHistoryButton,

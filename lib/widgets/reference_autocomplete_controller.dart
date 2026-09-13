@@ -1,7 +1,7 @@
 /// Controller for the @mention autocomplete overlay.
 ///
 /// Detects `@` triggers in Quill document text, extracts the query,
-/// resolves candidates via [ReferenceEngine], and manages replacement.
+/// resolves candidates via [EntityNameMatcher], and manages replacement.
 ///
 /// No Flutter widget dependencies — pure state management.
 library;
@@ -9,7 +9,7 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:lore_keeper/services/reference_attribute.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 
 /// Callback type for providing reference entries to the controller.
 ///
@@ -26,7 +26,7 @@ typedef EntityProvider = List<EntityReferenceEntry> Function();
 /// selection state, and replacement logic. The UI layer (overlay widget)
 /// reads state from this controller and calls its methods.
 class ReferenceAutocompleteController {
-  final ReferenceEngine _engine;
+  final EntityNameMatcher _engine;
   final QuillController _quillController;
   final Map<String, EntityProvider> _entityProviders;
 
@@ -43,10 +43,10 @@ class ReferenceAutocompleteController {
   ReferenceAutocompleteController({
     required QuillController quillController,
     required Map<String, EntityProvider> entityProviders,
-    ReferenceEngine? engine,
+    EntityNameMatcher? engine,
   }) : _quillController = quillController,
        _entityProviders = entityProviders,
-       _engine = engine ?? const ReferenceEngine();
+       _engine = engine ?? const EntityNameMatcher();
 
   /// Whether the autocomplete overlay is currently visible.
   bool get isActive => _isActive;

@@ -36,6 +36,9 @@ import 'package:lore_keeper/widgets/timeline_list_pane.dart';
 import 'package:lore_keeper/widgets/manuscript_list_pane.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/database/ai/ai_provider_factory.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
+import 'package:provider/provider.dart';
 
 // -----------------------------------------------------------------
 // Project Editor Screen (Four-Column Layout with Expandable Sidebar)
@@ -157,8 +160,18 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
     // Shared ReferenceEngine for cross-module reference integrity. Created
     // before the entity/binder providers so every deletion flow and the
-    // manuscript pipeline observe ONE index.
-    final sharedReferenceEngine = ReferenceEngine();
+    // manuscript pipeline observe ONE index. The AI provider is assembled from
+    // global settings (device AI, LM Studio, etc.) and degrades to no-AI when
+    // disabled or unreachable.
+    final aiProviderController = context.read<GlobalSettingsController>();
+    final sharedReferenceEngine = ReferenceEngine(
+      aiProvider: buildAiProviderFromSettings(
+        enabled: aiProviderController.aiEnabled,
+        provider: aiProviderController.aiProvider,
+        endpoint: aiProviderController.aiEndpoint,
+        model: aiProviderController.aiModel,
+      ),
+    );
     _referenceEngine = sharedReferenceEngine;
 
     _characterListProvider = CharacterListProvider(
@@ -470,6 +483,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     if (_moduleIndex == 1) {
       // Manuscripts — Column 2 hosts the Binder / Corkboard / Outliner / Collections
       return ManuscriptListPane(
+        key: kManuscriptListPaneKey,
         provider: _manuscriptBinderProvider!,
         selectedDocumentId: _selectedManuscriptDocumentId,
         onDocumentSelected: _onManuscriptDocumentSelected,

@@ -223,18 +223,14 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
 
   void _onReorder(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) newIndex--;
-    final card = _cards.removeAt(oldIndex);
-    _cards.insert(newIndex, card);
+    final card = _cards[oldIndex];
 
-    for (int i = 0; i < _cards.length; i++) {
-      _cards[i].orderIndex = i;
-      await widget.provider.updateMetadata(
-        _cards[i].id,
-        isExpanded: _cards[i].isExpanded,
-      );
-    }
+    // Use the canonical reorder path so Binder, Outliner, and persisted
+    // ordering all stay in sync (spec §7 / P1-2 fix).
+    await widget.provider.reorderDocument(card.id, newIndex);
 
-    setState(() {});
+    // Reload so the Corkboard reflects the canonical provider order.
+    _loadCards();
     widget.onDocumentSelected(card.id);
   }
 

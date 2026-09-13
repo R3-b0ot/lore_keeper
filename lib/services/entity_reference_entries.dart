@@ -5,7 +5,7 @@ import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
-import 'package:lore_keeper/services/reference_engine.dart';
+import 'package:lore_keeper/services/entity_name_matcher.dart';
 
 /// Builders that project domain entities onto the uniform [EntityReferenceEntry]
 /// shape consumed by the @mention autocomplete engine.

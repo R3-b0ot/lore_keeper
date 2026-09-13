@@ -1,11 +1,25 @@
-/// Pure Dart reference-resolution layer for the @Name Reference Engine.
+/// Pure Dart name-matching layer for the @mention autocomplete feature.
 ///
-/// This engine resolves typed name queries against entity identities.
-/// It operates on plain data — no Flutter widgets, BuildContext, Hive boxes,
-/// Quill editors, or navigation dependencies.
+/// Resolves typed name queries against entity identities using a deterministic
+/// ranking strategy. Operates on plain data — no Flutter widgets, BuildContext,
+/// Hive boxes, Quill editors, or navigation dependencies.
 ///
-/// The future Quill autocomplete layer will build [EntityReferenceEntry]
-/// lists from Hive data and call [ReferenceEngine.resolve].
+/// NOTE: This is NOT the canonical relationship/index [ReferenceEngine] found
+/// at `package:lore_keeper/database/reference_engine/reference_engine.dart`.
+/// That engine owns cross-module backlinks and the reference index.
+/// [EntityNameMatcher] is the autocomplete name-matching layer only.
+///
+/// Usage:
+/// ```dart
+/// final matcher = EntityNameMatcher();
+/// final entries = entities.map((e) => EntityReferenceEntry(
+///   key: e.key,
+///   name: e.name,
+///   aliases: [...],
+///   entityType: 'Character',
+/// )).toList();
+/// final results = matcher.resolve('Ari', entries);
+/// ```
 library;
 
 /// Match quality classification.
@@ -31,9 +45,9 @@ enum MatchType {
 
 /// A flat representation of a referenceable entity identity.
 ///
-/// This decouples the resolver from the specific Hive models.
+/// This decouples the matcher from specific Hive models.
 /// The Quill autocomplete layer builds these from Hive data before calling
-/// [ReferenceEngine.resolve].
+/// [EntityNameMatcher.resolve].
 class EntityReferenceEntry {
   /// The entity's unique identity key (Hive key or UUID).
   final dynamic key;
@@ -44,7 +58,7 @@ class EntityReferenceEntry {
   /// All alternate names (aliases, iterations, etc.).
   final List<String> aliases;
 
-  /// The entity type (Character, Location, etc.) - maps to EntityType constants.
+  /// The entity type (Character, Location, etc.) — maps to EntityType constants.
   final String entityType;
 
   /// Creates a reference entry.
@@ -56,7 +70,7 @@ class EntityReferenceEntry {
   });
 }
 
-/// A single resolved candidate from the engine.
+/// A single resolved candidate from the matcher.
 class ReferenceCandidate {
   /// The matched entity identity.
   final EntityReferenceEntry entry;
@@ -89,29 +103,21 @@ class ReferenceCandidate {
       'matchType: $matchType, confidence: $confidence)';
 }
 
-/// Pure Dart entity reference resolver.
+/// Pure Dart entity name matcher for @mention autocomplete.
 ///
 /// Matches a typed query against entity names and aliases with a
 /// deterministic ranking: exact name > exact alias > prefix name > prefix
 /// alias > substring name > substring alias.
 ///
-/// Usage:
-/// ```dart
-/// final engine = ReferenceEngine();
-/// final entries = entities.map((e) => EntityReferenceEntry(
-///   key: e.key,
-///   name: e.name,
-///   aliases: [...],
-///   entityType: 'Character',
-/// )).toList();
-/// final results = engine.resolve('Ari', entries);
-/// ```
-class ReferenceEngine {
+/// This is the autocomplete name-matching layer. The canonical cross-module
+/// relationship/index authority is the separate `ReferenceEngine` class at
+/// `package:lore_keeper/database/reference_engine/reference_engine.dart`.
+class EntityNameMatcher {
   /// Maximum number of candidates returned.
   final int maxResults;
 
-  /// Creates a reference engine.
-  const ReferenceEngine({this.maxResults = 20});
+  /// Creates an entity name matcher.
+  const EntityNameMatcher({this.maxResults = 20});
 
   /// Resolve a query against the given entity entries.
   ///

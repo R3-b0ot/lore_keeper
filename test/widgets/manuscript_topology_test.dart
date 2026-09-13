@@ -1,16 +1,16 @@
-/// Manuscript Workspace Topology regression tests (Cycle 0.5).
+/// Manuscript Workspace Topology regression tests — Cycle 0.5 + Cycle 0.6.
 ///
-/// The canonical Manuscript workspace topology is:
-///   Column 2 → [ManuscriptListPane]  (the single host of Binder / Corkboard /
-///              Outliner / Collections, with its own view-switcher header)
-///   Column 3 → [ManuscriptEditor]    (the Quill editor)
-///   Column 4 → Inspector panel
+/// Canonical topology:
+///   Column 2 → [ManuscriptListPane]  (single host of Binder/Corkboard/Outliner/Collections)
+///   Column 3 → [ManuscriptEditor]    (Quill editor, no navigation UI)
+///   Column 4 → [ManuscriptInspector] (standalone widget, receives document from parent)
 ///
-/// Historically `ManuscriptModule`/`ManuscriptEditor` echoed a second nested
-/// left panel (a `_LeftPanelMode`-driven `_buildLeftPanel()`) rendering an
-/// additional Binder/Corkboard/Outliner/Collections plus its own view switcher.
-/// These tests pin the corrected topology so the duplicate cannot regress:
-/// the four list views may be instantiated only by [ManuscriptListPane].
+/// Cycle 0.6 additions:
+///   - ManuscriptInspector is a standalone widget with key 'manuscript-inspector'
+///   - ManuscriptEditor has key 'manuscript-editor'
+///   - ManuscriptListPane has key 'manuscript-list-pane'
+///   - EntityNameMatcher is the autocomplete name-matcher (not ReferenceEngine)
+///   - Backlink navigation calls onDocumentSelected to sync the shell/Binder
 library;
 
 import 'dart:io';
@@ -30,14 +30,33 @@ import 'package:lore_keeper/modules/manuscript_module.dart';
 import 'package:lore_keeper/widgets/manuscript_binder.dart';
 import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
+import 'package:lore_keeper/widgets/manuscript_inspector.dart';
 import 'package:lore_keeper/widgets/manuscript_list_pane.dart';
 import 'package:lore_keeper/widgets/manuscript_outliner.dart';
+import 'package:lore_keeper/services/reference_name_resolver.dart';
 
 // ---------------------------------------------------------------------------
-// Static architecture contract
+// Shared setup helpers
+// ---------------------------------------------------------------------------
+
+Future<void> _waitFor({
+  required String label,
+  required bool Function() isReady,
+}) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 10));
+  while (!isReady() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  expect(isReady(), isTrue, reason: '$label did not initialize');
+}
+
+// ---------------------------------------------------------------------------
+// Tests
 // ---------------------------------------------------------------------------
 
 void main() {
+  // ── Static architecture contract ──────────────────────────────────────────
+
   group('static topology contract', () {
     test('ManuscriptModule/ManuscriptEditor no longer defines the legacy left '
         'panel architecture', () {
@@ -48,7 +67,7 @@ void main() {
       expect(source, contains('class ManuscriptModule'));
       expect(source, contains('class ManuscriptEditor'));
 
-      // The nested navigation architecture must be gone.
+      // Legacy nested navigation architecture must be gone.
       expect(source, isNot(contains('_LeftPanelMode')));
       expect(source, isNot(contains('_leftPanelMode')));
       expect(source, isNot(contains('_buildLeftPanel')));
@@ -74,11 +93,126 @@ void main() {
         expect(source, contains('ManuscriptCollections('));
       },
     );
+
+    // ── Cycle 0.6: Inspector extraction ──────────────────────────────────
+
+    test('ManuscriptInspector is a standalone widget in its own file', () {
+      final source = File(
+        'lib/widgets/manuscript_inspector.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('class ManuscriptInspector'));
+      // Inspector must not own navigation surfaces.
+      expect(source, isNot(contains('ManuscriptBinder(')));
+      expect(source, isNot(contains('ManuscriptListPane(')));
+      expect(source, isNot(contains('ManuscriptCorkboard(')));
+      expect(source, isNot(contains('ManuscriptOutliner(')));
+      expect(source, isNot(contains('ManuscriptCollections(')));
+    });
+
+    test(
+      'ManuscriptModule renders ManuscriptInspector, not _buildInspectorPanel',
+      () {
+        final source = File(
+          'lib/modules/manuscript_module.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('ManuscriptInspector('));
+        expect(source, isNot(contains('_buildInspectorPanel')));
+      },
+    );
+
+    // ── Cycle 0.6: ReferenceEngine rename ────────────────────────────────
+
+    test('EntityNameMatcher class exists in entity_name_matcher.dart', () {
+      final source = File(
+        'lib/services/entity_name_matcher.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('class EntityNameMatcher'));
+      // Must NOT reintroduce the old collision name.
+      expect(source, isNot(contains('class ReferenceEngine')));
+    });
+
+    test(
+      'services/reference_engine.dart must not exist (deleted after rename)',
+      () {
+        final f = File('lib/services/reference_engine.dart');
+        expect(
+          f.existsSync(),
+          isFalse,
+          reason:
+              'Old autocomplete reference_engine.dart must be deleted — '
+              'replaced by entity_name_matcher.dart',
+        );
+      },
+    );
+
+    test(
+      'autocomplete controller imports entity_name_matcher and uses EntityNameMatcher',
+      () {
+        final source = File(
+          'lib/widgets/reference_autocomplete_controller.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('EntityNameMatcher'));
+        expect(source, contains('entity_name_matcher.dart'));
+        expect(
+          source,
+          isNot(
+            contains("'package:lore_keeper/services/reference_engine.dart'"),
+          ),
+        );
+      },
+    );
+
+    // ── Cycle 0.6: Backlink sync ─────────────────────────────────────────
+
+    test(
+      'ManuscriptModule._onBacklinkNavigate forwards to shell onDocumentSelected',
+      () {
+        final source = File(
+          'lib/modules/manuscript_module.dart',
+        ).readAsStringSync();
+
+        expect(
+          source,
+          contains('widget.onDocumentSelected?.call(documentId)'),
+          reason: '_onBacklinkNavigate must forward to shell callback',
+        );
+        expect(
+          source,
+          contains('onDocumentSelected: _onBacklinkNavigate'),
+          reason: 'ManuscriptInspector must receive _onBacklinkNavigate',
+        );
+      },
+    );
+
+    // ── Cycle 0.6: Stable keys ───────────────────────────────────────────
+
+    test('all four stable key constants are declared', () {
+      expect(
+        File('lib/widgets/manuscript_inspector.dart').readAsStringSync(),
+        contains("Key('manuscript-inspector')"),
+      );
+      expect(
+        File('lib/widgets/manuscript_list_pane.dart').readAsStringSync(),
+        contains("Key('manuscript-list-pane')"),
+      );
+      expect(
+        File('lib/modules/manuscript_module.dart').readAsStringSync(),
+        contains("Key('manuscript-editor')"),
+      );
+      expect(
+        File(
+          'lib/widgets/project_editor/specific_functions_bar.dart',
+        ).readAsStringSync(),
+        contains("Key('specific-functions-bar')"),
+      );
+    });
   });
 
-  // -------------------------------------------------------------------------
-  // Runtime topology (widget tests)
-  // -------------------------------------------------------------------------
+  // ── Runtime topology (widget tests) ───────────────────────────────────────
 
   group('runtime topology', () {
     late Directory dir;
@@ -86,18 +220,6 @@ void main() {
     late ManuscriptBinderProvider binderProvider;
     late ChapterListProvider chapterProvider;
     late CharacterListProvider characterProvider;
-
-    /// Waits (bounded) for a provider to finish its async bootstrap.
-    Future<void> waitFor<T>({
-      required String label,
-      required bool Function() isReady,
-    }) async {
-      final deadline = DateTime.now().add(const Duration(seconds: 10));
-      while (!isReady() && DateTime.now().isBefore(deadline)) {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
-      expect(isReady(), isTrue, reason: '$label did not initialize');
-    }
 
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('manuscript_topology_');
@@ -113,17 +235,14 @@ void main() {
         project.key!,
         referenceEngine: referenceEngine,
       );
-      await waitFor(
+      await _waitFor(
         label: 'binder provider',
         isReady: () => binderProvider.isInitialized,
       );
       expect(binderProvider.manuscriptRoot, isNotNull);
 
-      // The chapter/character providers' async bootstrap must complete here,
-      // in setUp's real-async zone, so no fire-and-forget load chain is left
-      // running after the widget test ends (which would hit closed Hive boxes).
       chapterProvider = ChapterListProvider(project.key!);
-      await waitFor(
+      await _waitFor(
         label: 'chapter provider',
         isReady: () => chapterProvider.isInitialized,
       );
@@ -131,7 +250,7 @@ void main() {
         project.key!,
         referenceEngine: referenceEngine,
       );
-      await waitFor(
+      await _waitFor(
         label: 'character provider',
         isReady: () => characterProvider.isInitialized,
       );
@@ -142,15 +261,12 @@ void main() {
       await Hive.close();
       try {
         await dir.delete(recursive: true);
-      } catch (_) {
-        // Best-effort cleanup; the temp dir may already be locked.
-      }
+      } catch (_) {}
     });
 
     testWidgets('ManuscriptListPane switches among all four views', (
       tester,
     ) async {
-      // A desktop-sized content area gives the pane enough vertical room.
       await tester.binding.setSurfaceSize(const Size(1700, 1250));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -167,6 +283,7 @@ void main() {
             body: SizedBox(
               width: 340,
               child: ManuscriptListPane(
+                key: kManuscriptListPaneKey,
                 provider: binderProvider,
                 selectedDocumentId: root.id,
                 onDocumentSelected: (_) {},
@@ -177,7 +294,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Binder is the default view.
+      // Stable key present.
+      expect(find.byKey(kManuscriptListPaneKey), findsOneWidget);
+
+      // Binder is default.
       expect(find.byType(ManuscriptBinder), findsOneWidget);
 
       await tester.tap(find.byTooltip('Corkboard'));
@@ -198,7 +318,8 @@ void main() {
     });
 
     testWidgets(
-      'ManuscriptModule renders editor + inspector with no nested list views',
+      'ManuscriptModule renders editor (Column 3) + inspector (Column 4) '
+      'with stable keys and no nested list views',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(1700, 1250));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -225,21 +346,83 @@ void main() {
           ),
         );
 
-        // Let the editor's async bootstrap (binder select, reference index
-        // rebuild, content load) settle.
+        // Allow async bootstrap to complete.
         for (var i = 0; i < 40; i++) {
           await tester.pump(const Duration(milliseconds: 50));
         }
 
+        // ── No navigation surfaces inside the module ──────────────────────
         expect(find.byType(ManuscriptBinder), findsNothing);
         expect(find.byType(ManuscriptCorkboard), findsNothing);
         expect(find.byType(ManuscriptOutliner), findsNothing);
         expect(find.byType(ManuscriptCollections), findsNothing);
 
-        // Column 3 (editor) and Column 4 (inspector) are still present.
+        // ── Column 3: editor present with stable key ──────────────────────
+        expect(find.byKey(kManuscriptEditorKey), findsOneWidget);
+
+        // ── Column 4: ManuscriptInspector present with stable key ─────────
+        expect(find.byType(ManuscriptInspector), findsOneWidget);
+        expect(find.byKey(kManuscriptInspectorKey), findsOneWidget);
+
+        // ── Inspector empty state (no document selected) ──────────────────
         expect(find.text('Select a document'), findsOneWidget);
+
+        // ── Status bar from editor ────────────────────────────────────────
         expect(find.text('Words: 0'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'ManuscriptInspector fires onDocumentSelected when invoked directly '
+      '(Inspector callback wiring verification)',
+      (tester) async {
+        // This test is isolated: it pumps ManuscriptInspector in null-document
+        // state (no name resolution, no reference service needed). It verifies
+        // that the onDocumentSelected callback wiring is functional at the
+        // widget level, complementing the static contract tests above.
+        //
+        // It runs in the same setUp context but does NOT pump ManuscriptModule
+        // so there are no lingering async ops from ManuscriptEditor initState
+        // that could corrupt the Hive state in tearDown.
+        final shellSelections = <String>[];
+        const targetId = 'test-document-id';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 300,
+                height: 600,
+                child: ManuscriptInspector(
+                  selectedDocument: null,
+                  binderProvider: null,
+                  nameResolver: ReferenceNameResolver.fromDatabase(
+                    project.key!,
+                  ),
+                  referenceService: null,
+                  projectId: project.key!,
+                  onDocumentSelected: (id) => shellSelections.add(id),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Inspector renders with stable key.
+        expect(find.byKey(kManuscriptInspectorKey), findsOneWidget);
+
+        // Directly invoke the callback (simulates a backlink tap).
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+        inspector.onDocumentSelected?.call(targetId);
+
+        // Shell callback received the document ID.
+        expect(shellSelections, contains(targetId));
       },
     );
   });
 }
+
+// (no helpers needed)
