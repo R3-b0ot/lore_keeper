@@ -203,7 +203,6 @@ void main() {
         'calendar_systems',
         'calendar_nodes',
         'timeline_events',
-        'map_data',
         'settings',
         'custom_traits',
         'customPanel',

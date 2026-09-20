@@ -13,7 +13,6 @@ import 'package:lore_keeper/models/magic_node.dart';
 import 'package:lore_keeper/models/calendar_system.dart';
 import 'package:lore_keeper/models/calendar_node.dart';
 import 'package:lore_keeper/models/timeline_event.dart';
-import 'package:lore_keeper/models/map_data.dart';
 import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/manuscript_collection.dart';
@@ -34,7 +33,6 @@ const _kCalendarSystemBox = 'calendar_systems';
 const _kCalendarNodeBox = 'calendar_nodes';
 const _kTimelineEventBox = 'timeline_events';
 const _kClassificationNodeBox = 'classification_nodes';
-const _kMapDataBox = 'map_data';
 const _kSettingsBox = 'settings';
 const _kTraitsBox = 'custom_traits';
 const _kCustomPanelBox = 'customPanel';
@@ -77,7 +75,6 @@ class DatabaseManager {
       getBox<TimelineEvent>(_kTimelineEventBox);
   Box<ClassificationNode> get classificationNodes =>
       getBox<ClassificationNode>(_kClassificationNodeBox);
-  Box<MapData> get mapData => getBox<MapData>(_kMapDataBox);
   Box get settings => getBox(_kSettingsBox);
   Box get customTraits => getBox(_kTraitsBox);
   Box<String> get customPanel => getBox<String>(_kCustomPanelBox);
@@ -181,7 +178,6 @@ class DatabaseManager {
       _kCalendarSystemBox,
       _kCalendarNodeBox,
       _kTimelineEventBox,
-      _kMapDataBox,
       _kManuscriptCollectionBox,
       _kSettingsBox,
       _kTraitsBox,
@@ -228,12 +224,6 @@ class DatabaseManager {
     reg(29, TimelineEventAdapter());
     reg(36, ClassificationNodeAdapter());
     reg(37, ClassificationArticleAdapter());
-    reg(30, MapDataAdapter());
-    reg(31, MapLayerAdapter());
-    reg(32, MapStampAdapter());
-    reg(33, MapPathAdapter());
-    reg(34, MapPolygonAdapter());
-    reg(35, OffsetDataAdapter());
     reg(40, ManuscriptDocumentAdapter());
     reg(41, ManuscriptCollectionAdapter());
     reg(50, DatabaseMetadataAdapter());
@@ -464,7 +454,6 @@ class DatabaseManager {
       () => _openBox<CalendarNode>(_kCalendarNodeBox),
       () => _openBox<TimelineEvent>(_kTimelineEventBox),
       () => _openBox<ClassificationNode>(_kClassificationNodeBox),
-      () => _openBox<MapData>(_kMapDataBox),
       () => _openBox(_kSettingsBox),
       () => _openBox(_kTraitsBox),
       () => _openBox<String>(_kCustomPanelBox),
