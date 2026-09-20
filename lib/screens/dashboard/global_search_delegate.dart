@@ -6,6 +6,7 @@ import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/screens/project_editor_screen.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
+import 'package:lore_keeper/utils/date_formatters.dart';
 
 class GlobalSearchDelegate extends SearchDelegate {
   @override
@@ -92,7 +93,14 @@ class GlobalSearchDelegate extends SearchDelegate {
         .toList();
 
     final characters = Hive.box<Character>('characters').values
-        .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
+        .where(
+          (c) =>
+              c.name.toLowerCase().contains(query.toLowerCase()) ||
+              c.iterations.any(
+                (it) =>
+                    (it.name ?? '').toLowerCase().contains(query.toLowerCase()),
+              ),
+        )
         .toList();
 
     if (projects.isEmpty && chapters.isEmpty && characters.isEmpty) {
@@ -137,9 +145,7 @@ class GlobalSearchDelegate extends SearchDelegate {
     return ListTile(
       leading: const Icon(LucideIcons.package),
       title: Text(project.title),
-      subtitle: Text(
-        'Project • Created ${project.createdAt.day}/${project.createdAt.month}/${project.createdAt.year}',
-      ),
+      subtitle: Text('Project • Created ${formatDateOnly(project.createdAt)}'),
       onTap: () {
         close(context, null);
         Navigator.of(context).push(
@@ -179,7 +185,11 @@ class GlobalSearchDelegate extends SearchDelegate {
     ).get(character.parentProjectId);
     return ListTile(
       leading: const Icon(LucideIcons.user),
-      title: Text(character.name),
+      title: Text(
+        character.name.isNotEmpty
+            ? character.name
+            : character.iterations.firstOrNull?.name ?? 'Character',
+      ),
       subtitle: Text('Character • In ${project?.title ?? 'Unknown Project'}'),
       onTap: () {
         if (project == null) return;

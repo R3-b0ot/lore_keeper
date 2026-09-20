@@ -23,6 +23,7 @@ import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/modern_country_selection_dialog.dart';
 import 'package:lore_keeper/widgets/native_crop_dialog.dart';
 import 'package:lore_keeper/widgets/responsive_layout.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 
 enum PanelType { bio, links, image, traits }
@@ -257,7 +258,7 @@ class CharacterModuleState extends State<CharacterModule>
     }
     // --- END HISTORY LOGIC ---
     await _character!.save();
-    debugPrint("Character '${_character!.name}' saved.");
+    LkLog.debug('CharacterModule', "Character '${_character!.name}' saved.");
     if (mounted) {
       setState(() {
         _isSaving = false;
@@ -1993,7 +1994,7 @@ class __BasicInfoFormState extends State<_BasicInfoForm> {
       }
     } catch (e) {
       // Handle network errors
-      debugPrint('Failed to fetch countries: $e');
+      LkLog.error('CharacterModule', 'Failed to fetch countries', e);
       if (mounted) setState(() => _isLoadingCountries = false);
     }
   }

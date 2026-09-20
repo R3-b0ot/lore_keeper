@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/services/trait_service.dart';
 import 'package:lore_keeper/widgets/keyboard_aware_dialog.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 part 'trait_editor_screen.g.dart';
 
 // --- 1. Data Models ---
@@ -1019,7 +1020,11 @@ class _TraitEditorScreenState extends State<TraitEditorScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error initializing trait editor state: $e');
+      LkLog.error(
+        'TraitEditorScreen',
+        'Error initializing trait editor state',
+        e,
+      );
       // Handle error, maybe show a dialog or pop the screen
     }
   }

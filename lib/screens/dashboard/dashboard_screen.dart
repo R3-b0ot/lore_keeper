@@ -189,7 +189,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: '📥',
         title: 'Import',
         description: 'Bring in files from Word, Scrivener, or plain text.',
-        onTap: () {},
       ),
     ];
 

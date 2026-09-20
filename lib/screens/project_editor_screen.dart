@@ -415,6 +415,14 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
 
   @override
   void dispose() {
+    // Clear ownership references. The QuillController is owned and disposed
+    // by ManuscriptModule (which nulls our callback on its own dispose); the
+    // ReferenceEngine/AiProvider are stateless in-memory holders used during
+    // this screen's lifetime, so dropping the references is sufficient.
+    _manuscriptController = null;
+    _runManuscriptGrammarCheck = null;
+    _referenceEngine = null;
+
     _manuscriptBinderProvider?.removeListener(_onBinderProviderChanged);
     _manuscriptBinderProvider?.dispose();
     _chapterListProvider?.dispose();

@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 
 class ResourceManager {
   static final ResourceManager _instance = ResourceManager._internal();
@@ -70,7 +70,7 @@ class ResourceManager {
       _svgCache[assetPath] = pictureInfo;
       return pictureInfo;
     } catch (e) {
-      debugPrint('Error loading SVG: $e');
+      LkLog.error('ResourceManager', 'Error loading SVG', e);
       return null;
     }
   }

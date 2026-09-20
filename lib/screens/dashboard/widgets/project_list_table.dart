@@ -4,6 +4,7 @@ import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/theme/app_colors.dart';
+import 'package:lore_keeper/utils/date_formatters.dart';
 
 class ProjectListTable extends StatelessWidget {
   const ProjectListTable({super.key});
@@ -33,16 +34,6 @@ class ProjectListTable extends StatelessWidget {
     return Hive.box<Character>('characters').values
         .where((character) => character.parentProjectId == project.key)
         .length;
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-    return '${date.month}/${date.day}/${date.year}';
   }
 
   @override
@@ -114,7 +105,9 @@ class ProjectListTable extends StatelessWidget {
                       project.title,
                       '${_getProjectWordCount(project)}',
                       '${_getProjectCharacterCount(project)}',
-                      _formatDate(project.lastModified ?? project.createdAt),
+                      formatRelativeDate(
+                        project.lastModified ?? project.createdAt,
+                      ),
                     ),
                   ),
                 ],
