@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/screens/project_editor_screen.dart';
+import 'package:lore_keeper/utils/date_formatters.dart';
 import 'book_open_transition.dart';
 import 'book_painters.dart';
 import 'genre_glow.dart';
@@ -21,20 +22,10 @@ BookViewInfo buildBookInfo(Project project) {
     title: project.title,
     genre: genre,
     wordCount: '',
-    time: _formatDate(project.lastModified ?? project.createdAt),
+    time: formatRelativeDate(project.lastModified ?? project.createdAt),
     glow: GenreGlowRegistry.styleFor(project.genre),
     seed: (hash % 9999) / 9999,
   );
-}
-
-String _formatDate(DateTime date) {
-  final now = DateTime.now();
-  final diff = now.difference(date);
-  if (diff.inDays == 0) return 'Today';
-  if (diff.inDays == 1) return 'Yesterday';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-  return '${date.month}/${date.day}/${date.year}';
 }
 
 class ProjectBook extends StatefulWidget {

@@ -20,6 +20,7 @@ import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 import 'package:lore_keeper/services/manuscript_reference_service.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/utils/date_formatters.dart';
 
 /// Canonical key for widget-test topology assertions (spec §5.2).
 const Key kManuscriptInspectorKey = Key('manuscript-inspector');
@@ -173,34 +174,30 @@ class ManuscriptInspector extends StatelessWidget {
                             doc.povCharacterId,
                             EntityType.character,
                           ),
-                          isUnresolved: doc.povCharacterId != null &&
+                          isUnresolved:
+                              doc.povCharacterId != null &&
                               nameResolver.resolveById(
                                     doc.povCharacterId!,
                                     EntityType.character,
                                   ) ==
                                   null,
                         ),
-                        _InspectorRow(
-                          'Location',
-                          doc.locationId ?? '—',
-                        ),
+                        _InspectorRow('Location', doc.locationId ?? '—'),
                         _InspectorRow(
                           'Timeline',
                           _resolveOrRaw(
                             doc.timelineEventId,
                             EntityType.timelineEvent,
                           ),
-                          isUnresolved: doc.timelineEventId != null &&
+                          isUnresolved:
+                              doc.timelineEventId != null &&
                               nameResolver.resolveById(
                                     doc.timelineEventId!,
                                     EntityType.timelineEvent,
                                   ) ==
                                   null,
                         ),
-                        _InspectorRow(
-                          'Plotline',
-                          doc.plotline ?? '—',
-                        ),
+                        _InspectorRow('Plotline', doc.plotline ?? '—'),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -217,10 +214,10 @@ class ManuscriptInspector extends StatelessWidget {
                               _resolveOrRaw(id, EntityType.character),
                               isUnresolved:
                                   nameResolver.resolveById(
-                                        id,
-                                        EntityType.character,
-                                      ) ==
-                                      null,
+                                    id,
+                                    EntityType.character,
+                                  ) ==
+                                  null,
                             ),
                           )
                           .toList(),
@@ -253,18 +250,12 @@ class ManuscriptInspector extends StatelessWidget {
                     _InspectorSection(
                       title: 'Hierarchy',
                       children: [
-                        _InspectorRow(
-                          'Parent',
-                          _parentTitle(doc) ?? 'Root',
-                        ),
+                        _InspectorRow('Parent', _parentTitle(doc) ?? 'Root'),
                         _InspectorRow(
                           'Children',
                           '${binderProvider!.getChildren(doc.id).length}',
                         ),
-                        _InspectorRow(
-                          'Depth',
-                          '${_depth(doc.id)}',
-                        ),
+                        _InspectorRow('Depth', '${_depth(doc.id)}'),
                       ],
                     ),
                   const SizedBox(height: 16),
@@ -282,10 +273,7 @@ class ManuscriptInspector extends StatelessWidget {
 
   // ── References / Backlinks ──────────────────────────────────────────────
 
-  Widget _buildReferencesSection(
-    BuildContext context,
-    ManuscriptDocument doc,
-  ) {
+  Widget _buildReferencesSection(BuildContext context, ManuscriptDocument doc) {
     if (referenceService == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
@@ -379,11 +367,7 @@ class ManuscriptInspector extends StatelessWidget {
     return depth;
   }
 
-  static String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
-  }
+  static String _formatDate(DateTime date) => formatDateTime(date);
 
   static IconData _iconForType(ManuscriptDocumentType type) {
     return switch (type) {
@@ -565,8 +549,9 @@ class _InspectorRow extends StatelessWidget {
                   child: Text(
                     value,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      fontStyle:
-                          isUnresolved ? FontStyle.italic : FontStyle.normal,
+                      fontStyle: isUnresolved
+                          ? FontStyle.italic
+                          : FontStyle.normal,
                       color: isUnresolved ? cs.error : null,
                     ),
                   ),

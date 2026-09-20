@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter/foundation.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 
 class RelationshipService {
   static final RelationshipService _instance = RelationshipService._internal();
@@ -20,7 +20,11 @@ class RelationshipService {
       _inversions = json.decode(jsonString);
       _isInitialized = true;
     } catch (e) {
-      debugPrint('Error loading relationship inversions: $e');
+      LkLog.error(
+        'RelationshipService',
+        'Error loading relationship inversions',
+        e,
+      );
     }
   }
 

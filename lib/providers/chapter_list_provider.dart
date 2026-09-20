@@ -4,6 +4,7 @@ import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/section.dart';
 import 'package:lore_keeper/services/manuscript_service.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 
 /// A provider to manage the list of chapters in the manuscript using Hive.
 class ChapterListProvider with ChangeNotifier {
@@ -150,7 +151,7 @@ class ChapterListProvider with ChangeNotifier {
     try {
       await _manuscriptService.updateChapterOrder(_chapters);
     } catch (e) {
-      debugPrint('Error persisting chapter order: $e');
+      LkLog.error('ChapterProvider', 'Error persisting chapter order', e);
       // If persistence fails, reload from service to restore correct state
       _loadData();
     } finally {
@@ -163,14 +164,18 @@ class ChapterListProvider with ChangeNotifier {
     dynamic chapterKey,
     String newContent,
   ) async {
-    debugPrint('PROVIDER: Updating content for chapter key: $chapterKey');
+    LkLog.debug(
+      'ChapterProvider',
+      'Updating content for chapter key: $chapterKey',
+    );
     final chapter = _manuscriptService.getChapter(chapterKey);
     if (chapter == null) {
-      debugPrint('PROVIDER: Chapter not found for key: $chapterKey');
+      LkLog.debug('ChapterProvider', 'Chapter not found for key: $chapterKey');
       return;
     }
-    debugPrint(
-      'PROVIDER: Chapter found: ${chapter.title}, key: ${chapter.key}',
+    LkLog.debug(
+      'ChapterProvider',
+      'Chapter found: ${chapter.title}, key: ${chapter.key}',
     );
 
     await _manuscriptService.saveChapterContent(chapter, newContent);
@@ -180,8 +185,9 @@ class ChapterListProvider with ChangeNotifier {
     final project = projectBox.get(_projectId);
     project?.lastEditedChapterKey = chapterKey.toString();
     await project?.save();
-    debugPrint(
-      'PROVIDER: Content update completed for chapter: ${chapter.title}',
+    LkLog.debug(
+      'ChapterProvider',
+      'Content update completed for chapter: ${chapter.title}',
     );
     // No need to notify listeners as content change doesn't affect the list.
   }

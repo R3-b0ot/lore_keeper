@@ -485,10 +485,10 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (doc.richTextJson != null && doc.richTextJson!.isNotEmpty) {
       try {
         final jsonDoc = jsonDecode(doc.richTextJson!);
-        final documentMap = jsonDoc is List
-            ? {'ops': jsonDoc}
-            : (jsonDoc as Map<String, dynamic>);
-        _controller.document = Document.fromJson(_cleanDocument(documentMap));
+        final ops = jsonDoc is List
+            ? jsonDoc
+            : (jsonDoc as Map<String, dynamic>)['ops'] as List<dynamic>? ?? [];
+        _controller.document = Document.fromJson(ops);
       } catch (e) {
         _controller.document = Document();
       }
@@ -504,17 +504,6 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         _updateDocumentWordCount();
       });
     }
-  }
-
-  List<dynamic> _cleanDocument(Map<String, dynamic> doc) {
-    final ops = doc['ops'] as List<dynamic>? ?? [];
-    return ops
-        .where(
-          (op) =>
-              !(op['insert'] is Map &&
-                  (op['insert'] as Map).containsKey('page-break')),
-        )
-        .toList();
   }
 
   void _loadEmptyContent() {

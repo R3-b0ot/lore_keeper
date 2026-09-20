@@ -7,6 +7,7 @@ import 'package:lore_keeper/providers/magic_tree_provider.dart';
 import 'package:lore_keeper/providers/calendar_tree_provider.dart';
 import 'package:lore_keeper/providers/timeline_event_provider.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
+import 'package:lore_keeper/utils/date_formatters.dart';
 
 /// Overview module — default landing after book-open transition.
 /// Shows project title, genre/author, last edited, basic stats, recent
@@ -46,7 +47,9 @@ class OverviewModule extends StatelessWidget {
         children: [
           _ProjectHeader(
             project: project,
-            lastEdited: _formatDate(project.lastModified ?? project.createdAt),
+            lastEdited: formatRelativeDate(
+              project.lastModified ?? project.createdAt,
+            ),
           ),
           const SizedBox(height: 32),
           _StatsGrid(
@@ -71,16 +74,6 @@ class OverviewModule extends StatelessWidget {
   int _estimateWordCount() => chapterProvider.chapters.length * 500;
 
   int _estimateLocationCount() => 0;
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-    return '${date.month}/${date.day}/${date.year}';
-  }
 }
 
 // ─── Project header ───────────────────────────────────────────────────────────

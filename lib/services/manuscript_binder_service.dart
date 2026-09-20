@@ -1,8 +1,8 @@
 // lib/services/manuscript_binder_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/reference_integrity_service.dart';
@@ -521,7 +521,10 @@ class ManuscriptBinderService {
 
     final allowed = validChildren[parentType] ?? [];
     if (!allowed.contains(childType)) {
-      debugPrint('Warning: Unusual hierarchy: $parentType -> $childType');
+      LkLog.warning(
+        'ManuscriptBinder',
+        'Unusual hierarchy: $parentType -> $childType',
+      );
       // Allow but warn - don't throw to maintain flexibility
     }
   }

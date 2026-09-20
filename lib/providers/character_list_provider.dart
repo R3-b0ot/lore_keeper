@@ -4,6 +4,7 @@ import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/models/link.dart';
 import 'package:lore_keeper/models/character.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/utils/debug_logger.dart';
 
 class CharacterListProvider with ChangeNotifier {
   final int _projectId;
@@ -113,8 +114,9 @@ class CharacterListProvider with ChangeNotifier {
   }
 
   Future<void> deleteCharacter(dynamic characterKey) async {
-    debugPrint(
-      '[PROVIDER] 1. Starting deletion for character key: $characterKey',
+    LkLog.info(
+      'CharacterProvider',
+      'Starting deletion for character key: $characterKey',
     );
 
     // Parse the key to handle both string and int types
@@ -133,14 +135,20 @@ class CharacterListProvider with ChangeNotifier {
     );
 
     if (linksToDelete.isNotEmpty) {
-      debugPrint('[DB] 1a. Deleting ${linksToDelete.length} associated links.');
+      LkLog.info(
+        'CharacterProvider',
+        'Deleting ${linksToDelete.length} associated links.',
+      );
       await linkBox.deleteAll(linksToDelete.map((l) => l.key));
-      debugPrint('[DB] 1b. Associated links deleted.');
+      LkLog.info('CharacterProvider', 'Associated links deleted.');
     }
 
     // --- 3. Delete the character itself from the database ---
     await _characterBox.delete(parsedKey);
-    debugPrint('[DB] 3. Delete command issued for character key: $parsedKey');
+    LkLog.info(
+      'CharacterProvider',
+      'Delete command issued for character key: $parsedKey',
+    );
 
     // --- 3b. Purge stale manuscript backlinks to the deleted character ---
     // The character is gone from its box; drop any dangling reference entries
@@ -152,7 +160,10 @@ class CharacterListProvider with ChangeNotifier {
     }
 
     // --- 4. Reload the in-memory list from the database and notify the UI ---
-    debugPrint('[PROVIDER] 4. Reloading all characters from DB to update UI.');
+    LkLog.info(
+      'CharacterProvider',
+      'Reloading all characters from DB to update UI.',
+    );
     _loadCharacters();
   }
 
@@ -160,19 +171,21 @@ class CharacterListProvider with ChangeNotifier {
     final character = _characterBox.get(characterKey);
 
     if (character != null) {
-      debugPrint(
-        '[PROVIDER] 1. Starting name update for character key: $characterKey',
+      LkLog.info(
+        'CharacterProvider',
+        'Starting name update for character key: $characterKey',
       );
-      debugPrint(
-        '[DB] 2. Updating character "${character.name}" to "$newName" and saving.',
+      LkLog.info(
+        'CharacterProvider',
+        'Updating character "${character.name}" to "$newName" and saving.',
       );
       character.name = newName;
       await character.save();
-      debugPrint('[DB] 3. Save complete.');
+      LkLog.info('CharacterProvider', 'Save complete.');
 
-      // --- 4. Reload the in-memory list from the database and notify the UI ---
-      debugPrint(
-        '[PROVIDER] 4. Reloading all characters from DB to update UI.',
+      LkLog.info(
+        'CharacterProvider',
+        'Reloading all characters from DB to update UI.',
       );
       _loadCharacters();
     }

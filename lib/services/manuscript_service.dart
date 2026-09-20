@@ -1,8 +1,8 @@
 // lib/services/manuscript_service.dart (FINAL CORRECTED VERSION)
 
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 // Removed unused import for main.dart as we no longer rely on its global variables
+import 'package:lore_keeper/utils/debug_logger.dart';
 import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/section.dart';
 
@@ -144,7 +144,10 @@ class ManuscriptService {
     // Use `put` with our custom string key.
     await _chapterBox.put(hiveKey, newChapter);
 
-    debugPrint('Created front matter page "$title" with key $hiveKey');
+    LkLog.debug(
+      'ManuscriptService',
+      'Created front matter page "$title" with key $hiveKey',
+    );
     // CRITICAL FIX: Return the object retrieved from the box, which has the key assigned.
     return _chapterBox.get(hiveKey)!;
   }

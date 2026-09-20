@@ -55,4 +55,7 @@
 /linux/flutter/ephemeral
 /linux/flutter/ephemeral.plugin_symlinks/
 
+# Coverage
+coverage/
+
 # Generated files

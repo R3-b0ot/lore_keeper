@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
 import 'package:lore_keeper/theme/app_colors.dart';
 import 'package:lore_keeper/widgets/settings_dialog.dart';
-import 'package:lore_keeper/utils/dashboard_search_delegate.dart';
+import 'package:lore_keeper/screens/dashboard/global_search_delegate.dart';
 
 class DashboardTopbar extends StatelessWidget {
   final double opacity;
@@ -119,7 +119,7 @@ class DashboardTopbar extends StatelessWidget {
                                     onTap: () {
                                       showSearch(
                                         context: context,
-                                        delegate: DashboardSearchDelegate(),
+                                        delegate: GlobalSearchDelegate(),
                                       );
                                     },
                                     child: Container(
