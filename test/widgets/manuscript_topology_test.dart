@@ -190,7 +190,7 @@ void main() {
 
     // ── Cycle 0.6: Stable keys ───────────────────────────────────────────
 
-    test('all four stable key constants are declared', () {
+    test('all five stable key constants are declared', () {
       expect(
         File('lib/widgets/manuscript_inspector.dart').readAsStringSync(),
         contains("Key('manuscript-inspector')"),
@@ -208,6 +208,11 @@ void main() {
           'lib/widgets/project_editor/specific_functions_bar.dart',
         ).readAsStringSync(),
         contains("Key('specific-functions-bar')"),
+      );
+      // Column 1 (ModuleSidebar) canonical key — MS-002: was missing, now added.
+      expect(
+        File('lib/widgets/project_editor/module_sidebar.dart').readAsStringSync(),
+        contains("Key('project-editor-column-1')"),
       );
     });
   });
