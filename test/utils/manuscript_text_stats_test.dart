@@ -8,7 +8,7 @@ import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 /// EXCLUDED from every measurement. `"Hello world\n"` → 2 words, 11 chars.
 void main() {
   group('ManuscriptTextStats word count (MS-009)', () {
-    test('Hebrew fixture "Hello world\\n" counts 2 words via plain text', () {
+    test('"Hello world\\n" counts 2 words via plain text', () {
       expect(ManuscriptTextStats.wordCount('Hello world\n'), 2);
     });
 
