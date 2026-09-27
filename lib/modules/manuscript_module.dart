@@ -46,6 +46,7 @@ import 'package:lore_keeper/services/reference_attribute.dart';
 import 'package:lore_keeper/services/manuscript_reference_service.dart';
 import 'package:lore_keeper/services/entity_reference_entries.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/database_manager.dart';
@@ -563,13 +564,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   }
 
   void _updateWordCount() {
-    final plainText = _controller.document.toPlainText().trim();
+    final plainText = _controller.document.toPlainText();
     if (mounted) {
-      setState(
-        () => _wordCount = plainText.isEmpty
-            ? 0
-            : plainText.split(RegExp(r'\s+')).length,
-      );
+      setState(() => _wordCount = ManuscriptTextStats.wordCount(plainText));
     }
   }
 

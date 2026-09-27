@@ -9,6 +9,7 @@ import 'package:lore_keeper/services/reference_integrity_service.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 class ManuscriptBinderService {
   final int projectId;
@@ -179,9 +180,7 @@ class ManuscriptBinderService {
       ..isExpanded = true
       ..createdAt = now
       ..modifiedAt = now
-      ..wordCount = _countWords(
-        richTextJson ?? ManuscriptModule.emptyRichTextJson,
-      )
+      ..wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson)
       ..characterCount =
           (richTextJson ?? ManuscriptModule.emptyRichTextJson).length;
 
@@ -243,7 +242,7 @@ class ManuscriptBinderService {
 
     doc.richTextJson = richTextJson;
     doc.modifiedAt = DateTime.now();
-    doc.wordCount = _countWords(richTextJson);
+    doc.wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson);
     doc.characterCount = richTextJson.length;
     await doc.save();
     _updateProjectModifiedTime();
@@ -548,16 +547,6 @@ class ManuscriptBinderService {
     if (project != null) {
       project.lastModified = DateTime.now();
       project.save();
-    }
-  }
-
-  int _countWords(String json) {
-    if (json.isEmpty) return 0;
-    try {
-      final text = json.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ');
-      return text.trim().isEmpty ? 0 : text.trim().split(RegExp(r'\s+')).length;
-    } catch (_) {
-      return 0;
     }
   }
 }

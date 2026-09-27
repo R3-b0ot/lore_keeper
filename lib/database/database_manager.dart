@@ -17,6 +17,7 @@ import 'package:lore_keeper/models/classification_node.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/manuscript_collection.dart';
 import 'package:lore_keeper/services/trait_service.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 const _kMetaBox = 'lorekeeper_meta';
 const _kProjectBox = 'projects';
@@ -410,7 +411,9 @@ class DatabaseManager {
           ..isExpanded = true
           ..createdAt = now
           ..modifiedAt = now
-          ..wordCount = _countWords(chapter.richTextJson)
+          ..wordCount = ManuscriptTextStats.wordCountOfJson(
+            chapter.richTextJson,
+          )
           ..characterCount = chapter.richTextJson?.length ?? 0;
 
         await manuscriptBox.put(chapterId, chapterDoc);
@@ -423,20 +426,6 @@ class DatabaseManager {
       'Migration V2→V3 complete: created $createdCount ManuscriptDocument entries',
     );
   }
-
-  int _countWords(String? json) {
-    if (json == null || json.isEmpty) return 0;
-    try {
-      final doc = json.contains('ops') ? json : '{"ops": $json}';
-      // Simple word count from plain text extraction
-      final text = doc.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ');
-      return text.trim().isEmpty ? 0 : text.trim().split(RegExp(r'\s+')).length;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  // ── Box opening ───────────────────────────────────────────────────────
 
   Future<void> _openApplicationBoxes() async {
     final boxes = <Future Function()>[

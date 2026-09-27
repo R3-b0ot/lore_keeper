@@ -13,6 +13,7 @@ import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/manuscript_binder_service.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 void main() {
   late Directory dir;
@@ -166,5 +167,67 @@ void main() {
     expect(restored.calendarDateSystemKey, 3);
     expect(restored.calendarDateYear, 500);
     expect(restored.calendarDateDayOfYear, 120);
+  });
+
+  // ── MS-009: canonical word count through updateContent ──────────────────
+
+  group('word count is canonical (MS-009)', () {
+    test('updateContent stores wordCount == 2 for "Hello world\\n"', () async {
+      final doc = await service.createDocument(
+        title: 'Scene',
+        type: ManuscriptDocumentType.scene,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+
+      await service.updateContent(
+        doc.id,
+        '{"ops":[{"insert":"Hello world\\n"}]}',
+      );
+
+      final reloaded = docBox.get(doc.id)!;
+      // The stored count must match ManuscriptTextStats.wordCount exactly.
+      expect(reloaded.wordCount, 2);
+      expect(
+        reloaded.wordCount,
+        ManuscriptTextStats.wordCount('Hello world\n'),
+      );
+    });
+
+    test('updateContent stores 0 words for an empty document', () async {
+      final doc = await service.createDocument(
+        title: 'Empty',
+        type: ManuscriptDocumentType.scene,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+
+      await service.updateContent(doc.id, '{"ops":[{"insert":"\\n"}]}');
+
+      expect(docBox.get(doc.id)!.wordCount, 0);
+    });
+
+    test('createDocument with content counts the same words', () async {
+      final doc = await service.createDocument(
+        title: 'Seeded',
+        type: ManuscriptDocumentType.scene,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+        richTextJson: '{"ops":[{"insert":"Hello world\\n"}]}',
+      );
+
+      expect(doc.wordCount, 2);
+    });
+
+    test('createDocument with no content counts 0 words', () async {
+      final doc = await service.createDocument(
+        title: 'Blank',
+        type: ManuscriptDocumentType.scene,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+
+      expect(doc.wordCount, 0);
+    });
   });
 }
