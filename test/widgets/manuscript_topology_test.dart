@@ -112,6 +112,31 @@ void main() {
   // ── Static architecture contract ──────────────────────────────────────────
 
   group('static topology contract', () {
+    test(
+      'manuscript logic services stay Flutter-free '
+      '(MS-005)',
+      () {
+        const logicFiles = [
+          'lib/services/manuscript_binder_service.dart',
+          'lib/services/manuscript_collections_service.dart',
+          'lib/services/manuscript_reference_service.dart',
+          'lib/services/history_service.dart',
+          'lib/services/reference_name_resolver.dart',
+          'lib/services/reference_integrity_service.dart',
+        ];
+
+        for (final file in logicFiles) {
+          final source = File(file).readAsStringSync();
+          expect(
+            source,
+            isNot(contains('package:flutter/')),
+            reason: '$file must stay pure Dart (no Flutter UI imports) — '
+                'business logic belongs in the service layer, widgets above it',
+          );
+        }
+      },
+    );
+
     test('ManuscriptModule/ManuscriptEditor no longer defines the legacy left '
         'panel architecture', () {
       final source = File(
