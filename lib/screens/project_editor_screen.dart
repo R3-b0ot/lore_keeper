@@ -673,14 +673,16 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   Widget? _buildHistoryPanel() {
     // History supported for Manuscripts (index 1) and Characters (index 2)
     if (_moduleIndex == 1) {
-      final targetKey = _selectedChapterKey.startsWith('front_matter_')
-          ? _selectedChapterKey
-          : int.tryParse(_selectedChapterKey);
-      if (targetKey == null) return null;
+      // Manuscripts are snapshotted by ManuscriptEditor._saveContent with
+      // targetType 'ManuscriptDocument' and the CANONICAL DOCUMENT ID as the
+      // key (lib/modules/manuscript_module.dart). Querying the legacy
+      // 'Chapter' + int chapter key here matched nothing, so the panel always
+      // reported "No history found" for manuscripts (MS-006).
+      if (_selectedManuscriptDocumentId.isEmpty) return null;
 
       return HistoryPanel(
-        targetKey: targetKey,
-        targetType: 'Chapter',
+        targetKey: _selectedManuscriptDocumentId,
+        targetType: 'ManuscriptDocument',
         onClose: _toggleHistoryPanel,
         onReverted: _handleRevert,
       );
