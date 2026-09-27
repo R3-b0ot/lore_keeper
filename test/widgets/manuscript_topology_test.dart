@@ -112,30 +112,28 @@ void main() {
   // ── Static architecture contract ──────────────────────────────────────────
 
   group('static topology contract', () {
-    test(
-      'manuscript logic services stay Flutter-free '
-      '(MS-005)',
-      () {
-        const logicFiles = [
-          'lib/services/manuscript_binder_service.dart',
-          'lib/services/manuscript_collections_service.dart',
-          'lib/services/manuscript_reference_service.dart',
-          'lib/services/history_service.dart',
-          'lib/services/reference_name_resolver.dart',
-          'lib/services/reference_integrity_service.dart',
-        ];
+    test('manuscript logic services stay Flutter-free '
+        '(MS-005)', () {
+      const logicFiles = [
+        'lib/services/manuscript_binder_service.dart',
+        'lib/services/manuscript_collections_service.dart',
+        'lib/services/manuscript_reference_service.dart',
+        'lib/services/history_service.dart',
+        'lib/services/reference_name_resolver.dart',
+        'lib/services/reference_integrity_service.dart',
+      ];
 
-        for (final file in logicFiles) {
-          final source = File(file).readAsStringSync();
-          expect(
-            source,
-            isNot(contains('package:flutter/')),
-            reason: '$file must stay pure Dart (no Flutter UI imports) — '
-                'business logic belongs in the service layer, widgets above it',
-          );
-        }
-      },
-    );
+      for (final file in logicFiles) {
+        final source = File(file).readAsStringSync();
+        expect(
+          source,
+          isNot(contains('package:flutter/')),
+          reason:
+              '$file must stay pure Dart (no Flutter UI imports) — '
+              'business logic belongs in the service layer, widgets above it',
+        );
+      }
+    });
 
     test('ManuscriptModule/ManuscriptEditor no longer defines the legacy left '
         'panel architecture', () {
@@ -290,7 +288,9 @@ void main() {
       );
       // Column 1 (ModuleSidebar) canonical key — MS-002: was missing, now added.
       expect(
-        File('lib/widgets/project_editor/module_sidebar.dart').readAsStringSync(),
+        File(
+          'lib/widgets/project_editor/module_sidebar.dart',
+        ).readAsStringSync(),
         contains("Key('project-editor-column-1')"),
       );
     });
@@ -580,6 +580,35 @@ void main() {
           reason:
               'reference service must observe the shell-single ReferenceEngine',
         );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'Editor status bar shows a live "Chars: N" beside "Words: N" (MS-026)',
+      (tester) async {
+        // Give the seeded chapter known content so both live counts are
+        // deterministic: "Hello world\n" is 2 words and 11 characters
+        // (MS-010 decision: the structural trailing newline is excluded).
+        // Hive writes are real-async I/O, so seed inside runAsync.
+        await tester.runAsync(() async {
+          final doc = DatabaseManager.instance.manuscriptDocuments.get(
+            'chapter_1',
+          )!;
+          doc.richTextJson = '{"ops":[{"insert":"Hello world\\n"}]}';
+          await DatabaseManager.instance.manuscriptDocuments.put(doc.id, doc);
+        });
+
+        await _pumpProjectEditorShell(tester, project, initialChapterKey: '1');
+
+        // The status bar must render a character count (MS-026)...
+        expect(find.textContaining(RegExp(r'Chars: \d+')), findsOneWidget);
+        // ...and it must be the canonical count, not the raw Delta JSON
+        // length (36) and not the newline-inclusive length (12).
+        expect(find.text('Chars: 11'), findsOneWidget);
+        expect(find.text('Words: 2'), findsOneWidget);
 
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();

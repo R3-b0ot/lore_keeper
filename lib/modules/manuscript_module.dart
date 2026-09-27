@@ -273,6 +273,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   bool _isSaving = false;
   bool _isSwitchingChapter = false;
   int _wordCount = 0;
+  int _characterCount = 0;
   double _zoomFactor = 1.0;
   bool _isCheckingGrammar = false;
   int _grammarIssueCount = 0;
@@ -501,7 +502,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       setState(() {
         _isLoading = false;
         _isSwitchingChapter = false;
-        _updateWordCount();
+        _updateCounts();
         _updateDocumentWordCount();
       });
     }
@@ -515,6 +516,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         _isLoading = false;
         _isSwitchingChapter = false;
         _wordCount = 0;
+        _characterCount = 0;
       });
     }
   }
@@ -545,7 +547,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   void _onTextChanged() {
     if (_isLoading || _isSwitchingChapter) return;
-    _updateWordCount();
+    _updateCounts();
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer(_autosaveDelay, _saveContent);
 
@@ -563,10 +565,16 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     }
   }
 
-  void _updateWordCount() {
+  /// Computes both live counts from a single `toPlainText()` call so the
+  /// status bar can never show a word count and character count that were
+  /// measured from different snapshots of the document (MS-026).
+  void _updateCounts() {
     final plainText = _controller.document.toPlainText();
     if (mounted) {
-      setState(() => _wordCount = ManuscriptTextStats.wordCount(plainText));
+      setState(() {
+        _wordCount = ManuscriptTextStats.wordCount(plainText);
+        _characterCount = ManuscriptTextStats.characterCount(plainText);
+      });
     }
   }
 
@@ -744,6 +752,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
               children: [
                 Text(
                   'Words: $_wordCount',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Chars: $_characterCount',
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
                 const Spacer(),
@@ -994,6 +1007,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
           style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
         ),
         const SizedBox(width: 8),
+        Text(
+          'Chars: $_characterCount',
+          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+        ),
+        const SizedBox(width: 8),
         TextButton.icon(
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1148,7 +1166,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       if (!mounted) return;
       setState(() {
         _grammarIssueCount = 0;
-        _updateWordCount();
+        _updateCounts();
         _issues.clear();
         _showGrammarPanel = false;
       });
@@ -1211,7 +1229,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         issue.replacement!,
         null,
       );
-      _updateWordCount();
+      _updateCounts();
     }
     _removeIssue(issue.id);
   }
