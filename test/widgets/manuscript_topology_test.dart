@@ -22,18 +22,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart';
+import 'package:lore_keeper/screens/project_editor_screen.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
 import 'package:lore_keeper/widgets/manuscript_binder.dart';
 import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
 import 'package:lore_keeper/widgets/manuscript_inspector.dart';
 import 'package:lore_keeper/widgets/manuscript_list_pane.dart';
 import 'package:lore_keeper/widgets/manuscript_outliner.dart';
+import 'package:lore_keeper/widgets/project_editor/module_sidebar.dart';
+import 'package:lore_keeper/widgets/project_editor/specific_functions_bar.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:provider/provider.dart';
 
 // ---------------------------------------------------------------------------
 // Shared setup helpers
@@ -259,6 +265,24 @@ void main() {
         label: 'character provider',
         isReady: () => characterProvider.isInitialized,
       );
+
+      // Seed a real chapter document so the shell has something to open.
+      // Seeding in setUp (outside the testWidgets FakeAsync zone) lets Hive's
+      // real-async I/O complete before the fake-clock pumps begin.
+      final chapterDoc = ManuscriptDocument()
+        ..id = 'chapter_1'
+        ..projectId = project.key!
+        ..title = 'Chapter One'
+        ..documentType = ManuscriptDocumentType.chapter
+        ..parentId = binderProvider.manuscriptRoot!.id
+        ..orderIndex = 0
+        ..status = ManuscriptDocumentStatus.draft
+        ..createdAt = DateTime.now()
+        ..modifiedAt = DateTime.now();
+      await DatabaseManager.instance.manuscriptDocuments.put(
+        chapterDoc.id,
+        chapterDoc,
+      );
     });
 
     tearDown(() async {
@@ -374,6 +398,70 @@ void main() {
 
         // ── Status bar from editor ────────────────────────────────────────
         expect(find.text('Words: 0'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'ProjectEditorScreen shell renders exactly one of each canonical column '
+      '(MS-001)',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1700, 1250));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        // Pump the REAL shell (not the module in isolation). The shell owns
+        // its binder provider + shared ReferenceEngine, threaded to all four
+        // columns. GlobalSettingsController is required by the shell initState.
+        //
+        // The shell's providers bootstrap through real-async Hive I/O, so the
+        // whole mount + bootstrap runs inside tester.runAsync (real event loop)
+        // to avoid stranding pending real-async work in the FakeAsync zone.
+        final settings = GlobalSettingsController();
+        await tester.runAsync(() async {
+          await tester.pumpWidget(
+            ChangeNotifierProvider<GlobalSettingsController>.value(
+              value: settings,
+              child: MaterialApp(
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  FlutterQuillLocalizations.delegate,
+                ],
+                home: ProjectEditorScreen(
+                  project: project,
+                  // Legacy deep-link remap quirk (§_normalizeModuleIndex):
+                  // passing legacy index 0 opens the Manuscripts module.
+                  initialModuleIndex: 0,
+                  initialChapterKey: '1',
+                ),
+              ),
+            ),
+          );
+          // Let the shell providers + binder bootstrap finish on the real
+          // event loop (Hive reads/writes, entity index rebuilds).
+          await Future<void>.delayed(const Duration(milliseconds: 800));
+        });
+
+        // Render the (now bootstrapped) tree under the fake clock.
+        await tester.pump();
+
+        // ── Canonical columns present exactly once (spec §1.3 / §5.2) ────
+        expect(find.byKey(kProjectEditorColumn1Key), findsOneWidget);
+        expect(find.byKey(kManuscriptListPaneKey), findsOneWidget);
+        expect(find.byKey(kManuscriptEditorKey), findsOneWidget);
+        expect(find.byKey(kManuscriptInspectorKey), findsOneWidget);
+        expect(find.byKey(kSpecificFunctionsBarKey), findsOneWidget);
+
+        // The Binder is hosted by Column 2 only — one instance, no duplicates.
+        expect(find.byType(ManuscriptBinder), findsOneWidget);
+
+        // The seeded chapter was opened (inspector leaves its empty state).
+        expect(find.text('Select a document'), findsNothing);
+
+        // Unmount the shell inside the FakeAsync zone so every dispose() runs
+        // before the framework's post-test teardown.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
       },
     );
 
