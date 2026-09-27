@@ -517,6 +517,51 @@ void main() {
     );
 
     testWidgets(
+      'ProjectEditorScreen shares ONE ReferenceEngine across the manuscript '
+      'pipeline (MS-004)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final listPane = tester.widget<ManuscriptListPane>(
+          find.byKey(kManuscriptListPaneKey),
+        );
+        final editor = tester.widget<ManuscriptEditor>(
+          find.byKey(kManuscriptEditorKey),
+        );
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        expect(inspector.referenceService, isNotNull);
+
+        // The binder (Columns 2/3) derives from the shell engine.
+        expect(
+          identical(
+            listPane.provider.referenceEngine,
+            editor.binderProvider!.referenceEngine,
+          ),
+          isTrue,
+          reason: 'Column 2 and Column 3 share one ReferenceEngine',
+        );
+
+        // The module's reference service (Column 4 backlinks/outgoing refs)
+        // is built on the same shell engine — never a private duplicate.
+        expect(
+          identical(
+            editor.binderProvider!.referenceEngine,
+            inspector.referenceService!.referenceEngine,
+          ),
+          isTrue,
+          reason:
+              'reference service must observe the shell-single ReferenceEngine',
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
       'ManuscriptInspector fires onDocumentSelected when invoked directly '
       '(Inspector callback wiring verification)',
       (tester) async {

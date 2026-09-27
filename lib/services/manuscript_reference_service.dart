@@ -24,6 +24,13 @@ class ManuscriptReferenceService {
   }) : _referenceEngine = referenceEngine,
        _documentBox = documentBox;
 
+  /// The shared [ReferenceEngine] backing this service.
+  ///
+  /// Exposed so consumers and topology tests can verify the service never
+  /// diverges onto a private, unpopulated engine of its own — every reference
+  /// producer in the manuscript pipeline must observe the shell's single index.
+  ReferenceEngine get referenceEngine => _referenceEngine;
+
   /// Extract all inline references from a manuscript document's content.
   ///
   /// Scans the Quill Delta JSON for link attributes with `ref:` prefix.
