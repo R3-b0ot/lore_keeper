@@ -683,6 +683,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       return HistoryPanel(
         targetKey: _selectedManuscriptDocumentId,
         targetType: 'ManuscriptDocument',
+        binderProvider: _manuscriptBinderProvider,
         onClose: _toggleHistoryPanel,
         onReverted: _handleRevert,
       );

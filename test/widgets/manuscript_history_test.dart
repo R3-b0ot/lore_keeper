@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/models/chapter.dart';
 import 'package:lore_keeper/models/history_entry.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
@@ -30,6 +31,7 @@ import 'package:lore_keeper/screens/project_editor_screen.dart';
 import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/settings/global_settings_controller.dart';
 import 'package:lore_keeper/widgets/history_panel.dart';
+import 'package:lore_keeper/widgets/manuscript_diff_view_dialog.dart';
 import 'package:provider/provider.dart';
 
 /// A two-word document whose canonical counts are 2 words / 11 characters
@@ -168,7 +170,7 @@ void main() {
   ///
   /// Performs real Hive I/O, so callers must run it inside
   /// [WidgetTester.runAsync]; awaiting it in the FakeAsync test zone
-  /// deadlocks (see [_seedInRealAsync]).
+  /// deadlocks.
   Future<HistoryEntry> seedEntry({
     String targetType = 'ManuscriptDocument',
     dynamic targetKey = 'chapter_1',
@@ -287,4 +289,176 @@ void main() {
       },
     );
   });
+
+  group('MS-007 — ManuscriptDocument diff and revert', () {
+    testWidgets('opens a diff instead of claiming the type is unsupported', (
+      tester,
+    ) async {
+      await tester.runAsync(seedEntry);
+
+      final spy = _SpyBinderProvider(project.key!);
+      await tester.runAsync(
+        () => _waitFor(
+          label: 'spy binder provider',
+          isReady: () => spy.isInitialized,
+        ),
+      );
+
+      await tester.pumpWidget(
+        _panelHost(
+          HistoryPanel(
+            targetType: 'ManuscriptDocument',
+            targetKey: 'chapter_1',
+            binderProvider: spy,
+            onClose: () {},
+            onReverted: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The revert affordance exists on the row...
+      await tester.tap(find.byTooltip('Revert to this version'));
+      await tester.pumpAndSettle();
+
+      // ...and it must open a diff dialog for a ManuscriptDocument rather than
+      // the "Diff view not supported for this type." snackbar.
+      expect(find.textContaining('Diff view not supported'), findsNothing);
+      expect(find.byType(ManuscriptDocumentDiffViewDialog), findsOneWidget);
+
+      // The dialog is handed the live document and the snapshot — never a
+      // legacy Chapter and never raw JSON to diff against itself.
+      final dialog = tester.widget<ManuscriptDocumentDiffViewDialog>(
+        find.byType(ManuscriptDocumentDiffViewDialog),
+      );
+      expect(dialog.currentTitle, 'Chapter One');
+      expect(dialog.currentRichTextJson, _helloDelta);
+      expect(dialog.historicalRichTextJson, _historicalDelta);
+
+      // A real diff is rendered: both a removal (the live prose) and an
+      // addition (the snapshot's prose) are on screen. DiffMatchPatch
+      // segments character-by-character, so the individual Text widgets are
+      // fragments — the markers, not whole phrases, are what is assertable.
+      expect(find.text('No changes in text.'), findsNothing);
+      expect(find.textContaining('- '), findsWidgets);
+      expect(find.textContaining('+ '), findsWidgets);
+    });
+
+    testWidgets(
+      'revert writes the historical richTextJson through the binder provider '
+      '(MS-007)',
+      (tester) async {
+        await tester.runAsync(() async {
+          await seedEntry();
+          // Put a decoy in the legacy chapters box keyed by the history key so
+          // we can prove the revert never writes through it.
+          await DatabaseManager.instance.chapters.put(
+            'chapter_1',
+            Chapter()
+              ..title = 'Legacy Chapter'
+              ..parentSectionKey = 0
+              ..parentProjectId = project.key!
+              ..orderIndex = 0
+              ..richTextJson = _legacyChapterJson,
+          );
+        });
+
+        final documentBefore = DatabaseManager.instance.manuscriptDocuments.get(
+          'chapter_1',
+        )!;
+        expect(documentBefore.richTextJson, _helloDelta);
+
+        // The panel is driven with a spy binder so the test can observe the
+        // exact payload the revert path hands to updateContent.
+        final spy = _SpyBinderProvider(project.key!);
+        await tester.runAsync(
+          () => _waitFor(
+            label: 'spy binder provider',
+            isReady: () => spy.isInitialized,
+          ),
+        );
+
+        await tester.pumpWidget(
+          _panelHost(
+            HistoryPanel(
+              targetType: 'ManuscriptDocument',
+              targetKey: 'chapter_1',
+              binderProvider: spy,
+              onClose: () {},
+              onReverted: () {},
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Revert to this version'));
+        await tester.pumpAndSettle();
+
+        // The diff dialog shows the snapshot against the current document.
+        expect(find.textContaining('Compare and Revert:'), findsOneWidget);
+
+        // The revert button performs REAL Hive I/O (updateContent), so the tap
+        // is dispatched inside runAsync: creating the async chain in the real
+        // zone is what lets it complete. Tapping in the FakeAsync zone
+        // deadlocks, because the write's continuations can never be flushed.
+        await tester.runAsync(() async {
+          await tester.tap(find.text('Revert to this Version'));
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        });
+        await tester.pumpAndSettle();
+
+        // (1) The revert was routed through the binder provider, carrying the
+        //     historical richTextJson decoded from the snapshot.
+        expect(spy.updatedDocumentId, 'chapter_1');
+        expect(spy.updatedRichTextJson, _historicalDelta);
+
+        // (2) The document itself now holds the historical content.
+        final after = DatabaseManager.instance.manuscriptDocuments.get(
+          'chapter_1',
+        )!;
+        expect(after.richTextJson, _historicalDelta);
+        expect(after.wordCount, 2); // recomputed: "Older draft" = 2 words
+
+        // (3) The legacy chapters box was NOT touched.
+        final legacy = DatabaseManager.instance.chapters.get('chapter_1')!;
+        expect(legacy.richTextJson, _legacyChapterJson);
+        expect(legacy.title, 'Legacy Chapter');
+
+        // (4) The snapshot itself is not mutated by reverting.
+        expect(
+          DatabaseManager.instance.historyEntries.values.single.data,
+          contains('Older draft'),
+        );
+      },
+    );
+  });
+}
+
+/// A minimal host for [HistoryPanel] that supplies the real current document
+/// data the panel needs to diff against.
+Widget _panelHost(Widget child) {
+  return MaterialApp(
+    home: Scaffold(body: SizedBox(width: 400, child: child)),
+  );
+}
+
+/// Minimal legacy-chapter fixture. The MS-007 revert must never read or write
+/// this; the box is only seeded to prove that.
+const _legacyChapterJson = '{"ops":[{"insert":"Legacy\\n"}]}';
+
+/// Records what the history panel asked the binder provider to persist, then
+/// delegates to the real provider so the Hive write is real.
+class _SpyBinderProvider extends ManuscriptBinderProvider {
+  _SpyBinderProvider(super.projectId)
+    : super(referenceEngine: ReferenceEngine());
+
+  String? updatedDocumentId;
+  String? updatedRichTextJson;
+
+  @override
+  Future<void> updateContent(String documentId, String richTextJson) async {
+    updatedDocumentId = documentId;
+    updatedRichTextJson = richTextJson;
+    await super.updateContent(documentId, richTextJson);
+  }
 }
