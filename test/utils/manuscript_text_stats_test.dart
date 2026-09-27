@@ -57,4 +57,43 @@ void main() {
       expect(ManuscriptTextStats.wordCountOfJson('{"ops":'), 0);
     });
   });
+
+  group('ManuscriptTextStats character count (MS-010)', () {
+    test(
+      // DECISION ENCODED: the single structural trailing "\n" that Quill's
+      // Delta format always appends is EXCLUDED, so "Hello world\n"
+      // measures 11 characters (12 if the newline were counted).
+      '"Hello world\\n" counts exactly 11 characters',
+      () {
+        expect(ManuscriptTextStats.characterCount('Hello world\n'), 11);
+        const json = '{"ops":[{"insert":"Hello world\\n"}]}';
+        expect(ManuscriptTextStats.characterCountOfJson(json), 11);
+      },
+    );
+
+    test('an empty document counts 0 characters', () {
+      expect(ManuscriptTextStats.characterCount(''), 0);
+      expect(ManuscriptTextStats.characterCount('\n'), 0);
+      expect(ManuscriptTextStats.characterCountOfJson(null), 0);
+      expect(ManuscriptTextStats.characterCountOfJson(''), 0);
+      expect(
+        ManuscriptTextStats.characterCountOfJson('{"ops":[{"insert":"\\n"}]}'),
+        0,
+      );
+    });
+
+    test(
+      'interior newlines are preserved, only one trailing \\n is dropped',
+      () {
+        // Two lines: "a\nb\n" -> drop one trailing \n -> "a\nb" = 3 chars.
+        expect(ManuscriptTextStats.characterCount('a\nb\n'), 3);
+      },
+    );
+
+    test('an embed op contributes exactly one character', () {
+      const json =
+          '{"ops":[{"insert":{"image":"data:image/png;base64,QUJD"}},{"insert":"\\n"}]}';
+      expect(ManuscriptTextStats.characterCountOfJson(json), 1);
+    });
+  });
 }

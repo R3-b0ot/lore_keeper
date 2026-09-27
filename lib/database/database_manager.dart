@@ -414,7 +414,9 @@ class DatabaseManager {
           ..wordCount = ManuscriptTextStats.wordCountOfJson(
             chapter.richTextJson,
           )
-          ..characterCount = chapter.richTextJson?.length ?? 0;
+          ..characterCount = ManuscriptTextStats.characterCountOfJson(
+            chapter.richTextJson,
+          );
 
         await manuscriptBox.put(chapterId, chapterDoc);
         createdCount++;

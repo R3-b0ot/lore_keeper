@@ -39,6 +39,15 @@ final class ManuscriptTextStats {
     return text.split(RegExp(r'\s+')).length;
   }
 
+  /// Canonical character count of [plainText].
+  ///
+  /// Length of the text after dropping the single structural trailing newline
+  /// (see the class doc for the decision). Never derived from the Delta JSON
+  /// length, which counts syntax (braces, escapes, attribute keys) rather
+  /// than authored characters.
+  static int characterCount(String plainText) =>
+      countableText(plainText).length;
+
   /// Reconstructs the plain text of a stored Delta JSON document without
   /// building a Quill `Document`.
   ///
@@ -76,4 +85,9 @@ final class ManuscriptTextStats {
   /// Word count of a stored Delta JSON document (see [plainTextOfDeltaJson]).
   static int wordCountOfJson(String? json) =>
       wordCount(plainTextOfDeltaJson(json));
+
+  /// Character count of a stored Delta JSON document (see
+  /// [plainTextOfDeltaJson]).
+  static int characterCountOfJson(String? json) =>
+      characterCount(plainTextOfDeltaJson(json));
 }

@@ -522,9 +522,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _updateDocumentWordCount() {
     if (_selectedDocument != null) {
       _selectedDocument!.wordCount = _wordCount;
-      _selectedDocument!.characterCount = _controller.document
-          .toPlainText()
-          .length;
+      _selectedDocument!.characterCount = ManuscriptTextStats.characterCount(
+        _controller.document.toPlainText(),
+      );
     }
   }
 

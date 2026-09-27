@@ -181,8 +181,7 @@ class ManuscriptBinderService {
       ..createdAt = now
       ..modifiedAt = now
       ..wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson)
-      ..characterCount =
-          (richTextJson ?? ManuscriptModule.emptyRichTextJson).length;
+      ..characterCount = ManuscriptTextStats.characterCountOfJson(richTextJson);
 
     await _documentBox.put(id, doc);
 
@@ -243,7 +242,7 @@ class ManuscriptBinderService {
     doc.richTextJson = richTextJson;
     doc.modifiedAt = DateTime.now();
     doc.wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson);
-    doc.characterCount = richTextJson.length;
+    doc.characterCount = ManuscriptTextStats.characterCountOfJson(richTextJson);
     await doc.save();
     _updateProjectModifiedTime();
   }

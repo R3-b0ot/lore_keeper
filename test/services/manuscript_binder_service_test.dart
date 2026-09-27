@@ -192,6 +192,13 @@ void main() {
         reloaded.wordCount,
         ManuscriptTextStats.wordCount('Hello world\n'),
       );
+      // MS-010: characterCount is plain-text length with the single
+      // structural trailing "\n" excluded -> 11 (not 12, not the JSON's 36).
+      expect(reloaded.characterCount, 11);
+      expect(
+        reloaded.characterCount,
+        ManuscriptTextStats.characterCount('Hello world\n'),
+      );
     });
 
     test('updateContent stores 0 words for an empty document', () async {
@@ -205,6 +212,7 @@ void main() {
       await service.updateContent(doc.id, '{"ops":[{"insert":"\\n"}]}');
 
       expect(docBox.get(doc.id)!.wordCount, 0);
+      expect(docBox.get(doc.id)!.characterCount, 0);
     });
 
     test('createDocument with content counts the same words', () async {
@@ -217,6 +225,8 @@ void main() {
       );
 
       expect(doc.wordCount, 2);
+      // MS-010: 11 = plain-text length minus the structural trailing "\n".
+      expect(doc.characterCount, 11);
     });
 
     test('createDocument with no content counts 0 words', () async {
@@ -227,7 +237,10 @@ void main() {
         orderIndex: 0,
       );
 
+      // Previously the empty document reported 25 "characters" — the length
+      // of the emptyRichTextJson envelope itself.
       expect(doc.wordCount, 0);
+      expect(doc.characterCount, 0);
     });
   });
 }
