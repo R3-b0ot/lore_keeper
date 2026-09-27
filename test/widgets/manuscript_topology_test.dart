@@ -56,6 +56,54 @@ Future<void> _waitFor({
   expect(isReady(), isTrue, reason: '$label did not initialize');
 }
 
+/// Pumps the REAL [ProjectEditorScreen] with the Manuscripts module open.
+///
+/// The shell builds its OWN Hive-backed providers in initState, whose
+/// bootstrap completes on the real-async event loop. The whole mount +
+/// bootstrap therefore runs inside [WidgetTester.runAsync] so pending real
+/// async work finishes before the fake-clock render; stranding it in the
+/// FakeAsync zone hangs the framework's post-test teardown.
+Future<void> _pumpProjectEditorShell(
+  WidgetTester tester,
+  Project project, {
+  String initialChapterKey = '',
+}) async {
+  await tester.binding.setSurfaceSize(const Size(1700, 1250));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  final settings = GlobalSettingsController();
+  await tester.runAsync(() async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<GlobalSettingsController>.value(
+        value: settings,
+        child: MaterialApp(
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            FlutterQuillLocalizations.delegate,
+          ],
+          home: ProjectEditorScreen(
+            project: project,
+            // Legacy deep-link remap quirk (§_normalizeModuleIndex):
+            // passing legacy index 0 opens the Manuscripts module.
+            initialModuleIndex: 0,
+            initialChapterKey: initialChapterKey.isEmpty
+                ? null
+                : initialChapterKey,
+          ),
+        ),
+      ),
+    );
+    // Let the shell providers + binder bootstrap finish on the real event
+    // loop (Hive reads/writes, entity index rebuilds).
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+  });
+
+  // Render the (now bootstrapped) tree under the fake clock.
+  await tester.pump();
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -405,45 +453,10 @@ void main() {
       'ProjectEditorScreen shell renders exactly one of each canonical column '
       '(MS-001)',
       (tester) async {
-        await tester.binding.setSurfaceSize(const Size(1700, 1250));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-
-        // Pump the REAL shell (not the module in isolation). The shell owns
-        // its binder provider + shared ReferenceEngine, threaded to all four
-        // columns. GlobalSettingsController is required by the shell initState.
-        //
-        // The shell's providers bootstrap through real-async Hive I/O, so the
-        // whole mount + bootstrap runs inside tester.runAsync (real event loop)
-        // to avoid stranding pending real-async work in the FakeAsync zone.
-        final settings = GlobalSettingsController();
-        await tester.runAsync(() async {
-          await tester.pumpWidget(
-            ChangeNotifierProvider<GlobalSettingsController>.value(
-              value: settings,
-              child: MaterialApp(
-                localizationsDelegates: const [
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  FlutterQuillLocalizations.delegate,
-                ],
-                home: ProjectEditorScreen(
-                  project: project,
-                  // Legacy deep-link remap quirk (§_normalizeModuleIndex):
-                  // passing legacy index 0 opens the Manuscripts module.
-                  initialModuleIndex: 0,
-                  initialChapterKey: '1',
-                ),
-              ),
-            ),
-          );
-          // Let the shell providers + binder bootstrap finish on the real
-          // event loop (Hive reads/writes, entity index rebuilds).
-          await Future<void>.delayed(const Duration(milliseconds: 800));
-        });
-
-        // Render the (now bootstrapped) tree under the fake clock.
-        await tester.pump();
+        // The shell owns its binder provider + shared ReferenceEngine, threaded
+        // to all four columns. GlobalSettingsController is required by the
+        // shell initState.
+        await _pumpProjectEditorShell(tester, project, initialChapterKey: '1');
 
         // ── Canonical columns present exactly once (spec §1.3 / §5.2) ────
         expect(find.byKey(kProjectEditorColumn1Key), findsOneWidget);
@@ -460,6 +473,44 @@ void main() {
 
         // Unmount the shell inside the FakeAsync zone so every dispose() runs
         // before the framework's post-test teardown.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'ProjectEditorScreen threads ONE ManuscriptBinderProvider to Columns '
+      '2/3/4 (MS-003)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final listPane = tester.widget<ManuscriptListPane>(
+          find.byKey(kManuscriptListPaneKey),
+        );
+        final editor = tester.widget<ManuscriptEditor>(
+          find.byKey(kManuscriptEditorKey),
+        );
+        // The inspector key lives on its inner body Container, so resolve the
+        // widget by type instead.
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        // Column 2 (list pane) and Column 3 (editor) share the shell binder.
+        expect(
+          identical(listPane.provider, editor.binderProvider),
+          isTrue,
+          reason:
+              'Column 2 and Column 3 must observe the same ManuscriptBinderProvider',
+        );
+        // Column 4 (inspector) observes the same binder as the editor.
+        expect(
+          identical(editor.binderProvider, inspector.binderProvider),
+          isTrue,
+          reason:
+              'Column 4 inspector must observe the same ManuscriptBinderProvider',
+        );
+
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
       },
