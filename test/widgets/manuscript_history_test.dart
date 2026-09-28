@@ -290,6 +290,68 @@ void main() {
     );
   });
 
+  group('MS-020 — the ManuscriptDocument diff/revert path is Hive-free', () {
+    test('no manuscript history widget opens Hive.box<Chapter> (MS-020)', () {
+      // The manuscript revision path must not reach into the legacy chapter
+      // box: not to read the "current" version, not to write the revert, and
+      // not to deserialize the snapshot with chapterFromJson.
+      const manuscriptHistoryWidgets = [
+        'lib/widgets/manuscript_diff_view_dialog.dart',
+        'lib/widgets/history_panel.dart',
+      ];
+
+      for (final file in manuscriptHistoryWidgets) {
+        final code = _codeOfFile(file);
+        expect(
+          code,
+          isNot(contains('Hive.box<Chapter>')),
+          reason: '$file must not open the legacy chapters box (MS-020)',
+        );
+        expect(
+          code,
+          isNot(contains('chapterFromJson')),
+          reason:
+              '$file must not parse a snapshot as a legacy Chapter (MS-020)',
+        );
+        expect(
+          code,
+          isNot(contains('models/chapter.dart')),
+          reason: '$file must not depend on the Chapter model (MS-020/MS-021)',
+        );
+      }
+    });
+
+    test(
+      'the manuscript diff dialog receives all data by constructor (MS-020)',
+      () {
+        // Data-in, callback-out: the dialog must not read storage at all.
+        final code = _codeOfFile(
+          'lib/widgets/manuscript_diff_view_dialog.dart',
+        );
+
+        expect(code, isNot(contains('package:hive')));
+        expect(code, isNot(contains('Hive.')));
+
+      // The revert is a callback, so persistence is the caller's decision.
+      expect(code, contains('Future<void> Function(String'));
+      },
+    );
+
+    test(
+      'ChapterDiffViewDialog still serves legacy Chapter data only (MS-020)',
+      () {
+        // The legacy dialog is intentionally left untouched: it is the path for
+        // pre-manuscript 'Chapter' snapshots, not the manuscript one. This test
+        // documents that the manuscript path routes elsewhere, so nobody later
+        // "reuses" it for a ManuscriptDocument and reintroduces the Hive read.
+        final code = _codeOfFile('lib/widgets/history_panel.dart');
+
+        expect(code, contains("entry.targetType == 'Chapter'"));
+        expect(code, contains("entry.targetType == 'ManuscriptDocument'"));
+      },
+    );
+  });
+
   group('MS-007 — ManuscriptDocument diff and revert', () {
     testWidgets('opens a diff instead of claiming the type is unsupported', (
       tester,
@@ -432,6 +494,20 @@ void main() {
       },
     );
   });
+}
+
+/// Reads a source file with its comments removed.
+///
+/// A static guard has to look at *code*: the manuscript dialog's doc comment
+/// legitimately names `Hive.box<Chapter>` to explain that it never opens it, and
+/// a guard that matched that text would be both useless (it proves nothing) and
+/// impossible to document around. Stripping comments keeps the assertion on the
+/// behaviour that actually matters.
+String _codeOfFile(String path) {
+  final source = File(path).readAsStringSync();
+  return source
+      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), ' ')
+      .replaceAll(RegExp(r'//[^\n]*'), ' ');
 }
 
 /// A minimal host for [HistoryPanel] that supplies the real current document
