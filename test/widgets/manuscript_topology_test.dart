@@ -121,6 +121,7 @@ void main() {
         'lib/services/history_service.dart',
         'lib/services/reference_name_resolver.dart',
         'lib/services/reference_integrity_service.dart',
+        'lib/services/history_snapshot_policy.dart',
       ];
 
       for (final file in logicFiles) {

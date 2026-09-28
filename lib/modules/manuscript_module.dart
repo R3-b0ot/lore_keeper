@@ -31,6 +31,7 @@ import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 import 'package:language_tool/language_tool.dart';
 
 import 'package:lore_keeper/services/history_service.dart';
+import 'package:lore_keeper/services/history_snapshot_policy.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
 import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
@@ -264,6 +265,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Timer? _titleAutosaveTimer;
   Timer? _autosaveTimer;
   Timer? _grammarDebounce;
+
   /// S-34 (spec 11.3): the content autosave debounce target is ~2s.
   ///
   /// Snapshot *pacing* is a separate concern, handled by
@@ -284,6 +286,24 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   /// Seeded on every load (see [_loadContent]) so the first save after opening
   /// a document is not mistaken for a no-op.
   String? _lastSavedContent;
+
+  /// The content carried by the most recent history snapshot, if any.
+  ///
+  /// Deliberately *not* the same field as [_lastSavedContent]: content is
+  /// written on every autosave, snapshots are paced by
+  /// [HistorySnapshotPolicy.autosaveSnapshotInterval]. Sharing one baseline
+  /// would make a close/switch believe an edit had already been snapshotted
+  /// (content was just written) and silently drop it.
+  ///
+  /// Seeded on load (see [_loadContent]) so the first save after opening a
+  /// document is recognised as unchanged rather than stored as a new revision.
+  String? _lastSnapshottedContent;
+
+  /// When [_lastSnapshottedContent] was captured, or null if there is none.
+  DateTime? _lastSnapshotAt;
+
+  /// The single authority on snapshot pacing and change detection.
+  static const HistorySnapshotPolicy _snapshotPolicy = HistorySnapshotPolicy();
 
   final HistoryService _historyService = HistoryService();
 
@@ -523,6 +543,10 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     // MS-008: what is on disk right now is the baseline for "unchanged".
     _lastSavedContent = _currentContentJson();
+    // The opened content is also the last snapshotted content, so the first
+    // save after opening is not recorded as a fresh revision.
+    _lastSnapshottedContent = _lastSavedContent;
+    _lastSnapshotAt = null;
 
     if (mounted) {
       setState(() {
@@ -538,6 +562,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _titleController.document = Document();
     _controller.document = Document();
     _lastSavedContent = _currentContentJson();
+    _lastSnapshottedContent = _lastSavedContent;
+    _lastSnapshotAt = null;
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -657,12 +683,31 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     _selectedDocument!.richTextJson = content;
     _updateDocumentWordCount();
 
-    await _historyService.addHistoryEntry(
-      targetKey: _selectedDocument!.id,
-      targetType: 'ManuscriptDocument',
-      objectToSave: _selectedDocument!,
-      projectId: widget.projectId,
+    // 3b-2: whether this save becomes a history snapshot is the policy's call,
+    // not the editor's. Content is always persisted above (S-34); the snapshot
+    // is a revision record, so it is change-gated and paced, and leaving the
+    // document always records the pending change.
+    final decision = _snapshotPolicy.evaluate(
+      newRichTextJson: content,
+      lastSnapshottedRichTextJson: _lastSnapshottedContent,
+      sinceLastSnapshot: _lastSnapshotAt == null
+          ? null
+          : DateTime.now().difference(_lastSnapshotAt!),
+      trigger: isChangingChapter
+          ? HistorySnapshotTrigger.documentClose
+          : HistorySnapshotTrigger.autosave,
     );
+
+    if (decision.shouldSnapshot) {
+      await _historyService.addHistoryEntry(
+        targetKey: _selectedDocument!.id,
+        targetType: 'ManuscriptDocument',
+        objectToSave: _selectedDocument!,
+        projectId: widget.projectId,
+      );
+      _lastSnapshottedContent = content;
+      _lastSnapshotAt = DateTime.now();
+    }
 
     await _referenceService?.rebuildIndex();
 

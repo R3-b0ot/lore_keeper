@@ -495,76 +495,79 @@ void main() {
     );
   });
 
-  group('MS-008 — autosave does not snapshot unchanged content', () {
-    test('_saveContent skips the snapshot when the rich text is unchanged', () {
-      // MS-008: Quill notifies on cursor moves and undo bookkeeping, so the
-      // autosave debounce can fire for text that never changed. Without a
-      // guard, every one of those fires writes another HistoryEntry and the
-      // history panel fills with visually identical snapshots.
-      //
-      // The behavioural half of this contract (two identical saves producing
-      // one entry) was confirmed red against the real editor before this fix —
-      // see docs/audit2/CYCLE_LOG.md. It is asserted structurally here
-      // instead, because a widget test that drives a real autosave leaves
-      // ProjectEditorScreen's provider graph holding open Hive writes, and
-      // tearing that down after a write deadlocks the test runner.
-      final code = _codeOfFile('lib/modules/manuscript_module.dart');
+  group('MS-008 — autosave does not rewrite unchanged content', () {
+    test(
+      '_saveContent skips the content write when the rich text is unchanged',
+      () {
+        // MS-008, part 1: Quill notifies on cursor moves and undo bookkeeping, so
+        // the autosave debounce can fire for text that never changed. Without a
+        // guard, every one of those fires rewrites the document.
+        //
+        // The *snapshot* half of MS-008 is no longer decided in the editor: it
+        // belongs to HistorySnapshotPolicy (Cycle 3b), which is unit-tested
+        // behaviourally in test/services/history_snapshot_policy_test.dart. What
+        // remains here is the content-write guard plus the delegation to the
+        // policy, asserted by the tests in this group.
+        final code = _codeOfFile('lib/modules/manuscript_module.dart');
 
-      // (1) The last persisted payload is remembered in memory.
-      expect(
-        code,
-        contains('String? _lastSavedContent'),
-        reason: 'the module must remember the content it last saved',
-      );
+        // (1) The last persisted payload is remembered in memory.
+        expect(
+          code,
+          contains('String? _lastSavedContent'),
+          reason: 'the module must remember the content it last saved',
+        );
 
-      // (2) _saveContent compares against it and bails out early.
-      final saveStart = code.indexOf('Future<void> _saveContent');
-      expect(saveStart, greaterThan(-1), reason: '_saveContent must exist');
-      final saveBody = code.substring(
-        saveStart,
-        code.indexOf('@override', saveStart),
-      );
-      final guardAt = saveBody.indexOf('if (_lastSavedContent == content)');
-      expect(
-        guardAt,
-        greaterThan(-1),
-        reason: '_saveContent must return early when the content is unchanged',
-      );
+        // (2) _saveContent compares against it and bails out early.
+        final saveStart = code.indexOf('Future<void> _saveContent');
+        expect(saveStart, greaterThan(-1), reason: '_saveContent must exist');
+        final saveBody = code.substring(
+          saveStart,
+          code.indexOf('@override', saveStart),
+        );
+        final guardAt = saveBody.indexOf('if (_lastSavedContent == content)');
+        expect(
+          guardAt,
+          greaterThan(-1),
+          reason:
+              '_saveContent must return early when the content is unchanged',
+        );
 
-      // (3) The guard fires BEFORE the snapshot is written, and after the
-      // content is encoded so the comparison is meaningful.
-      expect(
-        saveBody.indexOf('final content ='),
-        lessThan(guardAt),
-        reason: 'the content must be encoded before it is compared',
-      );
-      expect(
-        saveBody.indexOf('addHistoryEntry'),
-        greaterThan(guardAt),
-        reason:
-            'MS-008: the early return must precede addHistoryEntry, '
-            'otherwise the duplicate snapshot is still written',
-      );
+        // (3) The guard fires after the content is encoded so the comparison is
+        // meaningful, and before anything is persisted.
+        expect(
+          saveBody.indexOf('final content ='),
+          lessThan(guardAt),
+          reason: 'the content must be encoded before it is compared',
+        );
+        expect(
+          saveBody.indexOf('updateContent'),
+          greaterThan(guardAt),
+          reason: 'the early return must precede the content write',
+        );
 
-      // (4) A completed save becomes the new baseline, and the baseline is
-      // seeded on load so the first save after opening a document is not
-      // suppressed.
-      expect(
-        saveBody.indexOf('_lastSavedContent = content;'),
-        greaterThan(guardAt),
-        reason: 'a completed save must become the new baseline',
-      );
-      expect(
-        code.split('String? _lastSavedContent').last,
-        contains('_lastSavedContent = '),
-        reason: '_loadContent must seed the baseline from the loaded document',
-      );
-    });
+        // (4) A completed write becomes the new baseline, and the baseline is
+        // seeded on load so the first save after opening a document is not
+        // suppressed.
+        expect(
+          saveBody.indexOf('_lastSavedContent = content;'),
+          greaterThan(guardAt),
+          reason: 'a completed write must become the new baseline',
+        );
+        expect(
+          code.split('String? _lastSavedContent').last,
+          contains('_lastSavedContent = '),
+          reason:
+              '_loadContent must seed the baseline from the loaded document',
+        );
+      },
+    );
 
-    test('the autosave debounce is at least 5 seconds (OQ-3)', () {
-      // OQ-3 widened the 2s target to 5s. A longer debounce means fewer
-      // spurious fires to begin with, but the MS-008 guard is still required:
-      // a fired timer can carry unchanged content.
+    test('the autosave debounce is 2 seconds (S-34)', () {
+      // S-34 / spec 11.3: "The current target is approximately two seconds
+      // unless profiling or UX requirements justify another value." Cycle 3
+      // raised this to 5s on an OQ-3 reading; the spec value governs, and
+      // snapshot pacing is HistorySnapshotPolicy's job (3b-2), not a slower
+      // content save.
       final code = _codeOfFile('lib/modules/manuscript_module.dart');
       final match = RegExp(
         r'_autosaveDelay\s*=\s*const Duration\(seconds:\s*(\d+)\)',
@@ -575,15 +578,83 @@ void main() {
         isNotNull,
         reason: '_autosaveDelay must be an explicit Duration',
       );
-      // S-34 (spec 11.3): "The current target is approximately two seconds
-      // unless profiling or UX requirements justify another value." Cycle 3
-      // raised this to 5s on an OQ-3 reading; the spec's own value governs, and
-      // snapshot pacing is handled by HistorySnapshotPolicy (3b-2) rather than
-      // by slowing the content save.
       expect(
         int.parse(match!.group(1)!),
         2,
         reason: 'S-34: the autosave debounce target is 2 seconds',
+      );
+    });
+  });
+
+  group('3b-2 — the editor delegates the snapshot decision to the policy', () {
+    test('_saveContent asks HistorySnapshotPolicy instead of deciding', () {
+      // The policy owns the decision (identical content, 60s autosave pacing,
+      // close/switch always records). The editor owns the *state* the policy
+      // needs and the side effects. If a rule creeps back into _saveContent the
+      // policy stops being the single source of truth, so pin the delegation.
+      final code = _codeOfFile('lib/modules/manuscript_module.dart');
+      final saveStart = code.indexOf('Future<void> _saveContent');
+      expect(saveStart, greaterThan(-1), reason: '_saveContent must exist');
+      final saveBody = code.substring(
+        saveStart,
+        code.indexOf('@override', saveStart),
+      );
+
+      // (1) The module holds a policy instance rather than reimplementing it.
+      expect(
+        code,
+        contains('HistorySnapshotPolicy'),
+        reason: 'the editor must call the policy',
+      );
+      expect(
+        code,
+        contains('services/history_snapshot_policy.dart'),
+        reason: 'the policy is a service-layer dependency, not a UI concern',
+      );
+
+      // (2) The snapshot baseline is separate from the content-write baseline.
+      // These must NOT be the same field: content is written every autosave,
+      // snapshots are paced, so a shared field would make the close/switch
+      // trigger believe an unsnapshotted edit was unchanged and drop it.
+      expect(
+        code,
+        contains('String? _lastSnapshottedContent'),
+        reason:
+            'the snapshot baseline must be tracked separately from the '
+            'content-write baseline',
+      );
+
+      // (3) The decision is consulted, and only a positive decision writes the
+      // history entry.
+      final decisionAt = saveBody.indexOf('.evaluate(');
+      expect(
+        decisionAt,
+        greaterThan(-1),
+        reason: '_saveContent must consult HistorySnapshotPolicy.evaluate',
+      );
+      expect(
+        saveBody.indexOf('if (decision.shouldSnapshot)'),
+        greaterThan(decisionAt),
+        reason:
+            'the history entry must be written only when the policy says so',
+      );
+      expect(
+        saveBody.indexOf('addHistoryEntry'),
+        greaterThan(decisionAt),
+        reason: 'the policy must be consulted before the snapshot is written',
+      );
+
+      // (4) Both triggers are wired: a switch/close is unpaced, an autosave is
+      // paced.
+      expect(saveBody, contains('HistorySnapshotTrigger.autosave'));
+      expect(saveBody, contains('HistorySnapshotTrigger.documentClose'));
+
+      // (5) The baseline is seeded when a document loads, so the first save
+      // after opening is not a duplicate revision.
+      expect(
+        code.split('String? _lastSnapshottedContent').last,
+        contains('_lastSnapshottedContent = '),
+        reason: '_loadContent must seed the snapshot baseline',
       );
     });
   });
