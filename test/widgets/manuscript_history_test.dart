@@ -575,10 +575,15 @@ void main() {
         isNotNull,
         reason: '_autosaveDelay must be an explicit Duration',
       );
+      // S-34 (spec 11.3): "The current target is approximately two seconds
+      // unless profiling or UX requirements justify another value." Cycle 3
+      // raised this to 5s on an OQ-3 reading; the spec's own value governs, and
+      // snapshot pacing is handled by HistorySnapshotPolicy (3b-2) rather than
+      // by slowing the content save.
       expect(
         int.parse(match!.group(1)!),
-        greaterThanOrEqualTo(5),
-        reason: 'OQ-3: the autosave debounce must be 5s or longer',
+        2,
+        reason: 'S-34: the autosave debounce target is 2 seconds',
       );
     });
   });

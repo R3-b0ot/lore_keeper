@@ -264,7 +264,12 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Timer? _titleAutosaveTimer;
   Timer? _autosaveTimer;
   Timer? _grammarDebounce;
-  final Duration _autosaveDelay = const Duration(seconds: 5);
+  /// S-34 (spec 11.3): the content autosave debounce target is ~2s.
+  ///
+  /// Snapshot *pacing* is a separate concern, handled by
+  /// `HistorySnapshotPolicy`; this value only controls how quickly content
+  /// reaches storage.
+  final Duration _autosaveDelay = const Duration(seconds: 2);
   final Duration _grammarDelay = const Duration(milliseconds: 600);
 
   /// The exact rich-text payload last persisted for the selected document.
