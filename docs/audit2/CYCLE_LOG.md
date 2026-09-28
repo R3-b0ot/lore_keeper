@@ -538,3 +538,384 @@ Test count progression: 398 -> 402 (MS-006) -> 404 (MS-007) -> 407 (MS-020) ->
   attempted.
 - MS-015 (dual `ManuscriptReferenceService`) remains deferred to Cycle 4, as
   recorded at the end of Cycle 2.
+
+---
+
+## Cycle 3b - autosave pacing, snapshot policy, and revert correctness
+
+**Branch:** `manuscript-fixes`
+**Scope:** the four Cycle 3 follow-ups
+**Test count:** 409 -> **428** (+19)
+
+### Baseline (before any change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.1s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:32 +409: All tests passed!
+```
+
+Branch and tree were clean at `5c3c326`.
+
+### Item 3b-1 - restore the 2s autosave debounce (S-34)
+
+**Decision.** Cycle 3 read OQ-3 and raised the debounce from 2s to 5s. Spec
+11.3 says: *"The current target is approximately two seconds unless profiling or
+UX requirements justify another value."* No profiling or UX evidence was ever
+produced, so the spec's own value governs. The OQ-3 concern (a fired timer
+carries unchanged content) is a real problem, but slowing the content save is
+the wrong instrument for it: it is a *snapshot pacing* question, and it
+contradicts the spec. It is also self-defeating, because spec 11.3 separately
+requires that autosave "must not rebuild unrelated project/module state on every
+keystroke" - an obligation that is now visible at 2s and is tracked against B5
+D3 instead of being masked by a longer timer.
+
+**Test first (red):**
+
+```
+Expected: <2>
+Actual: <5>
+S-34: the autosave debounce target is 2 seconds
+00:00 +0 -1: Some tests failed.
+```
+
+**After the change:**
+
+```
+00:00 +1: All tests passed!
+No issues found! (ran in 2.2s)
+00:41 +409: All tests passed!
+```
+
+### Item 3b-2 - HistorySnapshotPolicy (decouple snapshots from autosave)
+
+**Decision.** Content autosave and history snapshots are different concerns.
+Content must reach storage on the 2s debounce; a snapshot is a *revision
+record*. Cycle 3 welded them together inside `_saveContent`, so every autosave
+wrote a `HistoryEntry` and the panel filled with near-identical revisions.
+
+New pure-Dart service `lib/services/history_snapshot_policy.dart` - no Flutter
+imports, no Hive, and deliberately no clock, so the interval boundaries are
+testable without waiting on real time. The caller supplies the elapsed
+duration. Rules, in priority order:
+
+1. Never snapshot identical content, on any trigger. This also covers the
+   seeded-on-load case.
+2. Autosave snapshots at most once per
+   `HistorySnapshotPolicy.autosaveSnapshotInterval` (60s, a named constant).
+3. Close/switch always records a pending change, so leaving a document cannot
+   lose an edit to an open pacing window.
+
+The decision is returned as a record
+(`({bool shouldSnapshot, HistorySnapshotSkip? skipReason})`) so a skip can
+report *why* - identical content versus inside the window - which is what makes
+the behaviour assertable rather than merely boolean.
+
+**The one non-obvious consequence.** The snapshot baseline
+(`_lastSnapshottedContent`) is a *separate field* from the MS-008 content-write
+baseline (`_lastSavedContent`), and this is load-bearing. Content is written on
+every autosave while snapshots are paced, so a shared baseline would make the
+close/switch trigger believe an edit had already been snapshotted - the content
+was just written - and silently drop exactly the edit rule 3 exists to protect.
+Both baselines are seeded on load.
+
+**Test first (red)** - the class did not exist:
+
+```
+test/services/history_snapshot_policy_test.dart:15:8: Error: Error when reading
+'lib/services/history_snapshot_policy.dart': The system cannot find the file specified
+test/services/history_snapshot_policy_test.dart:23:22: Error: Method not found: 'HistorySnapshotPolicy'.
+test/services/history_snapshot_policy_test.dart:28:18: Error: Undefined name: 'HistorySnapshotTrigger'.
+```
+
+**After the change** (policy + history suites):
+
+```
+00:04 +24: All tests passed!
+```
+
+**A guard caught the new file for a real reason.** The MS-005 static guard
+rejects any `package:flutter/` string in a service-layer file, and the new
+policy's own doc comment named that import path while describing what it did
+*not* import:
+
+```
+Expected: not contains 'package:flutter/'
+  Actual: '/// Decides *when* a `ManuscriptDocument` history snapshot is written.\n'
+```
+
+The guard was correct and the comment was wrong, so the comment was reworded
+("no Flutter UI imports"). The new file was added to the MS-005 guard list so
+the constraint is enforced going forward.
+
+**Full suite:**
+
+```
+00:30 +422: All tests passed!
+```
+
+### Item 3b-3 - a revert must be undoable and visible
+
+**Diagnosis of the two defects.** The revert was lossy in two independent ways,
+and only the first was visible from the code:
+
+1. *Undoability.* `HistoryPanel` called
+   `binderProvider.updateContent(...)`, which overwrote the live document
+   without recording what it replaced. Undoing a change destroyed it.
+2. *Visibility, and the silent variant.* The editor holds its own
+   `QuillController` and its own "unchanged" baselines. A revert mutates the
+   document in place, so **no widget property the editor observes actually
+   changes** - the editor cannot detect it. It keeps displaying the pre-revert
+   prose *and* believes nothing changed, so the next autosave early-returns and
+   ignores the revert entirely. The work is lost when the author types the fix
+   they are typing precisely because the revert appears not to have worked.
+   Separately, a debounce armed before the revert carries the pre-revert buffer
+   and writes it back, so it must be cancelled rather than left to fire.
+
+**Decisions.**
+
+- The snapshot-before-overwrite lives in
+  `ManuscriptBinderProvider.revertContentTo`, not in the panel. The panel is UI;
+  the provider is the canonical manuscript state owner MS-007 established, and
+  it already has the document and `_projectId` for `HistoryService`, so no new
+  parameter had to be threaded into the panel. `revertContentTo` delegates to
+  `updateContent`, so the MS-007 contract ("the revert goes through the binder
+  provider, never the legacy `chapters` box") still holds and its spy-based
+  test still observes the payload it always did.
+- A revert to the content already loaded is a no-op, rather than recording a
+  duplicate snapshot - the same "never snapshot identical content" rule the
+  policy applies on the autosave path.
+- The pre-revert snapshot deliberately **bypasses** `HistorySnapshotPolicy`:
+  this is a user-initiated revision, not a paced autosave beat, and forcing it
+  through the 60s window would drop the revert's own history.
+- The editor cannot observe an in-place document mutation, so the shell bumps a
+  monotonic `revertSignal` (threaded screen -> `ManuscriptModule` ->
+  `ManuscriptEditor`) and the editor answers in `didUpdateWidget` with
+  `_applyExternalRevert`: re-read the canonical document *through the
+  provider* (the editor's own reference is exactly what cannot be trusted
+  here), cancel the armed timers, decode, and re-base both baselines.
+- The delta decode is extracted into `_applyDocumentContent` and the baselines
+  into `_resyncBaselines`, so a document loaded normally and one reloaded after
+  a revert share one path. A second copy of the decode is how a revert ends up
+  rendering differently from the same content opened fresh.
+
+**Test first (red):**
+
+```
+test/widgets/manuscript_revert_test.dart:219:11: Error: No named parameter with the name 'revertSignal'.
+test/widgets/manuscript_revert_test.dart:151:28: Error: The method 'revertContentTo' isn't defined for the type 'ManuscriptBinderProvider'.
+```
+
+**Two faults in the test itself, not the product**, both worth recording:
+
+- The chapter document was seeded *after* the binder provider was constructed.
+  The provider caches its document list at construction, so the editor's
+  chapter-key resolution could not see it and the buffer came up empty. Fixed by
+  seeding before constructing the provider.
+- The autosave debounce is a `Timer` created while the test is inside
+  `tester.runAsync`, so it lives in the **real** zone. `tester.pump(3s)`
+  advances only the fake clock and therefore never saves anything; the first
+  version asserted a save that could not possibly have happened. Waiting for a
+  save means waiting in *real* time, then pumping to flush continuations.
+
+A third fault was caught by Quill's own assertion rather than by an expect: a
+fixture whose last insert lacked a trailing newline
+(`(doc.last.data as String).endsWith('\n')`) threw *inside* `runAsync`, where
+the framework reports it as "the exception was caught asynchronously" and the
+test's own failure still surfaces - so a broken fixture can masquerade as a
+product failure.
+
+**After the change:**
+
+```
+00:15 +6: All tests passed!     (manuscript_revert_test.dart)
+00:15 +35: All tests passed!    (history + revert + topology)
+No issues found! (ran in 2.0s)
+00:46 +428: All tests passed!
+```
+
+**Both halves confirmed red with the fix disabled**, so the tests are not
+vacuous. Disabling the `didUpdateWidget` hook:
+
+```
+00:10 +4 -2: Some tests failed.
+  3b-3 ... a pending debounce and the next autosave both keep the revert
+  3b-3 ... the editor displays the reverted content
+```
+
+Disabling the pre-revert snapshot:
+
+```
+Expected: non-empty
+Actual: []
+the revert must be undoable
+```
+
+**Test harness.** Per the instruction to drive the smallest real
+`ManuscriptEditor`/`QuillController` harness if the shell deadlocks, the revert
+tests mount `ManuscriptModule` (real editor, real `QuillController`, real
+in-memory Hive) rather than `ProjectEditorScreen`. A probe test,
+`the editor autosaves an edit after the 2s debounce`, asserts the harness's
+autosave genuinely reaches storage, so "the autosave did not overwrite the
+revert" cannot pass by never saving anything.
+
+One existing assertion was updated rather than worked around: MS-007's
+`historyEntries.values.single` became "the snapshot that was reverted to is
+untouched, and the replaced content is now recorded". Two entries are the
+intended new behaviour.
+
+### Item 3b-4 - teardown deadlock: diagnosis only (no fix)
+
+**Conclusion: this is a test-harness artefact of zone mixing, not an application
+defect.** There is no lock, no leaked Hive handle, and no provider holding a
+write open. Two probes, differing in exactly one line, isolate it.
+
+**Probe A - shell + chapter open + real autosave + unmount, all real-zone:**
+
+```
+PROBE: mounted
+PROBE: QuillEditor found=2
+PROBE: body text="Hello world"
+PROBE: after autosave stored=[{"insert":"Autosaved prose\n"}]
+PROBE: unmounting
+PROBE: unmounted
+00:05 +1: All tests passed!
+```
+
+The write completes, the unmount completes, `DatabaseManager.instance.close()`
+and `Hive.close()` in `tearDown` complete. No hang.
+
+**Probe B - identical, except the controller change is *not* wrapped in
+`tester.runAsync`:**
+
+```
+PROBE B: mounted
+PROBE B: edit applied, advancing fake clock 3s
+PROBE B: after fake pump stored=[{"insert":"Autosaved in fake zone\n"}]
+```
+
+The test **body completed and the write landed** - and the process then never
+exited. `flutter test --timeout 45s` did not fire, and the shell command was
+terminated by its own 600s limit. No `All tests passed` line was ever printed.
+The hang is therefore in post-test teardown, after the body, and no stack can
+be captured because the runner is unresponsive.
+
+**Mechanism.** `_saveContent` does substantial asynchronous work *after* the
+content write: the history snapshot (box add plus pruning) and then
+`rebuildIndex()`. Those continuations live in whatever zone armed the autosave
+timer. When that zone is the FakeAsync test zone, the chain is still in flight
+when the test body ends: each remaining step needs the real event loop to
+service Hive I/O, while the framework's teardown is draining the fake-async
+zone and waiting for it to quiesce. The runner ends up waiting for quiescence
+that requires the very loop it is not letting run. Probe A avoids it purely
+because the 3-second real delay lets the chain drain before the body ends.
+
+This explains the Cycle 3 observation exactly: that probe drove a real autosave
+from the fake zone, reached its assertion, reported the result, and then hung
+until the runner was killed.
+
+**Two latent contributors, reported but deliberately not changed** (out of
+3b-4's diagnose-only scope):
+
+- `_saveContent` calls `rebuildIndex()` on every autosave (B5 D3 warns this
+  calls `engine.clear()` and can drop non-manuscript entries). Besides being
+  wrong at 2s, it lengthens the in-flight window that the teardown waits on,
+  so it is a contributing factor to the hang's timing as well as a live
+  correctness issue.
+- `ChapterListProvider`'s constructor mutates Hive (creating front matter and a
+  `Chapter`) as a side effect of construction. It did not cause this hang - the
+  shell mounts fine in probe A - but it is the same class of hazard: work
+  spawned from a constructor has no owner to await or cancel it, and any
+  teardown-safety work should start there.
+
+**Practical guidance that follows from the diagnosis:** every harness that
+performs a real write must create it inside `tester.runAsync` and unmount under
+the fake clock. That is what the existing topology, history, and new revert
+harnesses already do, and it is why 3b-3 needed no shell-level test at all.
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `7c40acb` | 3b-1 - restore the 2s autosave debounce (S-34) |
+| `26235d1` | 3b-2 - HistorySnapshotPolicy; editor delegates the snapshot decision |
+| `6966c79` | 3b-3 - revert is undoable and the open editor follows it |
+
+### Tests added
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/services/history_snapshot_policy_test.dart` | 12 | identical content (3 triggers), 60s interval elapsed / not / boundary / no prior snapshot, close-trigger override, seeded-on-load |
+| `test/widgets/manuscript_revert_test.dart` | 6 | pre-revert snapshot, historical write, no-op revert, editor display, pending debounce + next autosave, harness autosave probe |
+
+Plus 1 delegation guard added to
+`test/widgets/manuscript_history_test.dart` (3b-2), 1 file added to the MS-005
+Flutter-free guard, and MS-007's revert assertion restated for the two-entry
+history.
+
+Test count progression: 409 -> 409 (3b-1) -> 422 (3b-2) -> **428** (3b-3).
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `lib/services/history_snapshot_policy.dart` | new - pure-Dart snapshot pacing |
+| `lib/modules/manuscript_module.dart` | 2s debounce, policy delegation, split baselines, `_applyDocumentContent`, `_resyncBaselines`, `_applyExternalRevert`, `revertSignal` |
+| `lib/providers/manuscript_binder_provider.dart` | `revertContentTo` (snapshot then overwrite) |
+| `lib/widgets/history_panel.dart` | revert routes through `revertContentTo` |
+| `lib/screens/project_editor_screen.dart` | `_manuscriptRevertSignal`, `_handleManuscriptRevert` |
+| `lib/widgets/manuscript_topology_test.dart` | MS-005 guard list |
+| `test/services/history_snapshot_policy_test.dart` | new |
+| `test/widgets/manuscript_revert_test.dart` | new |
+| `test/widgets/manuscript_history_test.dart` | MS-008 re-scoped to the content write + delegation guard; MS-007 history assertion |
+
+No Hive adapters, no schema, no dependencies, and no changes to the public APIs
+of `EntityRef`, `ReferenceEngine`, `ReferenceIndex`, `EntityNameMatcher`,
+`ManuscriptBinderService`, or `ReferenceIntegrityService`.
+
+### Verification (final)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.2s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:49 +428: All tests passed!
+```
+
+### Deferred / not done
+
+- **B5 D3: `rebuildIndex()` on every autosave.** Now unmissable at a 2s
+  debounce, and a contributing factor to the 3b-4 teardown window. Out of
+  3b scope; needs its own cycle.
+- **3b-4 diagnosed, not fixed.** The teardown deadlock is a zone-mixing
+  artefact of the test harness rather than a product defect, so there is
+  nothing to fix in `lib/` on its account. Making the app's provider
+  construction side-effect-free (see `ChapterListProvider`) and trimming the
+  post-write work in `_saveContent` would both narrow the window and are worth
+  doing for their own reasons.
+- **Unsaved editor buffer at revert time.** The pre-revert snapshot captures the
+  *stored* document, which is what "snapshot the current content before a revert
+  writes historical content" asks for. A revert while the author has uncommitted
+  text in the buffer does not snapshot that buffer. Flushing the editor first
+  would need the editor to participate in the revert transaction; not done.
+- **No backfill.** Documents that already carry duplicate history entries from
+  identical saves keep them, as recorded at the end of Cycle 3.
+- **B7 MS-020 wording vs. reality.** B7's literal acceptance names
+  `lib/widgets/chapter_diff_view_dialog.dart`, but Cycle 3 intentionally left
+  that legacy dialog untouched and guarded the new manuscript path instead. The
+  guard and the code are consistent; the requirement text is ambiguous and
+  should be corrected at the source. Left unchanged here - out of 3b scope.
+- MS-015 (dual `ManuscriptReferenceService`) remains deferred to Cycle 4.
