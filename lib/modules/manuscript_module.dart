@@ -89,6 +89,15 @@ class ManuscriptModule extends StatefulWidget {
   /// ProjectEditorScreen so the Binder and editor stay in sync (spec §12).
   final ValueChanged<String>? onDocumentSelected;
 
+  /// Bumped by the shell whenever a history revert overwrites the open
+  /// document (Cycle 3b-3).
+  ///
+  /// The editor cannot detect the overwrite on its own: the revert mutates the
+  /// document in place, so no widget property it observes actually changes.
+  /// A monotonic token is the smallest honest signal, and a no-op bump is
+  /// harmless.
+  final int revertSignal;
+
   const ManuscriptModule({
     super.key,
     required this.projectId,
@@ -98,6 +107,7 @@ class ManuscriptModule extends StatefulWidget {
     required this.onChapterSelected,
     required this.onControllerReady,
     required this.onGrammarCheckReady,
+    this.revertSignal = 0,
     this.onReferenceNavigate,
     this.binderProvider,
     this.calendarProvider,
@@ -181,6 +191,7 @@ class _ManuscriptModuleState extends State<ManuscriptModule> {
             selectedDocumentId: widget.selectedDocumentId,
             onDocumentSelected: widget.onDocumentSelected,
             onSelectedDocumentChanged: _onEditorDocumentChanged,
+            revertSignal: widget.revertSignal,
           ),
         ),
         VerticalDivider(width: 1, thickness: 1, color: cs.outlineVariant),
@@ -229,6 +240,10 @@ class ManuscriptEditor extends StatefulWidget {
   /// so the Inspector can be updated (Column 3 → Column 4 communication).
   final ValueChanged<ManuscriptDocument?>? onSelectedDocumentChanged;
 
+  /// Bumped when a history revert overwrites the open document (Cycle 3b-3);
+  /// see [ManuscriptModule.revertSignal].
+  final int revertSignal;
+
   const ManuscriptEditor({
     super.key,
     required this.projectId,
@@ -247,6 +262,7 @@ class ManuscriptEditor extends StatefulWidget {
     this.selectedDocumentId = '',
     this.onDocumentSelected,
     this.onSelectedDocumentChanged,
+    this.revertSignal = 0,
   });
 
   @override
@@ -485,6 +501,14 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   @override
   void didUpdateWidget(covariant ManuscriptEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // A history revert overwrote the document in place, so this is the only
+    // observable change. Re-sync before any chapter switch so the editor never
+    // displays text that storage no longer holds (Cycle 3b-3).
+    if (widget.revertSignal != oldWidget.revertSignal) {
+      _applyExternalRevert();
+    }
+
     if (widget.selectedChapterKey.isEmpty) return;
     if (widget.selectedChapterKey != oldWidget.selectedChapterKey) {
       _isSwitchingChapter = true;
@@ -527,6 +551,26 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       Delta()..insert('${doc.title}\n', {'header': 1}),
     );
 
+    _applyDocumentContent(doc);
+    _resyncBaselines();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isSwitchingChapter = false;
+        _updateCounts();
+        _updateDocumentWordCount();
+      });
+    }
+  }
+
+  /// Decodes a document's persisted rich text into the editor.
+  ///
+  /// Shared by [_loadContent] and [_applyExternalRevert] so a document loaded
+  /// normally and a document reloaded after a revert go through one decode
+  /// path — a divergent copy is how a revert ends up rendering differently
+  /// from the same content opened fresh.
+  void _applyDocumentContent(ManuscriptDocument doc) {
     if (doc.richTextJson != null && doc.richTextJson!.isNotEmpty) {
       try {
         final jsonDoc = jsonDecode(doc.richTextJson!);
@@ -540,18 +584,49 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     } else {
       _controller.document = Document();
     }
+  }
 
-    // MS-008: what is on disk right now is the baseline for "unchanged".
+  /// Re-bases both "unchanged" baselines on what the editor now displays.
+  ///
+  /// The snapshot baseline is reset rather than carried over: a freshly opened
+  /// or freshly reverted document has no snapshot *of its own* yet, so the
+  /// author's next real edit is a revision.
+  void _resyncBaselines() {
     _lastSavedContent = _currentContentJson();
-    // The opened content is also the last snapshotted content, so the first
-    // save after opening is not recorded as a fresh revision.
     _lastSnapshottedContent = _lastSavedContent;
     _lastSnapshotAt = null;
+  }
+
+  /// Re-syncs the editor with a document that was overwritten outside it
+  /// (Cycle 3b-3 — a history revert).
+  ///
+  /// Without this the editor keeps displaying the pre-revert prose while
+  /// storage holds the historical text. Worse, its stale content baseline says
+  /// "nothing changed", so the next autosave ignores the revert entirely and
+  /// the author's next keystroke — the fix they type because the revert appears
+  /// not to have worked — overwrites it.
+  ///
+  /// Pending timers are cancelled first: a debounce armed before the revert
+  /// carries the *old* text and would write it back.
+  void _applyExternalRevert() {
+    _autosaveTimer?.cancel();
+    _grammarDebounce?.cancel();
+    if (_isLoading || _isSwitchingChapter) return;
+
+    final doc = _selectedDocument;
+    if (doc == null) return;
+
+    // Re-read the canonical document rather than trusting the reference this
+    // state already holds: the revert wrote through the binder provider, and
+    // the editor's own baseline is exactly what cannot be trusted here.
+    final fresh = _binderProvider?.getDocument(doc.id) ?? doc;
+    _selectedDocument = fresh;
+
+    _applyDocumentContent(fresh);
+    _resyncBaselines();
 
     if (mounted) {
       setState(() {
-        _isLoading = false;
-        _isSwitchingChapter = false;
         _updateCounts();
         _updateDocumentWordCount();
       });
@@ -561,9 +636,8 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _loadEmptyContent() {
     _titleController.document = Document();
     _controller.document = Document();
-    _lastSavedContent = _currentContentJson();
-    _lastSnapshottedContent = _lastSavedContent;
-    _lastSnapshotAt = null;
+    _resyncBaselines();
+
     if (mounted) {
       setState(() {
         _isLoading = false;

@@ -5,8 +5,9 @@
 ///     `targetType`/`targetKey` pair that manuscript saves actually write
 ///     (`'ManuscriptDocument'` + the canonical document id).
 ///   * MS-007 — a ManuscriptDocument history entry renders a diff and reverts
-///     through `ManuscriptBinderProvider.updateContent`, never through the
-///     legacy `chapters` box.
+///     through `ManuscriptBinderProvider` (MS-007), never through the legacy
+///     `chapters` box. The revert itself is `revertContentTo` (3b-3), which
+///     snapshots the replaced content and then delegates to `updateContent`.
 ///   * MS-020 — no ManuscriptDocument diff/revert path opens
 ///     `Hive.box<Chapter>` directly.
 ///   * MS-008 — autosave does not write a second HistoryEntry when the rich
@@ -486,10 +487,22 @@ void main() {
         expect(legacy.richTextJson, _legacyChapterJson);
         expect(legacy.title, 'Legacy Chapter');
 
-        // (4) The snapshot itself is not mutated by reverting.
+        // (4) The snapshot that was reverted to is not mutated, and the content
+        //     the revert replaced is now itself recorded, so the revert can be
+        //     undone (3b-3).
+        final history = DatabaseManager.instance.historyEntries.values.toList()
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
         expect(
-          DatabaseManager.instance.historyEntries.values.single.data,
+          history.first.data,
           contains('Older draft'),
+          reason: 'the snapshot the author reverted to must stay untouched',
+        );
+        expect(
+          history.last.data,
+          contains('Hello world'),
+          reason:
+              'the replaced content must be snapshotted, otherwise '
+              'reverting a change destroys it',
         );
       },
     );

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/services/manuscript_binder_service.dart';
+import 'package:lore_keeper/services/history_service.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 
@@ -24,7 +25,7 @@ class ManuscriptBinderProvider extends ChangeNotifier {
   ManuscriptBinderProvider(
     this._projectId, {
     required ReferenceEngine referenceEngine,
-  })  : _referenceEngine = referenceEngine {
+  }) : _referenceEngine = referenceEngine {
     _initialize(referenceEngine);
   }
 
@@ -199,6 +200,32 @@ class ManuscriptBinderProvider extends ChangeNotifier {
   Future<void> updateContent(String documentId, String richTextJson) async {
     await _service.updateContent(documentId, richTextJson);
     _refreshDocument(documentId);
+  }
+
+  /// Reverts a document's content to [richTextJson] (Cycle 3b-3, MS-007).
+  ///
+  /// The content being replaced is snapshotted first, because a revert is
+  /// itself a revision: without that snapshot, undoing a change destroys it
+  /// and the author cannot undo the undo. The snapshot is written through
+  /// [HistoryService] so it is visible in the same history panel the author
+  /// reverted from, and it deliberately bypasses HistorySnapshotPolicy —
+  /// this is a user-initiated revision, not a paced autosave beat.
+  ///
+  /// A revert to the content the document already holds is a no-op: it would
+  /// otherwise record a duplicate snapshot of the current content.
+  Future<void> revertContentTo(String documentId, String richTextJson) async {
+    final current = getDocument(documentId);
+    if (current == null) return;
+    if (current.richTextJson == richTextJson) return;
+
+    await HistoryService().addHistoryEntry(
+      targetKey: documentId,
+      targetType: 'ManuscriptDocument',
+      objectToSave: current,
+      projectId: _projectId,
+    );
+
+    await updateContent(documentId, richTextJson);
   }
 
   Future<void> updateStatus(

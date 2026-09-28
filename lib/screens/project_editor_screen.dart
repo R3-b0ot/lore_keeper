@@ -94,6 +94,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   ReferenceEngine? _referenceEngine;
   String _selectedManuscriptDocumentId = '';
 
+  /// Bumped on a manuscript history revert so the editor re-syncs with the
+  /// document that was just overwritten in place (Cycle 3b-3).
+  int _manuscriptRevertSignal = 0;
+
   // New navigation structure: Overview | Manuscripts | Characters | World Building | Lore Map
   // Internal index mapping:
   //   0 = Overview (NEW default landing)
@@ -441,6 +445,16 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _characterModuleKey.currentState?.reload();
   }
 
+  /// A manuscript revert overwrote the open document in place (Cycle 3b-3).
+  ///
+  /// Bumping the signal is what tells the editor to re-read the document and
+  /// re-base its autosave baselines; without it the editor keeps displaying the
+  /// pre-revert prose and the author's next edit overwrites the revert.
+  void _handleManuscriptRevert() {
+    if (!mounted) return;
+    setState(() => _manuscriptRevertSignal++);
+  }
+
   Future<void> _onCharacterCreated() async {
     final newName = await showCreateCharacterDialog(context);
 
@@ -596,6 +610,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         sharedReferenceEngine: _referenceEngine,
         selectedDocumentId: _selectedManuscriptDocumentId,
         onDocumentSelected: _onManuscriptDocumentSelected,
+        revertSignal: _manuscriptRevertSignal,
       );
     } else if (_moduleIndex == 2) {
       // Characters
@@ -685,7 +700,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         targetType: 'ManuscriptDocument',
         binderProvider: _manuscriptBinderProvider,
         onClose: _toggleHistoryPanel,
-        onReverted: _handleRevert,
+        onReverted: _handleManuscriptRevert,
       );
     }
     if (_moduleIndex == 2) {

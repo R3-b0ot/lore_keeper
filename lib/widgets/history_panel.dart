@@ -134,8 +134,10 @@ class _HistoryPanelState extends State<HistoryPanel> {
         currentTitle: current.title,
         currentRichTextJson: current.richTextJson,
         historicalRichTextJson: historicalRichTextJson,
+        // revertContentTo (not updateContent) so the content being replaced is
+        // snapshotted first and the revert can itself be undone (Cycle 3b-3).
         onRevert: (richTextJson) =>
-            binderProvider.updateContent(documentId, richTextJson),
+            binderProvider.revertContentTo(documentId, richTextJson),
         onReverted: () {
           widget.onReverted();
           widget.onClose();
