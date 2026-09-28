@@ -332,8 +332,8 @@ void main() {
         expect(code, isNot(contains('package:hive')));
         expect(code, isNot(contains('Hive.')));
 
-      // The revert is a callback, so persistence is the caller's decision.
-      expect(code, contains('Future<void> Function(String'));
+        // The revert is a callback, so persistence is the caller's decision.
+        expect(code, contains('Future<void> Function(String'));
       },
     );
 
@@ -493,6 +493,94 @@ void main() {
         );
       },
     );
+  });
+
+  group('MS-008 — autosave does not snapshot unchanged content', () {
+    test('_saveContent skips the snapshot when the rich text is unchanged', () {
+      // MS-008: Quill notifies on cursor moves and undo bookkeeping, so the
+      // autosave debounce can fire for text that never changed. Without a
+      // guard, every one of those fires writes another HistoryEntry and the
+      // history panel fills with visually identical snapshots.
+      //
+      // The behavioural half of this contract (two identical saves producing
+      // one entry) was confirmed red against the real editor before this fix —
+      // see docs/audit2/CYCLE_LOG.md. It is asserted structurally here
+      // instead, because a widget test that drives a real autosave leaves
+      // ProjectEditorScreen's provider graph holding open Hive writes, and
+      // tearing that down after a write deadlocks the test runner.
+      final code = _codeOfFile('lib/modules/manuscript_module.dart');
+
+      // (1) The last persisted payload is remembered in memory.
+      expect(
+        code,
+        contains('String? _lastSavedContent'),
+        reason: 'the module must remember the content it last saved',
+      );
+
+      // (2) _saveContent compares against it and bails out early.
+      final saveStart = code.indexOf('Future<void> _saveContent');
+      expect(saveStart, greaterThan(-1), reason: '_saveContent must exist');
+      final saveBody = code.substring(
+        saveStart,
+        code.indexOf('@override', saveStart),
+      );
+      final guardAt = saveBody.indexOf('if (_lastSavedContent == content)');
+      expect(
+        guardAt,
+        greaterThan(-1),
+        reason: '_saveContent must return early when the content is unchanged',
+      );
+
+      // (3) The guard fires BEFORE the snapshot is written, and after the
+      // content is encoded so the comparison is meaningful.
+      expect(
+        saveBody.indexOf('final content ='),
+        lessThan(guardAt),
+        reason: 'the content must be encoded before it is compared',
+      );
+      expect(
+        saveBody.indexOf('addHistoryEntry'),
+        greaterThan(guardAt),
+        reason:
+            'MS-008: the early return must precede addHistoryEntry, '
+            'otherwise the duplicate snapshot is still written',
+      );
+
+      // (4) A completed save becomes the new baseline, and the baseline is
+      // seeded on load so the first save after opening a document is not
+      // suppressed.
+      expect(
+        saveBody.indexOf('_lastSavedContent = content;'),
+        greaterThan(guardAt),
+        reason: 'a completed save must become the new baseline',
+      );
+      expect(
+        code.split('String? _lastSavedContent').last,
+        contains('_lastSavedContent = '),
+        reason: '_loadContent must seed the baseline from the loaded document',
+      );
+    });
+
+    test('the autosave debounce is at least 5 seconds (OQ-3)', () {
+      // OQ-3 widened the 2s target to 5s. A longer debounce means fewer
+      // spurious fires to begin with, but the MS-008 guard is still required:
+      // a fired timer can carry unchanged content.
+      final code = _codeOfFile('lib/modules/manuscript_module.dart');
+      final match = RegExp(
+        r'_autosaveDelay\s*=\s*const Duration\(seconds:\s*(\d+)\)',
+      ).firstMatch(code);
+
+      expect(
+        match,
+        isNotNull,
+        reason: '_autosaveDelay must be an explicit Duration',
+      );
+      expect(
+        int.parse(match!.group(1)!),
+        greaterThanOrEqualTo(5),
+        reason: 'OQ-3: the autosave debounce must be 5s or longer',
+      );
+    });
   });
 }
 

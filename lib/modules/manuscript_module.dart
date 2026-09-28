@@ -264,8 +264,21 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Timer? _titleAutosaveTimer;
   Timer? _autosaveTimer;
   Timer? _grammarDebounce;
-  final Duration _autosaveDelay = const Duration(seconds: 2);
+  final Duration _autosaveDelay = const Duration(seconds: 5);
   final Duration _grammarDelay = const Duration(milliseconds: 600);
+
+  /// The exact rich-text payload last persisted for the selected document.
+  ///
+  /// MS-008: Quill notifies its listeners for cursor moves, selection changes
+  /// and undo bookkeeping, so the autosave debounce can fire repeatedly for one
+  /// edit. Comparing against the last *persisted* payload — rather than
+  /// counting keystrokes — is what makes the guard correct: any real edit
+  /// produces different Delta JSON and is saved, and only a byte-identical
+  /// re-save is dropped, so the history panel never fills with duplicates.
+  ///
+  /// Seeded on every load (see [_loadContent]) so the first save after opening
+  /// a document is not mistaken for a no-op.
+  String? _lastSavedContent;
 
   final HistoryService _historyService = HistoryService();
 
@@ -469,6 +482,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (_project != null) setState(() {});
   }
 
+  /// The exact encoding [_saveContent] persists, so the MS-008 comparison is
+  /// between like and like.
+  String _currentContentJson() =>
+      jsonEncode(_controller.document.toDelta().toJson());
+
   void _loadContent() {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -498,6 +516,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       _controller.document = Document();
     }
 
+    // MS-008: what is on disk right now is the baseline for "unchanged".
+    _lastSavedContent = _currentContentJson();
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -511,6 +532,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _loadEmptyContent() {
     _titleController.document = Document();
     _controller.document = Document();
+    _lastSavedContent = _currentContentJson();
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -618,9 +640,15 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     String? chapterKeyToSave,
   }) async {
     if (_selectedDocument == null) return;
+    final content = _currentContentJson();
+    // MS-008: nothing on disk changed, so do not write — and above all do not
+    // add another HistoryEntry, which is what filled the history panel with
+    // identical snapshots. Checked before [_isSaving] so a no-op save never
+    // flashes the saving indicator either.
+    if (_lastSavedContent == content) return;
     if (!isChangingChapter && mounted) setState(() => _isSaving = true);
-    final content = jsonEncode(_controller.document.toDelta().toJson());
     await _binderProvider?.updateContent(_selectedDocument!.id, content);
+    _lastSavedContent = content;
     _selectedDocument!.richTextJson = content;
     _updateDocumentWordCount();
 
