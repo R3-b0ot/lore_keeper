@@ -282,3 +282,259 @@ Cycle 2 health summary:
 - Documents never re-opened keep their old (inflated) counts until saved, so
   project-level totals may be mixed old/new until then.
 - MS-015 (dual `ManuscriptReferenceService`) remains deferred to Cycle 4.
+
+---
+
+## Cycle 3 - manuscript history, diff/revert, and autosave integrity
+
+**Branch:** `manuscript-fixes`
+**Scope:** MS-006, MS-007, MS-008, MS-020 (plus OQ-3, the debounce value
+MS-008 depends on)
+**Test count:** 398 -> **409** (+11)
+
+### Baseline (before any change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.4s)
+```
+
+`flutter test` (last line):
+
+```
+00:25 +398: All tests passed!
+```
+
+(The harmless `The system cannot find the file specified.` line that precedes
+Flutter output on this machine appeared on every command in this cycle.)
+
+### Topology trace - what the manuscript revision path did before Cycle 3
+
+Quoted from the working tree at the start of the cycle.
+
+**(a) Where manuscript snapshots are written** -
+`lib/modules/manuscript_module.dart`, `_saveContent`:
+
+```dart
+await _historyService.addHistoryEntry(
+  targetKey: _selectedDocument!.id,
+  targetType: 'ManuscriptDocument',
+  objectToSave: _selectedDocument!,
+  projectId: widget.projectId,
+);
+```
+
+So the writer's pair is `(document id, 'ManuscriptDocument')`.
+
+**(b) What the shell asked for** - `lib/screens/project_editor_screen.dart`
+(module index 1, the Manuscripts pane) built a *legacy Chapter* key and type:
+
+```dart
+final targetKey = _selectedChapterKey.startsWith('front_matter_')
+    ? _selectedChapterKey
+    : int.tryParse(_selectedChapterKey);
+```
+
+with `targetType: 'Chapter'` handed to `HistoryPanel`.
+
+**Consequence (the MS-006 defect):** the two pairs never matched, so the
+history panel for an open manuscript document was *always* empty - the writer
+used the canonical document id, the reader used a legacy key. No application
+code anywhere writes `targetType: 'Chapter'`; the only `Chapter` history
+entries are the ones the old `ChapterDiffViewDialog` path consumed.
+
+**(c) Unsupported diff types** - `HistoryPanel` filtered entries by exact
+`targetKey` + `targetType` equality, and its diff dispatcher had no
+`ManuscriptDocument` case, so it fell through to:
+
+```dart
+SnackBar(content: Text('Diff view not supported for this type.'))
+```
+
+**(d) The legacy diff/revert dialog read and wrote Hive directly** -
+`lib/widgets/chapter_diff_view_dialog.dart`:
+
+```dart
+final chapterBox = Hive.box<Chapter>('chapters');
+...
+currentChapter = chapterBox.get(historyEntry.targetKey);
+...
+final historicalChapter = chapterFromJson(jsonDecode(historyEntry.data));
+...
+await chapterBox.put(historyEntry.targetKey, historicalChapter);
+```
+
+That is the `Hive.box<Chapter>` dependency the manuscript path had to avoid:
+the manuscript binder stores canonical documents in `manuscriptDocuments`,
+and a Chapter-keyed read/write would have silently written the wrong entity.
+
+### Requirement log
+
+#### MS-006 - history panel queries ManuscriptDocument revisions (f0c9686)
+
+- **Test first (red):** a shell test opened the real `ProjectEditorScreen` on
+  the Manuscripts module, opened the history panel and asserted a version
+  snapshot appeared. Red reason:
+
+```
+Expected: exactly one matching candidate
+Actual: _TextWidgetFinder:<Found 0 widgets with text "Version snapshot": []>
+```
+
+  Three companion tests for the `HistoryPanel` contract passed before the fix,
+  which isolated the defect to the shell's query pair rather than the panel.
+- **Implementation:** one ternary in
+  `project_editor_screen.dart` - module index 1 now passes
+  `_selectedManuscriptDocumentId` with `targetType: 'ManuscriptDocument'`,
+  matching what `_saveContent` writes. The Characters pane (index 2) is
+  untouched.
+- **Green:** analyze clean, `00:28 +402: All tests passed!`
+- **Tests added:** 4
+
+#### MS-007 - ManuscriptDocument diff and revert (705e95b)
+
+- **Test first (red):** the panel test failed to compile -
+  `Error: No named parameter with the name 'binderProvider'.` - which is the
+  defect: `HistoryPanel` had no way to reach a manuscript document. A second
+  red, `Found 0 widgets with text containing - Hello world: []`, was a *fault in
+  the test*, not the product: it assumed DiffMatchPatch emits whole-phrase
+  segments, and it also had the diff direction backwards (`dmp.diff(current,
+  historical)` renders the live text as the removal). The test was corrected to
+  pin the dialog's inputs directly and assert on the diff markers, which is
+  stable regardless of segmentation.
+- **Implementation:**
+  - New `lib/widgets/manuscript_diff_view_dialog.dart`: a data-in /
+    callback-out `ManuscriptDocumentDiffViewDialog`. It receives the entry,
+    the current title and both `richTextJson` payloads through its
+    constructor, renders the DiffMatchPatch diff of the two documents' *plain
+    text* (`ManuscriptTextStats.plainTextOfDeltaJson`, so the author sees
+    prose changes rather than Delta-JSON punctuation), and calls
+    `onRevert(historicalRichTextJson)`.
+  - `HistoryPanel` gained an optional `binderProvider` and a
+    `'ManuscriptDocument'` branch: it resolves the current document through
+    the binder, decodes the snapshot's `richTextJson` field, and reverts via
+    `ManuscriptBinderProvider.updateContent`.
+  - The legacy `'Chapter'` and `'Character'` branches are unchanged, and
+    `ChapterDiffViewDialog` was deliberately left untouched - it remains the
+    path for pre-manuscript Chapter snapshots only.
+- **Green:** analyze clean, `00:29 +404: All tests passed!`
+- **Tests added:** 2. The revert test seeds a *decoy* `chapters['chapter_1']`
+  and proves it is neither read nor written, and that the project save is
+  unaffected.
+
+#### MS-020 - no Hive.box<Chapter> in the manuscript diff/revert path (4bb80aa)
+
+- **Implementation:** test-only - three static contract tests following the
+  existing MS-005 pattern. They assert the dialog and panel code contains no
+  `Hive.box<Chapter>`, no `chapterFromJson` and no `models/chapter.dart`
+  import; that the dialog imports no `package:hive` and takes every input via
+  its constructor; and that the panel still routes `'Chapter'` and
+  `'ManuscriptDocument` separately.
+- **Note on the guard's design:** the assertions strip comments first
+  (`_codeOfFile`). The dialog's doc comment legitimately *names*
+  `Hive.box<Chapter>` to explain that it never opens it, and a guard that
+  matched documentation would prove nothing while being impossible to write
+  around.
+- **Green:** analyze clean, `00:32 +407: All tests passed!`
+- **Tests added:** 3
+
+#### MS-008 + OQ-3 - autosave does not snapshot unchanged content (575e8be)
+
+- **Test first (red):** two independent failures against the unfixed module:
+
+```
+Expected: contains 'String? _lastSavedContent'
+Actual: ' \n'
+the module must remember the content it last saved
+
+Expected: a value greater than or equal to <5>
+Actual: <2>
+OQ-3: the autosave debounce must be 5s or longer
+```
+
+- **Implementation** (`lib/modules/manuscript_module.dart`):
+  - New `String? _lastSavedContent` holds the exact payload last persisted.
+  - `_saveContent` encodes the Delta through a new `_currentContentJson`
+    helper and returns early when the result is identical to that baseline -
+    **before** `addHistoryEntry` and before `_isSaving` is set, so a no-op
+    save writes nothing and does not flash the saving indicator.
+  - The baseline is seeded in `_loadContent` / `_loadEmptyContent` (so the
+    first save after opening a document is never mistaken for a no-op) and
+    refreshed only after a real write.
+  - `_autosaveDelay`: 2s -> 5s (OQ-3). No existing test depends on the old
+    value; the manuscript topology test's 50 ms step and 10 s deadline are
+    unaffected.
+- **Behavioural verification** (a throwaway probe, run before the commit and
+  then deleted) drove the *real* editor in the shell and counted
+  `ManuscriptDocument` history entries:
+
+```
+before the fix:  first=1  second=2   <- identical re-save wrote a duplicate
+after the fix:   first=1  second=1   <- duplicate suppressed, real save kept
+```
+
+  The shipped test asserts the guard structurally rather than behaviourally;
+  see *Deferred* below for why.
+- **Green:** analyze clean, `00:30 +409: All tests passed!`
+- **Tests added:** 2
+
+### Verification
+
+| Check | Cycle 3 baseline | Cycle 3 end |
+| --- | --- | --- |
+| `flutter analyze` | 0 errors / 0 warnings / 0 infos | **0 / 0 / 0** |
+| `flutter test` | 398 | **409** |
+| `flutter build windows --debug` | not run | **succeeded** - `Built build\windows\x64\runner\Debug\lore_keeper.exe` (25.1s) |
+| Tooling rules | - | honored: no build_runner, no dependency changes, no protected public-API changes, no SDK-artifact drift (tree clean at the closing commit) |
+
+Raw final output:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.0s)
+```
+
+```
+00:30 +409: All tests passed!
+```
+
+```
+Building Windows application...                                    25.1s
+- Built build\windows\x64\runner\Debug\lore_keeper.exe
+```
+
+Test count progression: 398 -> 402 (MS-006) -> 404 (MS-007) -> 407 (MS-020) ->
+409 (MS-008).
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `f0c9686` | MS-006 - history panel queries ManuscriptDocument revisions |
+| `705e95b` | MS-007 - ManuscriptDocument diff and revert |
+| `4bb80aa` | MS-020 - Hive-free manuscript diff/revert path guard |
+| `575e8be` | MS-008 + OQ-3 - unchanged autosave writes no snapshot; debounce 2s -> 5s |
+
+### Deferred / not done
+
+- **The MS-008 behaviour is not covered by a shipped widget test.** Driving a
+  real autosave from a widget test leaves `ProjectEditorScreen`'s provider
+  graph holding open Hive writes, and tearing that tree down afterwards
+  deadlocks the test runner (reproduced twice: the run reached the assertion,
+  reported the result, then hung until the runner was killed). The structural
+  guard plus the recorded probe evidence covers the contract today, but a
+  proper fix needs `ProjectEditorScreen`'s disposal to be teardown-safe under
+  `FakeAsync` - a lifecycle issue beyond MS-008's scope and worth its own
+  cycle.
+- `ChapterDiffViewDialog` still opens `Hive.box<Chapter>` and writes
+  directly. That is unchanged on purpose (it serves pre-manuscript Chapter
+  snapshots); MS-020 only guarantees the *manuscript* path never reaches it.
+  Removing the legacy path is a migration decision, not a Cycle 3 change.
+- No backfill of the new guard: documents that already have duplicate history
+  entries from identical saves keep them. The panel is append-only and the
+  duplicates are indistinguishable from real repeats, so no automatic dedupe was
+  attempted.
+- MS-015 (dual `ManuscriptReferenceService`) remains deferred to Cycle 4, as
+  recorded at the end of Cycle 2.
