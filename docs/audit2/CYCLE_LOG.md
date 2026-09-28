@@ -913,9 +913,14 @@ No issues found! (ran in 2.2s)
   would need the editor to participate in the revert transaction; not done.
 - **No backfill.** Documents that already carry duplicate history entries from
   identical saves keep them, as recorded at the end of Cycle 3.
-- **B7 MS-020 wording vs. reality.** B7's literal acceptance names
-  `lib/widgets/chapter_diff_view_dialog.dart`, but Cycle 3 intentionally left
-  that legacy dialog untouched and guarded the new manuscript path instead. The
-  guard and the code are consistent; the requirement text is ambiguous and
-  should be corrected at the source. Left unchanged here - out of 3b scope.
+- **B7 MS-020 wording vs. reality.** Resolved after Cycle 3b; see
+  *Post-Cycle 3b correction* below.
 - MS-015 (dual `ManuscriptReferenceService`) remains deferred to Cycle 4.
+
+### Post-Cycle 3b correction
+
+- B7's MS-020 acceptance was corrected to name the artifact Cycle 3 actually
+  built, because the original text named the legacy `chapter_diff_view_dialog.dart`
+  and would have sent the next implementer to guard the one file that was
+  deliberately left alone, while leaving the real `ManuscriptDocumentDiffViewDialog`
+  path unguarded by name.

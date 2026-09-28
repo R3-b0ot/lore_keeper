@@ -168,10 +168,11 @@ The front-matter Index page must list `ManuscriptDocument` entries of type `chap
 Source: D8b  
 Acceptance: Test that after creating a `ManuscriptDocument` of type `chapter`, it appears in `IndexPageWidget`'s list without requiring an entry in the legacy `chapters` box.
 
-**MS-020** MUST — `ChapterDiffViewDialog` must not open Hive boxes directly  
+**MS-020** MUST — The `ManuscriptDocument` diff/revert path must not open Hive boxes directly  
 The diff/revert dialog for manuscripts must receive the current `ManuscriptDocument` data via parameter (not by reading from `Hive.box<Chapter>('chapters')` directly). Revert must write via `ManuscriptBinderProvider.updateContent`, not via `chapter.save()`.  
+`ChapterDiffViewDialog` (`lib/widgets/chapter_diff_view_dialog.dart`) is legacy: it is intentionally left untouched and continues to serve pre-manuscript `Chapter` snapshots only. This requirement governs the manuscript path — `ManuscriptDocumentDiffViewDialog` (`lib/widgets/manuscript_diff_view_dialog.dart`) and `HistoryPanel` (`lib/widgets/history_panel.dart`) — which must never open `Hive.box<Chapter>`, deserialize a snapshot with `chapterFromJson`, or depend on `lib/models/chapter.dart`.  
 Source: D8d, B2 (rule violation)  
-Acceptance: Static analysis — `Hive.box<Chapter>` must not appear in `chapter_diff_view_dialog.dart`. Revert test confirms `manuscriptDocuments` box is updated.
+Acceptance: Static guard (commit `4bb80aa`; `test/widgets/manuscript_history_test.dart`, "no manuscript history widget opens Hive.box<Chapter> (MS-020)") — after stripping comments, `manuscript_diff_view_dialog.dart` and `history_panel.dart` must contain no `Hive.box<Chapter>`, no `chapterFromJson`, and no `models/chapter.dart` import. Comments are stripped because the manuscript dialog's doc comment legitimately names `Hive.box<Chapter>` to explain that it never opens it. Revert test confirms `manuscriptDocuments` box is updated.
 
 ---
 
