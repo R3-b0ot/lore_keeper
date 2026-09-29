@@ -824,7 +824,7 @@ until the runner was killed.
 **Two latent contributors, reported but deliberately not changed** (out of
 3b-4's diagnose-only scope):
 
-- `_saveContent` calls `rebuildIndex()` on every autosave (B5 D3 warns this
+- `_saveContent` calls `rebuildIndex()` on every autosave (B5 D4 warns this
   calls `engine.clear()` and can drop non-manuscript entries). Besides being
   wrong at 2s, it lengthens the in-flight window that the teardown waits on,
   so it is a contributing factor to the hang's timing as well as a live
@@ -897,7 +897,7 @@ No issues found! (ran in 2.2s)
 
 ### Deferred / not done
 
-- **B5 D3: `rebuildIndex()` on every autosave.** Now unmissable at a 2s
+- **B5 D4: `rebuildIndex()` on every autosave.** Now unmissable at a 2s
   debounce, and a contributing factor to the 3b-4 teardown window. Out of
   3b scope; needs its own cycle.
 - **3b-4 diagnosed, not fixed.** The teardown deadlock is a zone-mixing
@@ -1287,7 +1287,7 @@ No issues found! (ran in 2.2s)
   deletions will silently stop being purged.
 - **B7 OQ-8** (revert does not flush the editor's unsaved buffer) remains
   deferred, as recorded in housekeeping.
-- **B5 D3** (`rebuildIndex` on every autosave) was partly addressed by MS-014 —
+- **B5 D4** (`rebuildIndex` on every autosave) was partly addressed by MS-014 —
   it no longer destroys other producers' entries — but its frequency is
   untouched and is the performance note above.
 - MS-015 (dual `ManuscriptReferenceService`) is now closed.
@@ -1298,7 +1298,7 @@ No issues found! (ran in 2.2s)
 
 **Branch:** `manuscript-fixes`
 **Scope:** closes the MS-014 deferred performance note and the frequency half of
-B5 D3. Not a numbered MS requirement.
+B5 D4. Not a numbered MS requirement.
 
 ### Baseline (before any code change)
 
@@ -1542,7 +1542,7 @@ No issues found! (ran in 2.2s)
   that reason.
 - **Requirement 5 not verified by the original probes** — see above; the
   teardown deadlock remains a fake-async harness artefact, not a product defect.
-- **B5 D3 is now closed on both halves**: MS-014 stopped the collateral damage
+- **B5 D4 is now closed on both halves**: MS-014 stopped the collateral damage
   (no longer clearing other producers' entries), and Cycle 4b stopped the
   over-scoped work. The `rebuildIndex`-on-autosave call itself still exists, by
   design — it is the re-index, and it is now correctly scoped.
@@ -1995,3 +1995,33 @@ No issues found! (ran in 2.0s)
   five controls wide (`Close`, `Find`, `Previous`, `Replace`, `Replace All`).
   Whether that needs a second row or an overflow menu is untested on the
   narrowest supported window.
+
+**Cycle 5 closes B5 D3** (Find & Replace strips `ref:` attributes and drifts
+offsets in replace-all): MS-011 preserved attributes across the replaced span,
+MS-012 applied replace-all highest-offset-first, and MS-013 added navigation
+and a count. Note that B5 D3's own description of the attribute defect was
+inverted - it claimed formatting was *stripped*, when in fact it *leaked* onto
+text outside the matched span - so the fix was written against the behaviour
+observed in the working tree, not against B5's text.
+
+---
+
+## Housekeeping before Cycle 6
+
+- **Five `B5 D3` citations corrected to `B5 D4`.** Every one of them described
+  `rebuildIndex()` / `engine.clear()` while citing D3, but per
+  `B5_defects.md` D3 is *Find & Replace strips ref: attributes and drifts
+  offsets in replace-all* and D4 is *ReferenceIndex rebuild clears entries from
+  non-manuscript sources*. Affected: Cycle 3b's Item 3b-4 "two latent
+  contributors" bullet, Cycle 4's deferred note, Cycle 4b's deferred note and
+  scope line, and Cycle 4b's closing note. Verified against `B5_defects.md`'s own
+  headings before changing anything. Cycle 5's `B5 D3` citations are correct and
+  were left alone — that cycle is the one that actually closed D3.
+- **B7 OQ-9 added** (open questions): replacing the *text* of a mention leaves
+  the reference attribute intact and still pointing at the original entity,
+  even though the visible text no longer matches that entity's name. Recorded as
+  a product-review question with the recommended default (keep the current
+  preserve behaviour: reversible, and non-destructive to the reference index)
+  and the one-line change in `find_replace_dialog.dart`'s `_replaceRange` that
+  would flip it. This is the item Cycle 5 raised as a UX decision rather than
+  making silently.

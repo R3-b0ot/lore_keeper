@@ -277,6 +277,7 @@ Acceptance: Widget test that taps a backlink tile and asserts `ManuscriptListPan
 | OQ-6 | `EntityType.mapData` and `EntityType.mapLayer` remain in `EntityType.all`, which means `ReferenceEngine.rebuildIndex` (full-rebuild variant) iterates them. Should they be removed from `all` now or kept until the Map module is rebuilt? | Keep until Map module is rebuilt; removing them from `all` risks breaking the entity_ref test. |
 | OQ-7 | The spec's zero baseline cites "300/300 tests". The current baseline is 377. Should the requirements doc update the baseline number? | Yes — the operative baseline is the current green count (377). Document it as such. |
 | OQ-8 | A revert does not flush the editor's unsaved buffer first, so text typed but not yet autosaved can be lost without being snapshotted. | Warn the user and let them cancel if the buffer has unsaved changes. Deferred. |
+| OQ-9 | Replacing the text of a mention (per MS-011's attribute-preservation rule) leaves the reference attribute intact and pointing at the original entity, even though the visible text no longer matches that entity's name. This may surprise an author who intended to unlink rather than rename in place. | Keep current behavior (preserve), since it is reversible and non-destructive to the reference index, but flag it for product review. One-line change in `find_replace_dialog.dart`'s `_replaceRange` if the decision changes. |
 
 ---
 
