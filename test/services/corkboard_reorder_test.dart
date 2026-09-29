@@ -59,32 +59,40 @@ void main() {
     test('reorderDocument updates provider sibling order correctly', () async {
       final root = binderProvider.manuscriptRoot!;
 
+      // Scenes may only live under a Chapter (MS-029 enforces the hierarchy),
+      // so the siblings that get reordered live under one.
+      final chapter = await binderProvider.createChild(
+        parentId: root.id,
+        title: 'Chapter',
+        type: ManuscriptDocumentType.chapter,
+      );
+
       // Create three siblings.
       final alpha = await binderProvider.createChild(
-        parentId: root.id,
+        parentId: chapter.id,
         title: 'Alpha',
         type: ManuscriptDocumentType.scene,
       );
       await binderProvider.createChild(
-        parentId: root.id,
+        parentId: chapter.id,
         title: 'Beta',
         type: ManuscriptDocumentType.scene,
       );
       await binderProvider.createChild(
-        parentId: root.id,
+        parentId: chapter.id,
         title: 'Gamma',
         type: ManuscriptDocumentType.scene,
       );
 
       // Verify initial order: Alpha(0) Beta(1) Gamma(2)
-      var children = binderProvider.getChildren(root.id);
+      var children = binderProvider.getChildren(chapter.id);
       expect(children.map((d) => d.title).toList(), ['Alpha', 'Beta', 'Gamma']);
 
       // Move Alpha to the last position.
       // reorderDocument(alpha.id, 3) → adjustedIndex = 3-1 = 2 → Beta Gamma Alpha.
       await binderProvider.reorderDocument(alpha.id, 3);
 
-      children = binderProvider.getChildren(root.id);
+      children = binderProvider.getChildren(chapter.id);
       final titles = children.map((d) => d.title).toList();
       expect(titles.length, 3);
       // Alpha moved to the end.
@@ -97,24 +105,31 @@ void main() {
       () async {
         final root = binderProvider.manuscriptRoot!;
 
-        final a = await binderProvider.createChild(
+        // Scenes may only live under a Chapter (MS-029 enforces the hierarchy).
+        final chapter = await binderProvider.createChild(
           parentId: root.id,
+          title: 'Chapter',
+          type: ManuscriptDocumentType.chapter,
+        );
+
+        final a = await binderProvider.createChild(
+          parentId: chapter.id,
           title: 'First',
           type: ManuscriptDocumentType.scene,
         );
         await binderProvider.createChild(
-          parentId: root.id,
+          parentId: chapter.id,
           title: 'Second',
           type: ManuscriptDocumentType.scene,
         );
         await binderProvider.createChild(
-          parentId: root.id,
+          parentId: chapter.id,
           title: 'Third',
           type: ManuscriptDocumentType.scene,
         );
 
         // Verify initial order.
-        var children = binderProvider.getChildren(root.id);
+        var children = binderProvider.getChildren(chapter.id);
         expect(children[0].title, 'First');
         expect(children[1].title, 'Second');
         expect(children[2].title, 'Third');
@@ -126,7 +141,7 @@ void main() {
         await binderProvider.reorderDocument(a.id, 2);
 
         // Order is now updated in provider.
-        children = binderProvider.getChildren(root.id);
+        children = binderProvider.getChildren(chapter.id);
         expect(children[0].title, 'Second');
         expect(children[1].title, 'First');
         expect(children[2].title, 'Third');
@@ -143,7 +158,7 @@ void main() {
         }
         expect(freshProvider.isInitialized, isTrue);
 
-        final persistedChildren = freshProvider.getChildren(root.id);
+        final persistedChildren = freshProvider.getChildren(chapter.id);
         expect(persistedChildren[0].title, 'Second');
         expect(persistedChildren[1].title, 'First');
         expect(persistedChildren[2].title, 'Third');

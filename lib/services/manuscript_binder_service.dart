@@ -2,7 +2,6 @@
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:lore_keeper/utils/debug_logger.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/reference_integrity_service.dart';
@@ -519,11 +518,15 @@ class ManuscriptBinderService {
 
     final allowed = validChildren[parentType] ?? [];
     if (!allowed.contains(childType)) {
-      LkLog.warning(
-        'ManuscriptBinder',
-        'Unusual hierarchy: $parentType -> $childType',
+      // MS-029: this used to log and continue, which let a Scene be parented
+      // to a Manuscript and a Note to a Part. Every reader of the tree then had
+      // to defend against a shape the schema forbids. Reject instead, with the
+      // same StateError the circular-reference check throws.
+      throw StateError(
+        'Invalid manuscript hierarchy: $parentType cannot contain $childType. '
+        'Allowed children of $parentType: '
+        '${allowed.isEmpty ? '(none)' : allowed.join(', ')}',
       );
-      // Allow but warn - don't throw to maintain flexibility
     }
   }
 

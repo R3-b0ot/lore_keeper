@@ -24,6 +24,7 @@ void main() {
   late ManuscriptBinderService service;
   late Project project;
   late ReferenceEngine referenceEngine;
+  late ManuscriptDocument chapterUnderRoot;
 
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('hive_purpose_');
@@ -49,6 +50,13 @@ void main() {
       referenceEngine: referenceEngine,
     );
     await service.createManuscriptRoot(project);
+    // Scenes may only live under a Chapter (MS-029 enforces the hierarchy), so
+    // the fixture parents its scenes to this one rather than to the root.
+    chapterUnderRoot = await service.createDocument(
+      title: 'Chapter One',
+      type: ManuscriptDocumentType.chapter,
+      parentId: 'manuscript_${project.key!}',
+    );
   });
 
   tearDown(() async {
@@ -71,7 +79,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene One',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -86,7 +94,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene Two',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -102,7 +110,7 @@ void main() {
       final sceneDoc = await service.createDocument(
         title: 'Scene Three',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
       );
 
@@ -129,7 +137,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene Four',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -178,7 +186,7 @@ void main() {
       final doc = await service.createDocument(
         title: 'Scene',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
       );
 
@@ -207,7 +215,7 @@ void main() {
       final doc = await service.createDocument(
         title: 'Empty',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
       );
 
@@ -221,7 +229,7 @@ void main() {
       final doc = await service.createDocument(
         title: 'Seeded',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
         richTextJson: '{"ops":[{"insert":"Hello world\\n"}]}',
       );
@@ -235,7 +243,7 @@ void main() {
       final doc = await service.createDocument(
         title: 'Blank',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
       );
 
