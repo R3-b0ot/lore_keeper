@@ -1291,3 +1291,258 @@ No issues found! (ran in 2.2s)
   it no longer destroys other producers' entries — but its frequency is
   untouched and is the performance note above.
 - MS-015 (dual `ManuscriptReferenceService`) is now closed.
+
+---
+
+## Cycle 4b - incremental re-index on autosave
+
+**Branch:** `manuscript-fixes`
+**Scope:** closes the MS-014 deferred performance note and the frequency half of
+B5 D3. Not a numbered MS requirement.
+
+### Baseline (before any code change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.1s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:47 +435: All tests passed!
+```
+
+### Traced call sites of rebuildIndex()
+
+Two call sites in `lib/`, both found by grepping for `rebuildIndex`; the only
+other hits are comments and the definition itself.
+
+**Call site 1 — module session init** (`lib/modules/manuscript_module.dart:157`,
+in `_ManuscriptModuleState._initReferenceService`):
+
+```dart
+    await svc.rebuildIndex();
+```
+
+What changed: **nothing yet — this is the first read of the index.** The
+module just came up and the shared engine may be cold, or may have been
+populated by a previous module instance. A full rebuild is the only correct
+call: there is no single document to scope to. **This call site is unchanged.**
+
+**Call site 2 — the autosave** (`lib/modules/manuscript_module.dart:827`, at the
+end of `_ManuscriptEditorState._saveContent`):
+
+```dart
+    await _referenceService?.rebuildIndex();
+```
+
+What changed: **exactly one document's body, and nothing else.** Immediately
+above, `_saveContent` has already called
+`_binderProvider?.updateContent(_selectedDocument!.id, content)` — one document,
+one field. No sibling was touched, no document was created, moved, renamed, or
+deleted. This call site is the one that was over-scoped, and it is the one that
+fires on the 2s debounce from 3b-1. **This call site now calls the scoped
+path.**
+
+There is no third call site. Notably, `ManuscriptBinderService`'s structural
+operations (`moveDocument`, `deleteDocument`, `createDocument`) never call
+`rebuildIndex()` at all — `deleteDocument` removes its own entries directly via
+`ReferenceIntegrityService.removeSource`/`removeTarget`. That is the right
+shape, and it means switching the autosave to a scoped rebuild could not have
+weakened those paths, because they never went through it.
+
+### Decisions
+
+**The scope boundary is documented on the method, not just in the log.** The
+brief's design constraint was that rename/move/reorder/delete change what a
+document *emits*, not just its body. Rather than silently assuming they don't,
+each case was traced:
+
+- **body edit** — changes only this document's outbound entries. The scoped
+  path is exactly right.
+- **delete** — the document is gone, so there is nothing to re-parse.
+  `deleteDocument` already owns this through `removeSource`/`removeTarget`,
+  which also handles *inbound* backlinks that a scoped rebuild could not.
+  Calling `rebuildIndexFor` with a deleted id is a safe no-op (the removal
+  branch still runs, the re-add does not), but the binder remains the owner.
+- **move / reorder** — change `parentId`/`orderIndex`. The current extractor
+  (`extractReferencesFromDocument`) reads *only* `richTextJson`, so these
+  genuinely do not alter the index today.
+- **rename** — changes `title`, which the extractor does not index.
+
+So the constraint is satisfied for the right reason: the index's inputs are
+currently the body alone, and the method's doc comment says so explicitly —
+including the caveat that if a future change makes a document emit
+hierarchy-derived or title-derived entries, `rebuildIndexFor` must be
+accompanied by a full rebuild on those operations. Without that note, the next
+person to add a title-derived entry would get a silently stale index.
+
+**A test asserts identity, not presence.** This was the load-bearing test
+choice. `ReferenceIndexEntry` overrides `operator ==`, so a remove-and-re-add
+produces an object that is *equal* to the original — a "still present" assertion
+passes even when every entry was destroyed and rebuilt. The test captures the
+entry instances before the scoped rebuild and asserts `identical()` afterward,
+which is the only way to distinguish "untouched" from "rebuilt identically".
+
+**One public addition, no signature changes.** `rebuildIndex()` is untouched
+(MS-014's contract and its three tests depend on it). Added alongside it:
+`rebuildIndexFor(String documentId)`, the `parsedDocumentCount` getter (evidence
+for the requirement-4 measurement, and a cheap way for a test to assert scope),
+and a private `_sourceRefFor` helper. The MS-005 Flutter-free guard needed no
+extension because no new service file was created.
+
+### Tests
+
+**Test first (red)** — the methods did not exist:
+
+```
+test/services/manuscript_reference_service_test.dart:327:21: Error: The method 'rebuildIndexFor' isn't defined for the type 'ManuscriptReferenceService'.
+test/services/manuscript_reference_service_test.dart:404:41: Error: The getter 'parsedDocumentCount' isn't defined for the type 'ManuscriptReferenceService'.
+```
+
+**And a second red, with `rebuildIndexFor` temporarily delegating to the full
+rebuild** — this is the check that proves the identity assertion is real:
+
+```
+Expected: true
+Actual: <false>
+doc_1 entry 0 must be the SAME instance (never re-parsed)
+00:00 +0 -1: Some tests failed.
+```
+
+**A test fault, recorded because it nearly produced a false pass.** The delete
+test initially built its inbound backlink with a *Location*-typed target whose
+id happened to be the doomed document's id. `removeTarget` matches on the whole
+`EntityRef`, so the entry survived and the test failed for a reason unrelated to
+the behaviour. Split into a separate `mentionDocument` helper that types the
+target as `manuscriptDocument`, which is what an inbound document-to-document
+backlink actually is.
+
+**After the change:**
+
+```
+00:00 +23: All tests passed!     (reference service + binder service)
+No issues found! (ran in 2.0s)
+00:54 +441: All tests passed!
+```
+
+### Performance measurement (requirement 4)
+
+A temporary bench test (created, run, then deleted — not left in the suite)
+seeded realistic bodies: one prose insert plus 8 `ref:Location` links each, so
+the parse cost is not trivial. A warm-up full rebuild was run first so Hive's
+box caching is not charged to the measured call.
+
+```
+BENCH docs=10  entries=80   full=1230us (20 parses)  scoped=773us  (1 parse)  speedup=1.6x
+BENCH docs=50  entries=400  full=1908us (100 parses) scoped=85us   (1 parse)  speedup=22.4x
+BENCH docs=200 entries=1600 full=4242us (400 parses) scoped=163us  (1 parse)  speedup=26.0x
+```
+
+(The parse counts are cumulative across the two measured calls, hence 20/100/400
+rather than 10/50/200; the scoped column is the per-call delta and is the number
+that matters.)
+
+**The result scales with project size, which is the point.** The 10-document
+case is nearly break-even (1.6x) because fixed overhead dominates; by 200
+documents the scoped path is 26x cheaper and the gap keeps widening, since the
+full path is O(documents) and the scoped path is O(1). The counted assertion is
+also in the permanent suite: a 20-document project must parse 20 documents on a
+full rebuild and exactly 1 on a scoped one.
+
+### Requirement 5 — 3b-4 teardown probe
+
+**Skipped as specified, with the reasoning recorded.** The 3b-4 probes were
+throwaway files, deleted after the diagnosis, and reconstructing the
+ProjectEditorScreen-level scaffolding to re-run them would be significant work
+for a nice-to-confirm.
+
+The closest permanent equivalent *was* run: `manuscript_revert_test.dart` drives
+a real autosave through a real `QuillController` in a real editor mount — the
+same real-write-in-the-real-zone path probe A exercised — and it passes:
+
+```
+00:07 +5: 3b-3 — a pending debounce and the next autosave both keep the revert
+00:15 +6: All tests passed!
+```
+
+That is consistent with, but does not prove, a narrower teardown window: the
+diagnose in 3b-4 established that the hang is a zone-mixing artefact of the
+fake-async harness, not a fixed cost that shrinking the work would remove. The
+honest claim is that the work done per autosave is now ~26x smaller at 200
+documents, which reduces the in-flight window teardown waits on — not that the
+hang is fixed. It is a harness problem, and it stays a harness problem.
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `0afcb40` | scoped `rebuildIndexFor` + autosave rewired + identity/count/delete tests |
+
+### Tests added
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/services/manuscript_reference_service_test.dart` | 4 | other documents keep object identity; unknown id is a no-op not a wipe; scoped idempotence; parse-count reduction at 20 documents |
+| `test/services/manuscript_binder_service_test.dart` | 2 | delete purges outbound *and* inbound; delete with an empty index |
+
+| | Before | After |
+| --- | --- | --- |
+| Count | 435 | **441** (+6) |
+
+No test was modified or deleted.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `lib/services/manuscript_reference_service.dart` | `rebuildIndexFor`, `parsedDocumentCount`, `_sourceRefFor`, parse counter |
+| `lib/modules/manuscript_module.dart` | autosave calls `rebuildIndexFor(_selectedDocument!.id)` |
+| `test/services/manuscript_reference_service_test.dart` | Cycle 4b group |
+| `test/services/manuscript_binder_service_test.dart` | structural-change group |
+
+`rebuildIndex()` itself is unchanged. No build_runner, no dependencies, no
+adapters, no schema. No listed public API changed or lost a method.
+
+### Verification (final)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.2s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:50 +441: All tests passed!
+```
+
+### Deferred / not done
+
+- **The 10-document case is only ~1.6x faster.** For a very small project the
+  scoped path's fixed cost is nearly the whole cost, so there is no dramatic win
+  yet. Not worth special-casing.
+- **`rebuildIndex()` is still O(all documents)** and is still called on module
+  session init. That is correct — a cold or previously-populated engine has no
+  single changed document to scope to — but a long-lived session that never
+  remounts never re-indexes the whole project. If another writer mutates
+  documents outside the autosave path, the full rebuild is the only thing that
+  will notice, and nothing calls it on a schedule. Deferred.
+- **Structural operations still do not re-index at all** (they never did).
+  Correct today because move/reorder/rename are not index inputs, but that is
+  an invariant held by convention in the binder rather than by anything the
+  compiler or the tests would catch. If a future feature indexes a document's
+  title, hierarchy, or metadata, the binder's `moveDocument`/`updateTitle` must
+  gain a `rebuildIndex()` call. Recorded in `rebuildIndexFor`'s doc comment for
+  that reason.
+- **Requirement 5 not verified by the original probes** — see above; the
+  teardown deadlock remains a fake-async harness artefact, not a product defect.
+- **B5 D3 is now closed on both halves**: MS-014 stopped the collateral damage
+  (no longer clearing other producers' entries), and Cycle 4b stopped the
+  over-scoped work. The `rebuildIndex`-on-autosave call itself still exists, by
+  design — it is the re-index, and it is now correctly scoped.
