@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
+import '../services/manuscript_find_replace.dart';
+
 class FindReplaceDialog extends StatefulWidget {
   final QuillController controller;
 
@@ -152,26 +154,29 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
     final replaceText = _replaceController.text;
     if (findText.isEmpty) return;
 
-    final text = widget.controller.document.toPlainText();
-    final pattern = _caseSensitive ? findText : findText.toLowerCase();
-    final searchText = _caseSensitive ? text : text.toLowerCase();
+    // MS-012. The matches are computed once against the current text and then
+    // applied **highest offset first**. Previously this looped
+    // `searchText.indexOf(pattern, startIndex)` over a plain-text snapshot
+    // captured before any edit, so as soon as the replacement was a different
+    // length from the query the coordinates stopped referring to the document
+    // that was actually being edited. `"a cat and a dog"` with `"a"`->`"bbb"`
+    // produced `"bbbbbbbbbabbb and a dog"`, and the shorter-replacement and
+    // empty-replacement cases did not merely corrupt the text - the latter
+    // never advanced `startIndex` at all, so Replace All with an empty
+    // replacement spun forever and hung the app.
+    //
+    // Walking the plan backwards means every range still sits at its original
+    // offset when it is applied, so the outcome does not depend on the
+    // relative lengths of the query and the replacement. An empty replacement
+    // is just a zero-length insert at the right place.
+    final plan = const FindReplaceEngine().replaceAllPlan(
+      widget.controller.document.toPlainText(),
+      findText,
+      caseSensitive: _caseSensitive,
+    );
 
-    int startIndex = 0;
-    while (true) {
-      final index = searchText.indexOf(pattern, startIndex);
-      if (index == -1) break;
-
-      // Select the text to replace
-      widget.controller.updateSelection(
-        TextSelection(baseOffset: index, extentOffset: index + findText.length),
-        ChangeSource.local,
-      );
-
-      // Replace the selected text
-      _replaceRange(index, findText.length, replaceText);
-
-      // Move start index forward
-      startIndex = index + replaceText.length;
+    for (final match in plan) {
+      _replaceRange(match.offset, match.length, replaceText);
     }
   }
 
