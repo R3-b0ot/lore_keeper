@@ -107,9 +107,26 @@ class ManuscriptReferenceService {
   }
 
   /// Rebuild the reference index for all manuscript documents in this project.
+  ///
+  /// MS-014: this method owns *only* entries whose source is a
+  /// [EntityType.manuscriptDocument]. The engine is shared with the rest of
+  /// the app (spec §10: the index is derived, never duplicated), so other
+  /// producers may legitimately hold entries on it. Calling `clear()` here
+  /// silently destroyed every one of them on each 2s autosave — Character- and
+  /// relationship-sourced backlinks vanished and reappeared only if something
+  /// else happened to repopulate them. Removing just the manuscript-sourced
+  /// slice keeps this method's ownership honest without touching anyone else's
+  /// data.
+  ///
+  /// This is still a full re-scan of the project's documents, not an
+  /// incremental single-document update. That is correct — a document's edits
+  /// can change its outbound references anywhere — but it means every autosave
+  /// re-parses every manuscript. See the Cycle 4 log for the performance note.
   Future<void> rebuildIndex() async {
     final entries = extractAllReferences();
-    _referenceEngine.clear();
+    _referenceEngine.removeWhere(
+      (e) => e.source.entityType == EntityType.manuscriptDocument,
+    );
     for (final entry in entries) {
       _referenceEngine.addEntry(entry);
     }
