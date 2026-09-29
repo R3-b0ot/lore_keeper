@@ -234,4 +234,192 @@ void main() {
       );
     });
   });
+
+  group('Cycle 4b — rebuildIndexFor re-indexes exactly one document', () {
+    late Directory dir;
+    late Box<ManuscriptDocument> box;
+    late ReferenceEngine engine;
+    late ManuscriptReferenceService service;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('hive_c4b_');
+      Hive.init(dir.path);
+      if (!Hive.isAdapterRegistered(ManuscriptDocumentAdapter().typeId)) {
+        Hive.registerAdapter(ManuscriptDocumentAdapter());
+      }
+      box = await Hive.openBox<ManuscriptDocument>('manuscript_documents');
+      engine = ReferenceEngine();
+      service = ManuscriptReferenceService(
+        projectId: 7,
+        referenceEngine: engine,
+        documentBox: box,
+      );
+    });
+
+    tearDown(() async {
+      await box.close();
+      await Hive.deleteFromDisk();
+      try {
+        await dir.delete(recursive: true);
+      } catch (_) {}
+    });
+
+    /// Seeds a document whose body mentions [targets] as Location refs.
+    Future<ManuscriptDocument> seedDoc(
+      String id,
+      List<String> targets,
+    ) async {
+      final doc = ManuscriptDocument()
+        ..id = id
+        ..projectId = 7
+        ..title = 'Doc $id'
+        ..documentTypeIndex = ManuscriptDocumentType.chapter.index;
+      doc.richTextJson = '[${targets.map((t) => '{"insert":"","attributes":{"link":"ref:Location:$t"}}').join(',')}]';
+      await box.put(id, doc);
+      return doc;
+    }
+
+    EntityRef docRef(String id) => EntityRef(
+      id: id,
+      entityType: EntityType.manuscriptDocument,
+      projectId: '7',
+    );
+
+    /// The non-manuscript entry used as an MS-014 sentinel in this group.
+    EntityRef charSource() => EntityRef(
+      id: '5',
+      entityType: EntityType.character,
+      projectId: '7',
+    );
+
+    ReferenceIndexEntry characterSurvivor() => ReferenceIndexEntry(
+      source: charSource(),
+      target: EntityRef(
+        id: 'fac_1',
+        entityType: EntityType.faction,
+        projectId: '7',
+      ),
+      kind: 'linked_to',
+      computedAt: DateTime(2026),
+    );
+
+    test('a scoped rebuild leaves other documents byte-identical (identity)',
+        () async {
+      await seedDoc('doc_1', ['loc_a', 'loc_b']);
+      await seedDoc('doc_2', ['loc_c']);
+      await seedDoc('doc_3', ['loc_d', 'loc_e']);
+      await service.rebuildIndex();
+
+      // Capture the *instances* the engine is holding. ReferenceIndexEntry
+      // overrides ==, so a remove-and-re-add would produce an equal-but-new
+      // object and only identical() can tell the difference. This is the whole
+      // point: "still present" would pass even if every entry were rebuilt.
+      final beforeDoc1 = engine.referencesFrom(docRef('doc_1'));
+      final beforeDoc3 = engine.referencesFrom(docRef('doc_3'));
+      final beforeCharEntry = characterSurvivor();
+      engine.addEntry(beforeCharEntry);
+      expect(beforeDoc1, hasLength(2));
+      expect(beforeDoc3, hasLength(2));
+
+      // doc_2's body changes: mention loc_f instead of loc_c.
+      await seedDoc('doc_2', ['loc_f']);
+
+      await service.rebuildIndexFor('doc_2');
+
+      final afterDoc1 = engine.referencesFrom(docRef('doc_1'));
+      final afterDoc3 = engine.referencesFrom(docRef('doc_3'));
+
+      expect(afterDoc1, hasLength(2));
+      expect(afterDoc3, hasLength(2));
+      for (var i = 0; i < 2; i++) {
+        expect(
+          identical(afterDoc1[i], beforeDoc1[i]),
+          isTrue,
+          reason: 'doc_1 entry $i must be the SAME instance (never re-parsed)',
+        );
+        expect(
+          identical(afterDoc3[i], beforeDoc3[i]),
+          isTrue,
+          reason: 'doc_3 entry $i must be the SAME instance (never re-parsed)',
+        );
+      }
+
+      // doc_2 reflects its new content and dropped its old target.
+      expect(
+        engine.referencesFrom(docRef('doc_2')).map((e) => e.target.id),
+        ['loc_f'],
+      );
+      expect(
+        engine.backlinksTo(
+          EntityRef(
+            id: 'loc_c',
+            entityType: EntityType.location,
+            projectId: '7',
+          ),
+        ),
+        isEmpty,
+        reason: 'doc_2\'s stale target must be gone',
+      );
+
+      // MS-014's guarantee survives: a non-manuscript entry is untouched.
+      expect(
+        identical(engine.referencesFrom(charSource()).single, beforeCharEntry),
+        isTrue,
+      );
+    });
+
+    test('a scoped rebuild of an unknown id is a no-op, not a wipe', () async {
+      await seedDoc('doc_1', ['loc_a']);
+      await service.rebuildIndex();
+      final before = engine.referencesFrom(docRef('doc_1'));
+
+      await service.rebuildIndexFor('doc_does_not_exist');
+
+      final after = engine.referencesFrom(docRef('doc_1'));
+      expect(after, hasLength(1));
+      expect(identical(after.single, before.single), isTrue);
+    });
+
+    test('a scoped rebuild is idempotent', () async {
+      await seedDoc('doc_1', ['loc_a']);
+      await seedDoc('doc_2', ['loc_b']);
+      await service.rebuildIndex();
+      final length = engine.length;
+
+      await service.rebuildIndexFor('doc_2');
+      await service.rebuildIndexFor('doc_2');
+
+      expect(engine.length, length, reason: 'no duplicate accumulation');
+    });
+
+    test('Cycle 4b: the scoped path parses far fewer documents', () async {
+      // Requirement 4: counted evidence that the scoped path does less work,
+      // not merely different work. `parsedDocumentCount` is the service's own
+      // count of documents whose Delta JSON was handed to jsonDecode.
+      for (var i = 0; i < 20; i++) {
+        await seedDoc('doc_$i', ['loc_$i']);
+      }
+
+      await service.rebuildIndex();
+      final fullRebuildParses = service.parsedDocumentCount;
+      expect(
+        fullRebuildParses,
+        20,
+        reason: 'a full rebuild parses every document in the project',
+      );
+
+      await seedDoc('doc_7', ['loc_7', 'loc_7b']);
+      await service.rebuildIndexFor('doc_7');
+      final scopedParses = service.parsedDocumentCount - fullRebuildParses;
+
+      expect(
+        scopedParses,
+        1,
+        reason: 'a one-document edit must parse exactly one document',
+      );
+
+      // And the index is still correct: 19 single-ref docs + doc_7 with 2.
+      expect(engine.length, 21);
+    });
+  });
 }

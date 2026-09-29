@@ -824,7 +824,10 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       _lastSnapshotAt = DateTime.now();
     }
 
-    await _referenceService?.rebuildIndex();
+    // Cycle 4b: only this document's body changed, so re-index just it. The
+    // full rebuildIndex() stays for module-session init and for structural
+    // operations (see ManuscriptReferenceService.rebuildIndexFor's scope note).
+    await _referenceService?.rebuildIndexFor(_selectedDocument!.id);
 
     if (_project != null) {
       _project!.lastModified = DateTime.now();

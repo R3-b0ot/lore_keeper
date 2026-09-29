@@ -12,7 +12,9 @@ import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/manuscript_binder_service.dart';
+import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/database/reference_engine/reference_index.dart';
 import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 void main() {
@@ -241,6 +243,111 @@ void main() {
       // of the emptyRichTextJson envelope itself.
       expect(doc.wordCount, 0);
       expect(doc.characterCount, 0);
+    });
+  });
+
+  group('Cycle 4b — structural changes still purge correctly', () {
+    // Non-regression guard for the incremental re-index. A scoped rebuild only
+    // helps the "this document's body changed" case; delete/move/rename must
+    // still leave a correct index, and those paths never go through the
+    // autosave's scoped call.
+
+    EntityRef docRef(String id, int projectId) => EntityRef(
+      id: id,
+      entityType: EntityType.manuscriptDocument,
+      projectId: '$projectId',
+    );
+
+    EntityRef locRef(String id, int projectId) => EntityRef(
+      id: id,
+      entityType: EntityType.location,
+      projectId: '$projectId',
+    );
+
+    /// An outbound entry: [sourceId] mentions a Location called [targetId].
+    ReferenceIndexEntry mention(
+      String sourceId,
+      String targetId,
+      int projectId,
+    ) => ReferenceIndexEntry(
+      source: docRef(sourceId, projectId),
+      target: locRef(targetId, projectId),
+      kind: 'mentions',
+      containerEntity: docRef(sourceId, projectId),
+      computedAt: DateTime(2026),
+    );
+
+    /// An inbound entry: [sourceId] mentions the *document* [targetId].
+    ///
+    /// Separate from [mention] because the target must be typed
+    /// `manuscriptDocument` — a Location ref carrying a document's id would
+    /// not be matched by `removeTarget(docRef(...))`, and the test would fail
+    /// for a reason unrelated to the behaviour under test.
+    ReferenceIndexEntry mentionDocument(
+      String sourceId,
+      String targetId,
+      int projectId,
+    ) => ReferenceIndexEntry(
+      source: docRef(sourceId, projectId),
+      target: docRef(targetId, projectId),
+      kind: 'mentions',
+      containerEntity: docRef(sourceId, projectId),
+      computedAt: DateTime(2026),
+    );
+
+    test('deleting a document removes its outbound and inbound entries',
+        () async {
+      final keeper = await service.createDocument(
+        title: 'Keeper',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+      final doomed = await service.createDocument(
+        title: 'Doomed',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 1,
+      );
+      final pid = project.key!;
+
+      referenceEngine.addEntry(mention(doomed.id, 'loc_a', pid));
+      referenceEngine.addEntry(mention(keeper.id, 'loc_b', pid));
+      // Inbound backlinks: documents pointing AT the doomed one, and the
+      // doomed one pointing at the keeper.
+      referenceEngine.addEntry(mentionDocument(keeper.id, doomed.id, pid));
+      referenceEngine.addEntry(mentionDocument(doomed.id, keeper.id, pid));
+      expect(referenceEngine.length, 4);
+
+      await service.deleteDocument(doomed.id);
+
+      // No entry may still name the deleted document as source or target.
+      expect(
+        referenceEngine.index.where(
+          (e) => e.source.id == doomed.id || e.target.id == doomed.id,
+        ),
+        isEmpty,
+        reason: 'a deleted document must leave no stale entries (Cycle 4b)',
+      );
+      // The surviving document's own outbound ref is untouched.
+      expect(
+        referenceEngine.referencesFrom(docRef(keeper.id, pid)).map(
+          (e) => e.target.id,
+        ),
+        contains('loc_b'),
+      );
+    });
+
+    test('deleting a document is correct even with no index entries at all',
+        () async {
+      final doc = await service.createDocument(
+        title: 'Empty',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+      await service.deleteDocument(doc.id);
+      expect(docBox.get(doc.id), isNull);
     });
   });
 }
