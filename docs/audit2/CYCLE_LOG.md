@@ -943,3 +943,351 @@ No issues found! (ran in 2.2s)
   so text typed but not yet autosaved can be lost without being snapshotted.
   Recommended default — warn the user and let them cancel if the buffer has
   unsaved changes. Deferred.
+
+### Baseline (before any code change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.4s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:48 +428: All tests passed!
+```
+
+### Traced current behaviour
+
+**MS-014 — `ManuscriptReferenceService.rebuildIndex()` as found** (the code had
+not shifted since the B5 D4 audit):
+
+```dart
+  /// Rebuild the reference index for all manuscript documents in this project.
+  Future<void> rebuildIndex() async {
+    final entries = extractAllReferences();
+    _referenceEngine.clear();
+    for (final entry in entries) {
+      _referenceEngine.addEntry(entry);
+    }
+  }
+```
+
+`ReferenceEngine` already exposed `removeWhere(bool Function(ReferenceIndexEntry)
+test)`, so no API addition was needed — the removal method was available and
+simply unused.
+
+**MS-015 — two services, one engine.** `_ManuscriptModuleState._initReferenceService()`
+built a `ManuscriptReferenceService`, and `_ManuscriptEditorState._initReferenceService()`
+built a second one:
+
+```dart
+  Future<void> _initReferenceService() async {          // editor
+    final db = DatabaseManager.instance;
+    _referenceService = ManuscriptReferenceService(
+      projectId: widget.projectId,
+      referenceEngine: _resolveSharedEngine(),
+      documentBox: db.manuscriptDocuments,
+    );
+    await _referenceService!.rebuildIndex();
+  }
+```
+
+Both ran `rebuildIndex()` on the same shared engine at init, so the module
+session built the index twice on mount and the autosave at
+`_saveContent → rebuildIndex()` had two owners.
+
+`ManuscriptCollections` was traced as instructed and is **not** part of MS-015's
+scope. It self-constructs a `ManuscriptCollectionsService` (a different class
+that receives `widget.provider.referenceEngine`), not a
+`ManuscriptReferenceService`, and it is not mounted in the editor column. It
+holds no reference service to share, so the identity assertion in the test
+covers the module, the editor, and (correctly) not the collections pane. Wiring
+a service into it would mean adding a new constructor parameter to a public
+widget purely for uniformity — out of scope, and deferred.
+
+**MS-016 — `entityExists` conflated "deleted" with "unresolvable":**
+
+```dart
+  bool entityExists(EntityRef ref) {
+    final targetProjectId = int.tryParse(ref.projectId) ?? -1;
+    switch (ref.entityType) {
+      case EntityType.character: ...
+      case EntityType.species: ...
+      case EntityType.timelineEvent: ...
+      case EntityType.manuscriptDocument: ...
+      default:
+        return false;
+    }
+  }
+```
+
+and the purge used that single bool as a removal test:
+
+```dart
+  List<ReferenceIndexEntry> purgeStaleEntries() {
+    final stale = findStaleEntries();
+    engine.removeWhere(
+      (e) => !entityExists(e.source) || !entityExists(e.target),
+    );
+    return stale;
+  }
+```
+
+Confirmed: Location/Item/Organization/Faction/Research/CalendarDate/Map resolve
+to `false` because no box exists to look in, and the purge read that as
+"deleted". The first purge after any entity deletion destroyed every mention of
+every not-yet-implemented type.
+
+### Requirement log
+
+#### MS-014 - rebuildIndex must not clear non-manuscript entries (4f52f37)
+
+- **Test first (red):**
+
+```
+00:00 +0 -1: MS-014 — rebuildIndex only owns manuscript-sourced entries a non-manuscript-sourced entry survives rebuildIndex [E]
+  Expected: an object with length of <1>
+    Actual: []
+     Which: has length of <0>
+  a Character-sourced entry must survive a manuscript rebuildIndex
+```
+
+- **Implementation.** Replaced the wholesale `clear()` with a scoped removal of
+  only manuscript-sourced entries, then re-added the freshly extracted set:
+
+```dart
+    _referenceEngine.removeWhere(
+      (e) => e.source.entityType == EntityType.manuscriptDocument,
+    );
+```
+
+- **Two extra tests, not just the required one.** "stale manuscript entries are
+  still replaced" pins that the fix did not degrade into a no-op append — the
+  obvious way to make the first test pass would be to stop removing anything.
+  "idempotent across repeated calls" pins that a second rebuild replaces rather
+  than duplicates.
+- **A test-harness fault worth recording:** Hive's adapter registry is global
+  and outlives `Hive.deleteFromDisk()`, so the per-test `registerAdapter` threw
+  `HiveError: There is already a TypeAdapter for typeId 40`, which surfaced as
+  a confusing `LateInitializationError: Local 'box' has not been initialized`
+  in the tests. Guarded with `Hive.isAdapterRegistered(...)`.
+- **After the change:**
+
+```
+00:00 +6: All tests passed!
+No issues found! (ran in 2.2s)
+00:52 +431: All tests passed!
+```
+
+#### MS-015 - one ManuscriptReferenceService per module session (601b965)
+
+- **Test first: the first version of this test was wrong and passed
+  vacuously.** It asserted on `tester.widget<ManuscriptEditor>(...).referenceService`
+  — the *constructor field*. That field is whatever the module handed down, so
+  the assertion could only ever confirm that the module passed an argument; a
+  second service built inside the editor's State was invisible to it. Three
+  successive red checks all came back green, which is what exposed the fault.
+  Rewritten to read the editor's **State** via
+  `tester.state(find.byKey(kManuscriptEditorKey)) as dynamic` and its
+  `referenceService` getter.
+- **Real red, with adoption disabled:**
+
+```
+00:02 +0 -1: runtime topology ONE ManuscriptReferenceService instance serves the module and the editor (MS-015) [E]
+Expected: true
+Actual: <false>
+the editor must hold the module's own service instance, not a second service over the same engine (MS-015)
+```
+
+- **Implementation.** The editor's `_initReferenceService()` was deleted. The
+  editor now reads `widget.referenceService` in `initState` and adopts the
+  canonical instance in `didUpdateWidget` via `_adoptReferenceService()`, which
+  no-ops when the service is unchanged or not yet built. `ManuscriptEditor`
+  gained one nullable constructor parameter; the module passes `_referenceService`
+  to both the editor and the inspector.
+- **One consequence accepted deliberately:** on the very first build the
+  module's service is still null (it is built asynchronously), so the editor
+  holds null for that frame. An earlier draft built a binder-derived fallback
+  instead, but that reintroduced a second service — the very thing MS-015
+  forbids — and its `rebuildIndex()` on top. Null-for-one-frame is strictly
+  better than a duplicate owner, and the autosave that needs the service cannot
+  fire before it exists.
+- **MS-004 completion:** the existing MS-004 engine-identity test was re-run
+  unchanged and still passes, and still means the same thing — it asserts
+  identity of the *engine* across the binder, the editor's binder provider, and
+  the inspector's service:
+
+```
+00:00 +0: runtime topology ProjectEditorScreen shares ONE ReferenceEngine across the manuscript pipeline (MS-004)
+00:02 +1: All tests passed!
+```
+
+  MS-015 is a strictly stronger assertion layered on top (service identity, not
+  engine identity), and the two together pin both levels of the topology.
+- **After the change:**
+
+```
+No issues found! (ran in 2.1s)
+00:48 +432: All tests passed!
+```
+
+#### MS-016 - unsupported types must not be purged as stale (e2cf190)
+
+- **The pre-existing test asserted the bug.** Cycle 0's
+  `unsupported types (no data source) are treated as stale` required
+  `removed, hasLength(2)` and an empty index. That is the defect, encoded as a
+  contract, so the test was replaced rather than left failing. Its name and
+  intent are recorded here so the change is auditable rather than silent.
+- **Real red** (fix reverted, old unresolvable-based purge restored):
+
+```
+Expected: an object with length of <1>
+    Actual: [
+Which: has length of <3>
+Expected: empty
+Actual: [Instance of 'ReferenceIndexEntry']
+00:00 +10 -6: Some tests failed.
+```
+
+- **Implementation.** `ReferenceNameResolver.entityIsDefinitelyGone(EntityRef)`
+  added: true only for the four types with a canonical box (character, species,
+  timelineEvent, manuscriptDocument) when `entityExists` says they are absent;
+  false for everything else. `entityExists` itself is **unchanged** in
+  signature and behaviour, so the autocomplete and Inspector callers that
+  depend on the bool are untouched.
+- **`ReferenceIntegrityService` gains one optional named parameter**
+  (explicitly permitted for MS-016): `entityIsDefinitelyGone`. `purgeStaleEntries`
+  now filters on it. Reporting paths (`findStaleEntries`, `groupByUnresolved`,
+  `unresolvedCount`) deliberately stay on `entityExists`, so unresolved mentions
+  are still *surfaced* to the author — they are just no longer destroyed. That
+  split is the point of the requirement: surfacing an unresolvable mention is
+  correct, deleting it is not.
+- **A polarity bug caught by the existing suite, worth recording.** The
+  constructor default was first written as `entityIsDefinitelyGone ??
+  entityExists`, which inverts the meaning: the new predicate answers "was it
+  deleted?" while `entityExists` answers "does it exist?". Two pre-existing
+  `reference_integrity_service_test.dart` tests failed with
+  `Expected: length <1>, Actual: length <2>` — the purge had started removing
+  every entry whose source *resolved*. Fixed to `(ref) => !entityExists(ref)`,
+  which preserves the old behaviour exactly for callers that pass no predicate.
+- **Four tests added**, including the required non-regression:
+
+```
+00:00 +13: MS-016: a Location ref survives the purge (no canonical source)
+00:00 +14: MS-016: every sourceless type survives, not just Location
+00:00 +15: MS-016: a genuinely deleted Character is still purged
+00:00 +16: MS-016: entityIsDefinitelyGone is false without a source, true after deletion
+00:00 +17: All tests passed!
+```
+
+  The "every sourceless type" test covers all eight types with no canonical box,
+  so the fix is not a Location special case. The "deleted Character is still
+  purged" test pins that real deletions still remove both of their backlinks
+  while a surviving species reference in the same index is left alone.
+- **After the change:**
+
+```
+No issues found! (ran in 2.2s)
+00:00 +10: All tests passed!     (reference_integrity_service_test.dart)
+00:55 +435: All tests passed!
+```
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `f90c34d` | housekeeping - MS-007 revert path corrected, OQ-8 added |
+| `4f52f37` | MS-014 - rebuildIndex removes only manuscript-sourced entries |
+| `601b965` | MS-015 - one ManuscriptReferenceService instance per module session |
+| `e2cf190` | MS-016 - purge only known-deleted entities, not unresolvable types |
+
+MS-004 required no code change; its existing test was re-verified in place.
+
+### Tests added
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/services/manuscript_reference_service_test.dart` | 3 | non-manuscript entry survives; stale manuscript entries still replaced; idempotent across rebuilds |
+| `test/widgets/manuscript_topology_test.dart` | 1 | module and editor hold one identical service instance (MS-015) |
+| `test/services/reference_name_resolver_test.dart` | 4 | Location survives; all 8 sourceless types survive; deleted Character still purged; predicate polarity |
+
+| | Before | After |
+| --- | --- | --- |
+| Count | 428 | **435** (+7) |
+
+One pre-existing test was rewritten (it asserted the MS-016 bug); no test was
+deleted.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `lib/services/manuscript_reference_service.dart` | `rebuildIndex` scoped removal (MS-014) |
+| `lib/modules/manuscript_module.dart` | editor adopts the module's service; `referenceService` param + getter; `didUpdateWidget` adoption (MS-015) |
+| `lib/services/reference_name_resolver.dart` | `entityIsDefinitelyGone` added; `purgeStale` wires it; `entityExists` behaviour unchanged (MS-016) |
+| `lib/services/reference_integrity_service.dart` | optional `entityIsDefinitelyGone` param; `purgeStaleEntries` uses it (MS-016) |
+| `test/services/manuscript_reference_service_test.dart` | MS-014 group |
+| `test/widgets/manuscript_topology_test.dart` | MS-015 identity test |
+| `test/services/reference_name_resolver_test.dart` | MS-016 group; Cycle 0 stale-types test replaced |
+| `docs/audit2/B7_manuscript_requirements.md` | MS-007 corrected; OQ-8 added |
+
+No build_runner, no dependency changes, no Hive adapters, no schema change. No
+existing public signature was changed or removed — `ReferenceIntegrityService`
+gained one optional named parameter, which MS-016 explicitly calls for. No new
+service file was added, so the MS-005 Flutter-free guard list needed no
+extension.
+
+### Verification (final)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.2s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:55 +435: All tests passed!
+```
+
+### Deferred / not done
+
+- **MS-014 performance note (measured, not fixed).** `rebuildIndex()` still
+  re-scans **every** manuscript document in the project on every call, not just
+  the active one — `extractAllReferences()` filters the whole document box by
+  `projectId` and re-parses each document's Delta JSON. With the 2s autosave
+  from 3b-1 that is a full-project re-parse every two seconds while typing, and
+  it is *also* the largest single contributor to the 3b-4 teardown window.
+  **Not fixed this cycle, and it should not have been:** making it incremental
+  means tracking which documents changed and invalidating only those, which is a
+  real design change to the index's ownership model (a rename, move, reorder, or
+  delete also changes what a document *emits*, and a re-index must still notice).
+  That is its own cycle, not a side effect of fixing the `clear()`. Flagged here
+  rather than silently absorbed.
+- **`ManuscriptCollections` DI bypass (MS-015 out of scope).** It
+  self-constructs a `ManuscriptCollectionsService`. That is a different class
+  from `ManuscriptReferenceService`, it receives the shared engine, and it holds
+  no reference service — so there is nothing to de-duplicate. Giving it one for
+  uniformity would mean adding a constructor parameter to a public widget with
+  no consumer. Left alone deliberately.
+- **MS-016 reporting vs. removal is now split, and the reporting half is
+  unchanged.** An unresolved Location mention still shows up in
+  `unresolvedCount` / `groupByUnresolved` / the Inspector, which is correct
+  behaviour but means the UI will keep flagging mentions it cannot resolve.
+  Whether those should be visually distinguished from genuinely dangling refs
+  is a UX decision not taken here.
+- **No Location/Item/Organization box exists yet.** MS-016 stops the data loss
+  but does not make those mentions resolvable. When those modules are built,
+  `entityIsDefinitelyGone` must be extended to cover the new types or their
+  deletions will silently stop being purged.
+- **B7 OQ-8** (revert does not flush the editor's unsaved buffer) remains
+  deferred, as recorded in housekeeping.
+- **B5 D3** (`rebuildIndex` on every autosave) was partly addressed by MS-014 —
+  it no longer destroys other producers' entries — but its frequency is
+  untouched and is the performance note above.
+- MS-015 (dual `ManuscriptReferenceService`) is now closed.
