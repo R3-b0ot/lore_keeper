@@ -2025,3 +2025,278 @@ observed in the working tree, not against B5's text.
   and the one-line change in `find_replace_dialog.dart`'s `_replaceRange` that
   would flip it. This is the item Cycle 5 raised as a UX decision rather than
   making silently.
+
+---
+
+## Cycle 6 - Legacy cutoffs (MS-019, MS-021)
+
+**Branch:** `manuscript-fixes`
+**Scope:** the two legacy-cutoff requirements and nothing else. Preceded by the
+housekeeping entry above (`6980642`).
+
+### Baseline (before any code change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.1s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:55 +497: All tests passed!
+```
+
+### Traced current behaviour (quoted, not taken from B5)
+
+B5 D8b is dated before the redesign, so the file was re-read first. It had
+**not** shifted in the way B5 describes, and the actual data flow is narrower
+than B5's summary suggests. `lib/widgets/index_page_widget.dart`, in full as it
+stood at the cycle baseline:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:lore_keeper/providers/chapter_list_provider.dart';
+
+class IndexPageWidget extends StatefulWidget {
+  final ChapterListProvider chapterProvider;
+  final ValueChanged<String> onChapterSelected;
+
+  const IndexPageWidget({
+    super.key,
+    required this.chapterProvider,
+    required this.onChapterSelected,
+  });
+```
+
+and the body that reads it:
+
+```dart
+    return ListenableBuilder(
+      listenable: widget.chapterProvider,
+      builder: (context, child) {
+        final allChapters = widget.chapterProvider.chapters;
+        final filteredChapters = allChapters.where((chapter) {
+          return chapter.title.toLowerCase().contains(_searchQuery);
+        }).toList();
+```
+
+```dart
+                        leading: CircleAvatar(
+                          child: Text('${chapter.orderIndex + 1}'),
+                        ),
+                        title: Text(chapter.title),
+                        onTap: () =>
+                            widget.onChapterSelected(chapter.key.toString()),
+```
+
+**Both halves of the requirement confirmed, and the second one is worse than
+B5 states.** Yes, it read `ChapterListProvider` directly - `chapters` is
+`List<Chapter>` straight off the legacy box (`chapter_list_provider.dart:52`).
+And yes, a binder-created `ManuscriptDocument` of type chapter/scene does not
+appear. The mechanism is the id scheme, which B5 does not mention:
+
+```
+lib/services/manuscript_binder_service.dart:159
+    final id = '${type.label.toLowerCase().replaceAll(' ', '_')}_${const Uuid().v4()}';
+```
+
+`createDocument` mints a **uuid** id (`chapter_<uuid>`). The only producer of
+the `chapter_<int>` form is the legacy pairing path:
+
+```
+lib/database/database_manager.dart:381
+    final chapterId = 'chapter_${chapter.key}';
+```
+
+So there are two disjoint populations: legacy-paired documents, which are
+`chapter_<int>` and do appear, and everything authored through the binder since
+the cutover, which is `chapter_<uuid>` and never appears. The page looks
+correct for old data and silently omits all new data.
+
+**Selection was legacy-shaped too, and that constrains the fix.** The old
+`onTap` emitted `chapter.key.toString()` - a legacy Hive int key - which
+`_onChapterSelected` stored as `_selectedChapterKey`, which
+`ManuscriptEditor._selectDocumentForChapterKey` then translated back into a
+document id by string-matching `chapter_$chapterKeyInt`
+(`manuscript_module.dart:507`). That round trip only closes for the paired
+population. Had the page kept emitting legacy keys, a tapped uuid document
+would have resolved to nothing - a row that appears and then does nothing.
+
+### MS-019 - the Index page lists binder documents
+
+**The selection contract was changed, not just the data source.** The page now
+emits a **manuscript document id**, matching the convention the rest of the
+manuscript UI already uses. This is not an invention: the sibling editor widget
+already declares `binderProvider` and `onDocumentSelected`
+(`manuscript_module.dart:237` and `:256`), and
+`ProjectEditorScreen._onManuscriptDocumentSelected` already handles a document
+id and derives the legacy chapter key for back-compat. `IndexPageWidget` now
+routes through that existing path instead of the legacy one, which is why the
+call site passes `widget.onDocumentSelected` and a null binder shows a
+progress indicator rather than a wrong page.
+
+**Ordering: chapters then scenes, each in binder order.** `getDocumentsByType`
+is the method the requirement names, and it returns a per-type slice of the
+binder's `(parentId, orderIndex)` sort. Concatenating two slices would have been
+the literal reading, but the binder's *global* order is not usable for a flat
+page: a scene's `parentId` is a chapter id, so a global sort compares
+`"chapter_<uuid>"` against `"manuscript_<key>"` and puts **scenes before
+chapters**. Grouping by type and ordering each group by `orderIndex` is the only
+ordering a reader can follow, and it is what the tests pin.
+
+**The badge now shows the row's position in the Index, not the document's
+`orderIndex`.** Chapters and scenes are numbered independently by the binder, so
+an `orderIndex + 1` badge would print "1" twice down the page. Deliberate, and
+recorded because it is a visible change to the page.
+
+**Red**, written against the *current* API so the failure demonstrates the
+defect rather than a missing symbol:
+
+```
+Expected: exactly one matching candidate
+  Actual: _TextWidgetFinder:<Found 0 widgets with text "Binder Only Chapter": []>
+   Which: means none were found but one was expected
+a manuscript chapter with no legacy Chapter twin must still be listed (MS-019)
+```
+
+**Two harness faults of mine, recorded because both cost real time.** The
+fixture asserted the legacy `chapters` box was empty, but `ChapterListProvider`
+manufactures a default chapter of its own when that box is empty
+(`chapter_list_provider.dart:42`), so the premise was false; it now asserts no
+legacy chapter carries the document's *name*. And the first version performed
+Hive writes inside the `testWidgets` body, which hangs: a widget-test body runs
+under fake async, so a real `await` on a Hive write never completes - the run
+timed out at 10 and then 15 minutes before I spotted it. All mutations now
+happen in `setUp`, and the teardown closes `DatabaseManager` before `Hive`
+because `initializeForTesting` early-returns on `_initialized` and would
+otherwise hand every later test a closed box.
+
+**Green:** `flutter analyze` `No issues found! (ran in 2.2s)`;
+`flutter test --concurrency=1`: `01:00 +502: All tests passed!`
+
+### MS-021 - no legacy Chapter/Section dependency in the manuscript UI
+
+**The grep already passes: zero matches across the 15 in-scope files.** Verified
+before writing the test, as instructed. The guard ships anyway so the next cycle
+cannot regress it silently - that is the whole point of a static guard, and it
+is now enforceable rather than aspirational.
+
+**The exemption is load-bearing, and that is a finding.** `chapter_diff_view_dialog.dart`
+trips **two** of the four patterns:
+
+```
+HIT chapter_diff_view_dialog.dart :: import.*chapter\.dart
+HIT chapter_diff_view_dialog.dart :: Hive\.box<Chapter>
+```
+
+Worth noting: it is *not* matched by the `manuscript_*.dart` glob, so a guard
+written to the literal file list would have excluded it by accident and the
+exemption would have been decorative. It is scanned and then explicitly exempted,
+so the carve-out is visible in code.
+
+**The guard was proven non-vacuous**, because a static test that cannot fail is
+worse than no test. Two independent proofs: the exemption test asserts the
+exempt file really does still read `Hive.box<Chapter>` (which also proves the
+regexes match real source), and a temporary `Hive.box<Chapter>('chapters')` line
+was added to `manuscript_outliner.dart` to confirm the scan reports it:
+
+```
+Expected: empty
+Actual: [
+'lib/widgets/manuscript_outliner.dart: must not open the legacy chapters box (matched /Hive\.box<Chapter>/)'
+
+00:00 +3 -1: Some tests failed.
+```
+
+The probe was reverted with `git checkout` and the guard returns to green.
+
+**One limitation, stated rather than hidden:** the guard strips comments, following
+the MS-020 precedent, but it cannot distinguish a forbidden pattern inside a
+*string literal* from real code. My first draft of the "comments do not trip the
+guard" test put the pattern in a string constant and the test correctly failed;
+the probe now uses real comments only, and the string-literal case is documented
+rather than claimed.
+
+**Scope** is `lib/modules/` (all six modules, not just the manuscript one), the
+`manuscript_*.dart` widgets, and the two manuscript-owned dialogs that the glob
+misses: `find_replace_dialog.dart` and `index_page_widget.dart`.
+
+**Green:** `flutter analyze` `No issues found! (ran in 2.1s)`;
+`flutter test --concurrency=1`: `01:06 +506: All tests passed!`
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `6980642` | housekeeping - B5 D3/D4 mislabels, B7 OQ-9 |
+| `f5756da` | MS-019 - Index page reads the binder |
+| `4860b0e` | MS-021 - legacy Chapter/Section guard |
+
+### Tests added
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/widgets/index_page_widget_test.dart` | 5 | binder-only chapter appears, scenes appear, legacy chapters do not leak, tap emits a document id, search filters |
+| `test/widgets/manuscript_legacy_dependency_test.dart` | 4 | scan set is non-empty and covers the named surfaces, no legacy dependency, exemption is load-bearing, comments do not trip the guard |
+
+| | Before | After |
+| --- | --- | --- |
+| Count | 497 | **506** (+9) |
+
+No existing test was modified or deleted.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `lib/widgets/index_page_widget.dart` | reads `ManuscriptBinderProvider`; lists chapter + scene; emits document ids |
+| `lib/modules/manuscript_module.dart` | Index call site passes `binderProvider` + `onDocumentSelected`; null-binder guard |
+| `test/widgets/index_page_widget_test.dart` | new - MS-019 |
+| `test/widgets/manuscript_legacy_dependency_test.dart` | new - MS-021 |
+| `docs/audit2/CYCLE_LOG.md`, `docs/audit2/B7_manuscript_requirements.md` | housekeeping |
+
+No build_runner, no dependencies, no adapters, no schema. No listed public API
+was changed. `ManuscriptBinderService` and `ManuscriptBinderProvider` were
+read only; `getDocumentsByType` already existed and is unchanged.
+
+### Verification (final)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.1s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+01:06 +506: All tests passed!
+```
+
+### Deferred / not done
+
+- **`GlobalSearchDelegate` and `OverviewModule` still read the legacy boxes**
+  (B7 OQ-1). The MS-021 guard deliberately covers only the manuscript UI surface
+  — `lib/modules/` plus the manuscript widgets — so those two readers are still
+  outside it. Extending the guard to them would fail today, and fixing them is
+  the OQ-1 migration, not this cycle's scope.
+- **The Index page is still flat.** Scenes are listed at the same level as
+  chapters rather than nested under their parent chapter, which is a consequence
+  of a single `getDocumentsByType` per type. A nested view would need the
+  outliner's tree model; the current flat list at least shows every document.
+- **A tapped document is selected by id, not by legacy key**, so the Index page
+  no longer updates `Project.lastEditedChapterKey` the way a legacy chapter
+  selection did. That is correct for uuid documents (they have no legacy key)
+  but means a project last opened via the Index page no longer restores that
+  document on next launch. Worth checking, and not fixed here because it
+  touches the deep-link path, which no requirement in this cycle covers.
+- **The MS-021 guard is a text scan.** It will not catch a legacy dependency
+  reached indirectly — a helper that returns `List<Chapter>`, or a box handle
+  passed in as a parameter. It catches the direct forms the requirement names.
+  The `chapter_diff_view_dialog.dart` exemption is permanent unless that file is
+  rebuilt, and its test will tell you if the exemption ever goes stale.
