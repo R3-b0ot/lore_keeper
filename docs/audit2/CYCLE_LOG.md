@@ -2300,3 +2300,17 @@ No issues found! (ran in 2.1s)
   passed in as a parameter. It catches the direct forms the requirement names.
   The `chapter_diff_view_dialog.dart` exemption is permanent unless that file is
   rebuilt, and its test will tell you if the exemption ever goes stale.
+
+---
+
+## Housekeeping before Cycle 7
+
+- **B7 OQ-10 added** (open questions): selecting a document via the Index page
+  (post-MS-019) no longer updates `Project.lastEditedChapterKey`, because
+  binder-authored documents have no legacy chapter key, so a project last opened
+  through the Index page may not restore that document on next launch. Recorded
+  with **no recommended default** — deliberately. Cycle 6 surfaced this as a
+  deferred item, and unlike OQ-9 it is not a "keep current behaviour" question:
+  what "last edited" should mean for a document with no legacy key is a product
+  decision, and guessing here would bury it. The deep-link/resume path remains
+  uncovered by any cycle.
