@@ -53,6 +53,72 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
     }
   }
 
+  /// Replaces `[start, start + length)` with [replacement], preserving the
+  /// attributes that were actually on the replaced span (MS-011).
+  ///
+  /// `QuillController.replaceText` alone is not enough, and for a reason the
+  /// B5 trace had backwards: the fourth argument of `replaceText` is a
+  /// `TextSelection?`, not an attribute set, so passing `null` does not strip
+  /// formatting. What actually happens is the opposite - Quill's insert rule
+  /// inherits the attributes of the character at the *start* index, so the
+  /// replacement silently takes on whatever formatting happened to begin there.
+  /// For a match wholly inside a mention that is the desired result. For a
+  /// match that straddles a formatting boundary it is a data-corruption bug:
+  /// replacing "ll wa" across a mention boundary extended the `ref:` link onto
+  /// the new text, adding a reference the author never wrote.
+  ///
+  /// So the attribute set is made explicit instead of inherited:
+  ///
+  /// 1. Capture the attributes that apply across the *whole* matched range.
+  ///    `Document.collectStyle` reports the intersection, so a mixed range
+  ///    captures nothing and a uniform run captures its full set.
+  /// 2. Perform the replacement.
+  /// 3. Make the replacement's attribute set exactly what was captured -
+  ///    clearing anything the insert heuristic leaked in, and re-applying what
+  ///    is missing.
+  ///
+  /// Block-scope attributes (header, list, blockquote) are deliberately not
+  /// carried: they belong to whole lines, and applying one to a sub-range
+  /// would be invalid. An edit inside a heading is still a heading.
+  void _replaceRange(int start, int length, String replacement) {
+    if (length < 0 || start < 0) return;
+
+    final captured = <String, Attribute>{};
+    if (length > 0) {
+      for (final entry
+          in widget.controller.document.collectStyle(start, length).attributes
+              .entries) {
+        if (entry.value.scope == AttributeScope.inline) {
+          captured[entry.key] = entry.value;
+        }
+      }
+    }
+
+    widget.controller.replaceText(start, length, replacement, null);
+
+    // A pure deletion has no new range to fix up.
+    if (replacement.isEmpty) return;
+    final landed = widget.controller.document
+        .collectStyle(start, replacement.length)
+        .attributes;
+
+    // Drop what the insert heuristic invented.
+    for (final key in landed.keys.toList()) {
+      if (!captured.containsKey(key)) {
+        widget.controller.formatText(
+          start,
+          replacement.length,
+          Attribute.clone(landed[key]!, null),
+        );
+      }
+    }
+    // Re-assert what was genuinely there. This is a no-op when the insert
+    // already did the right thing, and the repair when it did not.
+    for (final attribute in captured.values) {
+      widget.controller.formatText(start, replacement.length, attribute);
+    }
+  }
+
   void _performReplace() {
     final findText = _findController.text;
     final replaceText = _replaceController.text;
@@ -68,11 +134,10 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
           : selectedText.toLowerCase() == findText.toLowerCase();
 
       if (matches) {
-        widget.controller.replaceText(
+        _replaceRange(
           selection.start,
           selection.end - selection.start,
           replaceText,
-          null,
         );
         widget.controller.updateSelection(
           TextSelection.collapsed(offset: selection.start + replaceText.length),
@@ -103,7 +168,7 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
       );
 
       // Replace the selected text
-      widget.controller.replaceText(index, findText.length, replaceText, null);
+      _replaceRange(index, findText.length, replaceText);
 
       // Move start index forward
       startIndex = index + replaceText.length;

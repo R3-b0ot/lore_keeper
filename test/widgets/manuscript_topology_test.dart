@@ -123,6 +123,7 @@ void main() {
         'lib/services/reference_name_resolver.dart',
         'lib/services/reference_integrity_service.dart',
         'lib/services/history_snapshot_policy.dart',
+        'lib/services/manuscript_find_replace.dart',
       ];
 
       for (final file in logicFiles) {
