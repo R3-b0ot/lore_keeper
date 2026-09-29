@@ -427,6 +427,83 @@ class ManuscriptBinderService {
   }
 
   // ========================================================================
+  // DUPLICATE
+  // ========================================================================
+
+  /// Deep-copy a document (and its whole subtree) as its next sibling (MS-018).
+  ///
+  /// **Why the subtree is copied.** A chapter's scenes are part of what "this
+  /// chapter" means to a writer. Duplicating the chapter and leaving it empty
+  /// would produce a document that looks copied but has silently lost its
+  /// contents, which is the worse failure. Copying recursively is also
+  /// self-consistent: every fresh id maps to fresh child ids, so the result is
+  /// a clean subtree rather than a set of documents that half-reference ids
+  /// that no longer mean what they did.
+  ///
+  /// The copy is placed immediately after the original via `orderIndex`, which
+  /// `createDocument` makes room for with `_shiftSiblings` - the same
+  /// contiguous-integer convention `reorderDocument` maintains.
+  ///
+  /// Returns null when [sourceId] is unknown, so a stale context menu click
+  /// cannot throw.
+  Future<ManuscriptDocument?> duplicateDocument(String sourceId) async {
+    final source = getDocumentForProject(sourceId);
+    if (source == null) return null;
+    if (source.documentType == ManuscriptDocumentType.manuscript) {
+      // The manuscript root is structural: a second root would make
+      // `getManuscriptRoot()` ambiguous and orphan every sibling list.
+      return null;
+    }
+
+    final parentId = source.parentId;
+    if (parentId == null) return null;
+
+    // The copy is created with the "next slot" order index, so
+    // `createDocument`'s `_shiftSiblings` pushes the original's later siblings
+    // down and leaves the copy directly after the original.
+    final copy = await _copyNode(source, parentId, source.orderIndex + 1, ' (copy)');
+
+    _updateProjectModifiedTime();
+    return copy;
+  }
+
+  /// Recursive worker for [duplicateDocument].
+  ///
+  /// [titleSuffix] is applied to the document passed in and to nothing else:
+  /// descendants keep their own titles, because the whole branch they sit on has
+  /// been duplicated anyway and "Scene One (copy)" would just add noise.
+  Future<ManuscriptDocument> _copyNode(
+    ManuscriptDocument original,
+    String newParentId,
+    int orderIndex,
+    String titleSuffix,
+  ) async {
+    final created = await createDocument(
+      title: '${original.title}$titleSuffix',
+      type: original.documentType,
+      parentId: newParentId,
+      orderIndex: orderIndex,
+      richTextJson: original.richTextJson,
+      status: original.status,
+      summary: original.summary,
+      povCharacterId: original.povCharacterId,
+      locationId: original.locationId,
+      timelineEventId: original.timelineEventId,
+      plotline: original.plotline,
+      characterIds: original.characterIds,
+      tagIds: original.tagIds,
+      purpose: original.purpose,
+    );
+
+    final children = getChildren(original.id);
+    for (var i = 0; i < children.length; i++) {
+      await _copyNode(children[i], created.id, i, '');
+    }
+
+    return created;
+  }
+
+  // ========================================================================
   // DELETE
   // ========================================================================
 

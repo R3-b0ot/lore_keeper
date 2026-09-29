@@ -479,27 +479,8 @@ class _BinderNode extends StatelessWidget {
   }
 
   void _duplicateDocument() async {
-    final parentId = document.parentId ?? provider.manuscriptRoot?.id;
-    if (parentId == null) return;
-
-    final children = provider.getChildren(parentId);
-    final index = children.indexWhere((c) => c.id == document.id) + 1;
-
-    final copy = await provider.createChild(
-      parentId: parentId,
-      title: '${document.title} (Copy)',
-      type: document.documentType,
-      orderIndex: index,
-      richTextJson: document.richTextJson,
-      status: document.status,
-      summary: document.summary,
-      povCharacterId: document.povCharacterId,
-      locationId: document.locationId,
-      timelineEventId: document.timelineEventId,
-      plotline: document.plotline,
-      characterIds: document.characterIds,
-      tagIds: document.tagIds,
-    );
+    final copy = await provider.duplicateDocument(document.id);
+    if (copy == null) return;
 
     onDocumentSelected(copy.id);
   }

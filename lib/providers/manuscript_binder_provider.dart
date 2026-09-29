@@ -324,6 +324,24 @@ class ManuscriptBinderProvider extends ChangeNotifier {
   }
 
   // ========================================================================
+  // DUPLICATE
+  // ========================================================================
+
+  /// Deep-copy a document and its whole subtree, next to the original (MS-018).
+  ///
+  /// The two "Duplicate" context-menu entries used to re-list every field by
+  /// hand in their own widget, which made the copies invisible to the service
+  /// layer and let the two lists drift apart. Both now come through here, so
+  /// there is one definition of what a copy keeps.
+  Future<ManuscriptDocument?> duplicateDocument(String documentId) async {
+    final copy = await _service.duplicateDocument(documentId);
+    // A subtree copy adds several rows, so reload rather than patching one
+    // document into _documents.
+    _reloadAll();
+    return copy;
+  }
+
+  // ========================================================================
   // DELETE
   // ========================================================================
 
