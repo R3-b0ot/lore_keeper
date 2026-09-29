@@ -135,6 +135,14 @@ class _ManuscriptModuleState extends State<ManuscriptModule> {
     _initReferenceService();
   }
 
+  /// The one [ManuscriptReferenceService] for this module session (MS-015).
+  ///
+  /// Exposed so the editor and the topology test can assert identity rather
+  /// than infer it. Previously the editor built a second service of its own, so
+  /// the module and the editor held two services over one engine — each
+  /// running its own `rebuildIndex()` on the shared index.
+  ManuscriptReferenceService? get referenceService => _referenceService;
+
   Future<void> _initReferenceService() async {
     final engine =
         widget.sharedReferenceEngine ??
@@ -189,6 +197,7 @@ class _ManuscriptModuleState extends State<ManuscriptModule> {
             timelineProvider: widget.timelineProvider,
             sharedReferenceEngine: widget.sharedReferenceEngine,
             selectedDocumentId: widget.selectedDocumentId,
+            referenceService: _referenceService,
             onDocumentSelected: widget.onDocumentSelected,
             onSelectedDocumentChanged: _onEditorDocumentChanged,
             revertSignal: widget.revertSignal,
@@ -232,6 +241,16 @@ class ManuscriptEditor extends StatefulWidget {
   final ReferenceEngine? sharedReferenceEngine;
   final String selectedDocumentId;
 
+  /// The module's single [ManuscriptReferenceService] (MS-015).
+  ///
+  /// The editor must use *this* instance, never one it constructs itself:
+  /// a second service over the shared engine means a second `rebuildIndex()`
+  /// and no single owner of the index. It is null on the first build, before
+  /// the module's async init completes; the editor falls back to a
+  /// [ManuscriptBinderProvider]-derived engine until it arrives and re-reads
+  /// it in [didUpdateWidget].
+  final ManuscriptReferenceService? referenceService;
+
   /// Shell-level callback — updates the canonical selection in
   /// ProjectEditorScreen so Binder and Inspector stay in sync (spec §12).
   final ValueChanged<String>? onDocumentSelected;
@@ -260,6 +279,7 @@ class ManuscriptEditor extends StatefulWidget {
     this.timelineProvider,
     this.sharedReferenceEngine,
     this.selectedDocumentId = '',
+    this.referenceService,
     this.onDocumentSelected,
     this.onSelectedDocumentChanged,
     this.revertSignal = 0,
@@ -340,7 +360,17 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   ManuscriptBinderProvider? _binderProvider;
   ManuscriptDocument? _selectedDocument;
+
+  /// The module's single [ManuscriptReferenceService] (MS-015).
+  ///
+  /// Never constructed here — see [_adoptReferenceService].
   ManuscriptReferenceService? _referenceService;
+
+  /// The service the editor is currently using.
+  ///
+  /// Exposed so MS-015's identity test can assert the module and the editor
+  /// hold one instance rather than two services over one engine.
+  ManuscriptReferenceService? get referenceService => _referenceService;
 
   // @mention autocomplete
   late final ReferenceAutocompleteController _autocompleteController;
@@ -365,7 +395,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     _loadProject();
     _initBinderProvider();
-    _initReferenceService();
+    // MS-015: adopt the module's service instead of building a second one. On
+    // the first build it is still null (the module inits asynchronously), so
+    // the editor has no service until the module's first rebuild hands it
+    // over; didUpdateWidget then adopts the canonical instance.
+    _referenceService = widget.referenceService;
     _loadContent();
 
     _titleController.addListener(_onTitleChanged);
@@ -396,14 +430,17 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _initReferenceService() async {
-    final db = DatabaseManager.instance;
-    _referenceService = ManuscriptReferenceService(
-      projectId: widget.projectId,
-      referenceEngine: _resolveSharedEngine(),
-      documentBox: db.manuscriptDocuments,
-    );
-    await _referenceService!.rebuildIndex();
+  /// Adopt the module's [ManuscriptReferenceService] when it becomes available.
+  ///
+  /// MS-015: the editor must not construct its own. The module builds its
+  /// service asynchronously, so on the very first build there is nothing to
+  /// adopt; until it arrives [_referenceService] is null and the editor simply
+  /// has no service. The next build picks up the canonical instance. The engine
+  /// was never at risk of duplication here — only the service was.
+  void _adoptReferenceService() {
+    final shared = widget.referenceService;
+    if (shared == null || identical(shared, _referenceService)) return;
+    _referenceService = shared;
   }
 
   Map<String, EntityProvider> _buildEntityProviders() {
@@ -501,6 +538,10 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   @override
   void didUpdateWidget(covariant ManuscriptEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // MS-015: the module's service arrives asynchronously; adopt it as soon as
+    // it does so the editor stops holding its own instance.
+    _adoptReferenceService();
 
     // A history revert overwrote the document in place, so this is the only
     // observable change. Re-sync before any chapter switch so the editor never

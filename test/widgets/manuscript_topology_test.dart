@@ -39,6 +39,7 @@ import 'package:lore_keeper/widgets/manuscript_outliner.dart';
 import 'package:lore_keeper/widgets/project_editor/module_sidebar.dart';
 import 'package:lore_keeper/widgets/project_editor/specific_functions_bar.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/services/manuscript_reference_service.dart';
 import 'package:provider/provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -580,6 +581,54 @@ void main() {
           isTrue,
           reason:
               'reference service must observe the shell-single ReferenceEngine',
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'ONE ManuscriptReferenceService instance serves the module and the '
+      'editor (MS-015)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        final inspectorService = inspector.referenceService;
+        // Read the editor's *State* field, not the widget's constructor field.
+        // The widget field is whatever the module handed down, so asserting on
+        // it only proves the module passed an argument — it cannot see a
+        // second service the editor might have built for itself in its State.
+        // _ManuscriptEditorState is private, so the getter is reached
+        // dynamically.
+        final editorState =
+            tester.state(find.byKey(kManuscriptEditorKey)) as dynamic;
+        final editorService =
+            editorState.referenceService as ManuscriptReferenceService?;
+        expect(
+          inspectorService,
+          isNotNull,
+          reason: 'the module must have built its reference service',
+        );
+        expect(
+          editorService,
+          isNotNull,
+          reason: 'the editor must have adopted the module service',
+        );
+
+        // Identity, not merely a shared engine: two services over one engine
+        // would still pass an engine-level check, and that is exactly the state
+        // MS-015 rejects.
+        expect(
+          identical(editorService, inspectorService),
+          isTrue,
+          reason:
+              'the editor must hold the module\'s own service instance, not a '
+              'second service over the same engine (MS-015)',
         );
 
         await tester.pumpWidget(const SizedBox.shrink());
