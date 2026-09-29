@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:lore_keeper/providers/chapter_list_provider.dart';
+import 'package:lore_keeper/models/manuscript_document.dart';
+import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 
+/// The front-matter Index page: a searchable list of the manuscript's chapters
+/// and scenes (MS-019).
+///
+/// The list is read from [ManuscriptBinderProvider], never from the legacy
+/// `chapters` box. A chapter created through the binder after the 2026
+/// redesign has no legacy `Chapter` row at all, so a legacy read silently
+/// omitted every document authored since the cutover and the page looked
+/// plausible while being wrong.
+///
+/// Selection reports a **manuscript document id**, matching the convention the
+/// rest of the manuscript UI already uses ([ManuscriptBinderProvider] is asked
+/// for the document directly, rather than a legacy chapter key being translated
+/// back into a document id).
 class IndexPageWidget extends StatefulWidget {
-  final ChapterListProvider chapterProvider;
-  final ValueChanged<String> onChapterSelected;
+  final ManuscriptBinderProvider binderProvider;
+  final ValueChanged<String> onDocumentSelected;
 
   const IndexPageWidget({
     super.key,
-    required this.chapterProvider,
-    required this.onChapterSelected,
+    required this.binderProvider,
+    required this.onDocumentSelected,
   });
 
   @override
@@ -36,17 +50,28 @@ class _IndexPageWidgetState extends State<IndexPageWidget> {
     super.dispose();
   }
 
+  /// The indexable documents, in the order the binder holds them.
+  ///
+  /// `getDocumentsByType` preserves the binder's `(parent, orderIndex)` sort, so
+  /// no extra ordering is applied here — the page must agree with the outline.
+  List<ManuscriptDocument> _indexedDocuments() {
+    final binder = widget.binderProvider;
+    return [
+      ...binder.getDocumentsByType(ManuscriptDocumentType.chapter),
+      ...binder.getDocumentsByType(ManuscriptDocumentType.scene),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Use a ListenableBuilder to automatically update when chapters change
+    // Use a ListenableBuilder to automatically update when documents change
     return ListenableBuilder(
-      listenable: widget.chapterProvider,
+      listenable: widget.binderProvider,
       builder: (context, child) {
-        final allChapters = widget.chapterProvider.chapters;
-        final filteredChapters = allChapters.where((chapter) {
-          return chapter.title.toLowerCase().contains(_searchQuery);
+        final filteredDocuments = _indexedDocuments().where((document) {
+          return document.title.toLowerCase().contains(_searchQuery);
         }).toList();
 
         return Padding(
@@ -73,17 +98,20 @@ class _IndexPageWidgetState extends State<IndexPageWidget> {
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
-                  itemCount: filteredChapters.length,
+                  itemCount: filteredDocuments.length,
                   itemBuilder: (context, index) {
-                    final chapter = filteredChapters[index];
+                    final document = filteredDocuments[index];
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
-                          child: Text('${chapter.orderIndex + 1}'),
+                          // Position within the Index list rather than the
+                          // document's own orderIndex: chapters and scenes are
+                          // numbered independently by the binder, so an
+                          // orderIndex badge would repeat "1" down the page.
+                          child: Text('${index + 1}'),
                         ),
-                        title: Text(chapter.title),
-                        onTap: () =>
-                            widget.onChapterSelected(chapter.key.toString()),
+                        title: Text(document.title),
+                        onTap: () => widget.onDocumentSelected(document.id),
                       ),
                     );
                   },

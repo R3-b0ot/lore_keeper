@@ -1151,9 +1151,13 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       final kp = int.tryParse(widget.selectedChapterKey.split('_').last);
       if (kp == -1) return CoverPageForm(project: _project!);
       if (kp == -2) {
+        final binder = widget.binderProvider;
+        if (binder == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         return IndexPageWidget(
-          chapterProvider: widget.chapterProvider,
-          onChapterSelected: widget.onChapterSelected,
+          binderProvider: binder,
+          onDocumentSelected: widget.onDocumentSelected ?? (_) {},
         );
       }
       if (kp == -3) return AboutAuthorForm(project: _project!);
