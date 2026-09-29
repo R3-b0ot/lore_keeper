@@ -134,4 +134,132 @@ void main() {
       expect(const FindMatch(3, 4).end, 7);
     });
   });
+
+  group('FindSession - MS-013 navigation', () {
+    const text = 'the cat the dog the bird';
+
+    FindSession start({int index = -1}) => FindSession(
+          text: text,
+          query: 'the',
+          caseSensitive: false,
+          currentIndex: index,
+        );
+
+    test('finds every occurrence up front', () {
+      final s = start();
+      expect(s.count, 3);
+      expect(s.matches.map((m) => m.offset), [0, 8, 16]);
+      expect(s.current, isNull, reason: 'nothing is selected yet');
+    });
+
+    test('the first Next selects the first match', () {
+      expect(start().next().current!.offset, 0);
+    });
+
+    test('Next walks every match and wraps', () {
+      var s = start();
+      expect(s.countLabel, '3 results');
+      s = s.next();
+      expect(s.current!.offset, 0);
+      expect(s.countLabel, '1 of 3');
+      s = s.next();
+      expect(s.current!.offset, 8);
+      expect(s.countLabel, '2 of 3');
+      s = s.next();
+      expect(s.current!.offset, 16);
+      expect(s.countLabel, '3 of 3');
+      s = s.next();
+      expect(
+        s.current!.offset,
+        0,
+        reason: 'past the last match, wrap to the first',
+      );
+      expect(s.countLabel, '1 of 3');
+    });
+
+    test('Previous from the first match wraps to the last', () {
+      final s = start().next().previous();
+      expect(s.current!.offset, 16);
+      expect(s.countLabel, '3 of 3');
+    });
+
+    test('Previous from the last match wraps to the first', () {
+      final s = start().next().next().next().previous();
+      expect(s.current!.offset, 8);
+    });
+
+    test('Previous with nothing selected selects the last match', () {
+      final s = start().previous();
+      expect(s.current!.offset, 16);
+      expect(s.countLabel, '3 of 3');
+    });
+
+    test('a single match is its own next and its own previous', () {
+      final s = FindSession(
+        text: 'cat',
+        query: 'cat',
+        caseSensitive: false,
+      ).next();
+      expect(s.count, 1);
+      expect(s.next().current!.offset, 0);
+      expect(s.next().previous().current!.offset, 0);
+    });
+
+    test('navigating with no matches is a no-op, not a crash', () {
+      final s = FindSession(
+        text: text,
+        query: 'zebra',
+        caseSensitive: false,
+      );
+      expect(s.count, 0);
+      expect(s.hasMatches, isFalse);
+      expect(s.next().current, isNull);
+      expect(s.next().previous().current, isNull);
+      expect(s.countLabel, 'No results');
+    });
+
+    test('the label is empty until something is searched for', () {
+      final s = FindSession(
+        text: text,
+        query: '',
+        caseSensitive: false,
+      );
+      expect(s.countLabel, '');
+      expect(s.count, 0);
+    });
+
+    test('the label is singular for one result', () {
+      final s = FindSession(
+        text: 'one cat',
+        query: 'cat',
+        caseSensitive: false,
+      );
+      expect(s.countLabel, '1 result');
+      expect(s.next().countLabel, '1 of 1');
+    });
+
+    test('case sensitivity follows the flag the dialog exposes', () {
+      final insensitive = FindSession(
+        text: 'The cat THE',
+        query: 'the',
+        caseSensitive: false,
+      );
+      expect(insensitive.count, 2);
+      final sensitive = FindSession(
+        text: 'The cat THE',
+        query: 'the',
+        caseSensitive: true,
+      );
+      expect(sensitive.count, 0);
+    });
+
+    test('a session is a value and does not alias the caller\'s list', () {
+      final a = start().next();
+      final b = a.next();
+      expect(a.current!.offset, 0, reason: 'a must be unaffected by b');
+      expect(b.current!.offset, 8);
+      expect(identical(a.matches, b.matches), isTrue,
+          reason: 'the match list is immutable and shared, not recomputed');
+    });
+  });
 }

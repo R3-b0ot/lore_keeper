@@ -18,6 +18,11 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
   final FocusNode _findFocusNode = FocusNode();
   bool _caseSensitive = false;
 
+  /// Index of the selected match in the current find session, or -1 when
+  /// nothing is selected (MS-013). The match list itself is recomputed from
+  /// the live document on every step, so only the position is kept.
+  int _selectedIndex = -1;
+
   @override
   void initState() {
     super.initState();
@@ -36,23 +41,39 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
   }
 
   void _performFind() {
-    final text = widget.controller.document.toPlainText();
-    final findText = _findController.text;
-    if (findText.isEmpty) return;
+    _stepNavigation((session) => session.next());
+  }
 
-    final pattern = _caseSensitive ? findText : findText.toLowerCase();
-    final searchText = _caseSensitive ? text : text.toLowerCase();
+  void _performPrevious() {
+    _stepNavigation((session) => session.previous());
+  }
 
-    final index = searchText.indexOf(pattern);
-    if (index != -1) {
-      widget.controller.updateSelection(
-        TextSelection(baseOffset: index, extentOffset: index + findText.length),
-        ChangeSource.local,
-      );
-      // Scroll to the selection if possible
-      // Note: Flutter Quill doesn't have a direct scroll to selection method,
-      // but the selection update should bring it into view.
-    }
+  /// Advances the find session and selects whatever it lands on (MS-013).
+  ///
+  /// The session is recomputed from the live document on every step, because
+  /// the document is mutable and a stale match list would point at offsets
+  /// that no longer mean what they meant when they were found.
+  void _stepNavigation(FindSession Function(FindSession) step) {
+    if (_findController.text.isEmpty) return;
+    final session = step(
+      FindSession(
+        text: widget.controller.document.toPlainText(),
+        query: _findController.text,
+        caseSensitive: _caseSensitive,
+        // Continue from where we already are, so repeated Find presses walk
+        // forward instead of snapping back to the first match.
+        currentIndex: _selectedIndex,
+      ),
+    );
+    setState(() {
+      _selectedIndex = session.currentIndex;
+    });
+    final match = session.current;
+    if (match == null) return;
+    widget.controller.updateSelection(
+      TextSelection(baseOffset: match.offset, extentOffset: match.end),
+      ChangeSource.local,
+    );
   }
 
   /// Replaces `[start, start + length)` with [replacement], preserving the
@@ -145,6 +166,10 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
           TextSelection.collapsed(offset: selection.start + replaceText.length),
           ChangeSource.local,
         );
+        // The document just changed under the match list, so the selected
+        // match no longer exists. Drop the selection rather than leave a
+        // count claiming a position that is not there.
+        setState(() => _selectedIndex = -1);
       }
     }
   }
@@ -178,10 +203,21 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
     for (final match in plan) {
       _replaceRange(match.offset, match.length, replaceText);
     }
+    // The whole match list is stale now; see _performReplace.
+    setState(() => _selectedIndex = -1);
   }
+
+  /// The find session as it currently stands, for the count display.
+  FindSession get _session => FindSession(
+        text: widget.controller.document.toPlainText(),
+        query: _findController.text,
+        caseSensitive: _caseSensitive,
+        currentIndex: _selectedIndex,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final countLabel = _session.countLabel;
     return AlertDialog(
       title: const Text('Find and Replace'),
       content: SingleChildScrollView(
@@ -191,11 +227,16 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
             TextField(
               controller: _findController,
               focusNode: _findFocusNode,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Find',
                 hintText: 'Enter text to find',
+                helperText: countLabel.isEmpty ? null : countLabel,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() {
+                // A new query invalidates the old match list, so nothing is
+                // selected until the user navigates again.
+                _selectedIndex = -1;
+              }),
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
               enableInteractiveSelection: true,
@@ -233,6 +274,10 @@ class _FindReplaceDialogState extends State<FindReplaceDialog> {
               child: const Text('Close'),
             ),
             TextButton(onPressed: _performFind, child: const Text('Find')),
+            TextButton(
+              onPressed: _performPrevious,
+              child: const Text('Previous'),
+            ),
             TextButton(
               onPressed: _performReplace,
               child: const Text('Replace'),

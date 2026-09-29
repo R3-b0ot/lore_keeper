@@ -100,3 +100,95 @@ class FindReplaceEngine {
     return matches.reversed.toList(growable: false);
   }
 }
+
+/// The state of a find session: what is being searched, where the matches are,
+/// and which one is currently selected.
+///
+/// MS-013. This is a plain immutable value - constructing one never touches a
+/// document, so the whole navigation model (including the wrap at either end)
+/// is testable without a widget, a `QuillController`, or a clock.
+///
+/// Navigation is *cyclic*: with three matches, three Next presses land on the
+/// first match again rather than stalling on the last one. With nothing
+/// selected yet, Next selects the first match and Previous selects the last,
+/// so both controls do something sensible on their first press.
+class FindSession {
+  /// Creates a session over [text].
+  ///
+  /// [currentIndex] is an index into the match list, or a negative value when
+  /// no match is selected. Pass [matches] to reuse a previously computed list
+  /// instead of rescanning [text].
+  FindSession({
+    required this.text,
+    required this.query,
+    required this.caseSensitive,
+    this.currentIndex = -1,
+    List<FindMatch>? matches,
+  }) : matches = matches ??
+            const FindReplaceEngine().findMatches(
+              text,
+              query,
+              caseSensitive: caseSensitive,
+            );
+
+  /// The plain-text snapshot the matches were computed against.
+  final String text;
+
+  /// The literal substring being searched for.
+  final String query;
+
+  /// Whether matching is case-sensitive.
+  final bool caseSensitive;
+
+  /// Index of the selected match, or a negative value when none is selected.
+  final int currentIndex;
+
+  /// Every non-overlapping occurrence of [query] in [text].
+  final List<FindMatch> matches;
+
+  /// How many matches there are.
+  int get count => matches.length;
+
+  /// The currently selected match, or `null` when none is selected.
+  FindMatch? get current {
+    if (currentIndex < 0 || currentIndex >= matches.length) return null;
+    return matches[currentIndex];
+  }
+
+  /// Whether there is at least one match.
+  bool get hasMatches => matches.isNotEmpty;
+
+  /// Selects the next match, wrapping past the end back to the first.
+  FindSession next() {
+    if (!hasMatches) return this;
+    return _withIndex(currentIndex < 0 ? 0 : (currentIndex + 1) % count);
+  }
+
+  /// Selects the previous match, wrapping before the start to the last.
+  FindSession previous() {
+    if (!hasMatches) return this;
+    return _withIndex(
+      currentIndex < 0 ? count - 1 : (currentIndex - 1 + count) % count,
+    );
+  }
+
+  /// The count shown next to the query field.
+  ///
+  /// Empty while there is no query, so the field is not decorated before the
+  /// user has typed anything.
+  String get countLabel {
+    if (query.isEmpty) return '';
+    if (matches.isEmpty) return 'No results';
+    if (currentIndex < 0) return count == 1 ? '1 result' : '$count results';
+    return '${currentIndex + 1} of $count';
+  }
+
+  /// A copy of this session pointed at a different match.
+  FindSession _withIndex(int index) => FindSession(
+        text: text,
+        query: query,
+        caseSensitive: caseSensitive,
+        currentIndex: index,
+        matches: matches,
+      );
+}
