@@ -924,3 +924,22 @@ No issues found! (ran in 2.2s)
   and would have sent the next implementer to guard the one file that was
   deliberately left alone, while leaving the real `ManuscriptDocumentDiffViewDialog`
   path unguarded by name.
+
+---
+
+## Cycle 4 - reference index integrity
+
+**Branch:** `manuscript-fixes`
+**Scope:** MS-014, MS-015, MS-004 completion, MS-016
+
+### Housekeeping (before any code change)
+
+- B7 MS-007's acceptance named `ManuscriptBinderProvider.updateContent` as the
+  revert path. Cycle 3b replaced that with `revertContentTo` (snapshot before
+  overwrite, plus the `revertSignal` editor reload), so the requirement now
+  names the undoable path and states explicitly why bare `updateContent` is the
+  content-write path (MS-008) and not a revert.
+- B7 gains **OQ-8**: a revert does not flush the editor's unsaved buffer first,
+  so text typed but not yet autosaved can be lost without being snapshotted.
+  Recommended default — warn the user and let them cancel if the buffer has
+  unsaved changes. Deferred.

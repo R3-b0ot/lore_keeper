@@ -78,9 +78,10 @@ Source: D1, B5
 Acceptance: Test that seeding a `HistoryEntry(targetType: 'ManuscriptDocument', targetKey: 'chapter_1')` and opening `HistoryPanel(targetType: 'ManuscriptDocument', targetKey: 'chapter_1')` shows that entry in the list. Currently fails.
 
 **MS-007** MUST — ManuscriptDocument diff and revert  
-`HistoryPanel` must handle `targetType: 'ManuscriptDocument'`: display a diff between the stored JSON snapshot and the current `ManuscriptDocument.richTextJson`, and provide a Revert action that writes the historical `richTextJson` back to the document via `ManuscriptBinderProvider.updateContent`.  
+`HistoryPanel` must handle `targetType: 'ManuscriptDocument'`: display a diff between the stored JSON snapshot and the current `ManuscriptDocument.richTextJson`, and provide a Revert action that writes the historical `richTextJson` back to the document via `ManuscriptBinderProvider.revertContentTo`.  
+`revertContentTo` is the undoable revert path: it snapshots the pre-revert content through `HistoryService` before overwriting, treats a revert to the content already loaded as a no-op, and then signals the open editor to reload the canonical document (`revertSignal` → `ManuscriptEditor._applyExternalRevert`). Bare `ManuscriptBinderProvider.updateContent` is the *content write* path (MS-008) and is **not** sufficient for a revert, because it overwrites without recording what it replaced and leaves the open editor showing stale prose.  
 Source: D1, S-32  
-Acceptance: Test that reverting a `ManuscriptDocument` history entry updates `ManuscriptDocument.richTextJson` to the historical value and does NOT read from the legacy `chapters` box.
+Acceptance: Test that reverting a `ManuscriptDocument` history entry updates `ManuscriptDocument.richTextJson` to the historical value, does NOT read from the legacy `chapters` box, and leaves a pre-revert `HistoryEntry` so the revert itself can be undone. Further test that the open editor's `QuillController` displays the reverted content and that a debounce armed before the revert is cancelled rather than writing the pre-revert buffer back.
 
 **MS-008** SHOULD — History autosave guards against identical content  
 `ManuscriptEditor._saveContent` must not write a new `HistoryEntry` if `richTextJson` has not changed since the last save.  
@@ -266,6 +267,7 @@ Acceptance: Widget test that taps a backlink tile and asserts `ManuscriptListPan
 | OQ-5 | Calendar date fields (HiveFields 22–24) store raw year/dayOfYear. The Inspector shows raw integers. Should the rebuild add a formatted display using `CalendarSystem` chronology, or defer? | Defer formatted display until the Calendar module exposes a formatting API. Show "Day N of Year Y (System K)" as a placeholder. |
 | OQ-6 | `EntityType.mapData` and `EntityType.mapLayer` remain in `EntityType.all`, which means `ReferenceEngine.rebuildIndex` (full-rebuild variant) iterates them. Should they be removed from `all` now or kept until the Map module is rebuilt? | Keep until Map module is rebuilt; removing them from `all` risks breaking the entity_ref test. |
 | OQ-7 | The spec's zero baseline cites "300/300 tests". The current baseline is 377. Should the requirements doc update the baseline number? | Yes — the operative baseline is the current green count (377). Document it as such. |
+| OQ-8 | A revert does not flush the editor's unsaved buffer first, so text typed but not yet autosaved can be lost without being snapshotted. | Warn the user and let them cancel if the buffer has unsaved changes. Deferred. |
 
 ---
 
