@@ -116,6 +116,15 @@ Acceptance: Test (failing sketch in B5 D3): after replacing a word adjacent to a
 Source: D3  
 Acceptance: Test with `findText = "a"`, `replaceText = "bbb"` applied to `"a cat and a dog"` produces `"bbb cbbbt bbbnd bbb dog"` — no shifted characters. Currently fails with offset drift.
 
+> **Matching semantics (clarified in Cycle 5).** Replace-all matches every
+> **literal substring** occurrence — case-sensitively, or case-folded when the
+> dialog's case toggle is off. It is deliberately **not** whole-word bounded.
+> The example above reflects that: the `a` inside `cat` and the `a` inside
+> `and` are both replaced. The acceptance row in §4 previously read
+> `"bbb cat and bbb dog"`, which implied a whole-word rule and contradicted
+> this section; it has been corrected. The implementation is
+> `FindReplaceEngine.findMatches` in `lib/services/manuscript_find_replace.dart`.
+
 **MS-013** SHOULD — Find supports Next/Previous navigation  
 Find should advance to the next occurrence on repeated Find calls, with wrap-around at end of document. Result count should be displayed.  
 Source: S-48  
@@ -238,7 +247,7 @@ Acceptance: Widget test that taps a backlink tile and asserts `ManuscriptListPan
 | MS-009 | D2 | Word count = plain-text split | `updateContent` → `doc.wordCount == 2` for "Hello world" |
 | MS-010 | D2 | Char count = plain-text length | `updateContent` → `doc.characterCount == 11` for "Hello world" |
 | MS-011 | D3 | Replace preserves ref: link | Replace adjacent to mention preserves `link` attribute |
-| MS-012 | D3 | Replace All uses descending offset | "a cat and a dog" → "bbb cat and bbb dog" no drift |
+| MS-012 | D3 | Replace All uses descending offset | "a cat and a dog" → "bbb cbbbt bbbnd bbb dog" no drift |
 | MS-014 | D4 | rebuildIndex does not clear alien entries | Non-manuscript engine entry survives rebuild |
 | MS-016 | D5 | Location refs not purged | `ref:Location:x` entry survives `purgeStaleEntries()` |
 

@@ -1546,3 +1546,452 @@ No issues found! (ran in 2.2s)
   (no longer clearing other producers' entries), and Cycle 4b stopped the
   over-scoped work. The `rebuildIndex`-on-autosave call itself still exists, by
   design — it is the re-index, and it is now correctly scoped.
+
+---
+
+## Cycle 5 - Find & Replace (MS-011, MS-012, MS-013)
+
+**Branch:** `manuscript-fixes`
+**Scope:** the three find/replace requirements and nothing else. No numbered
+requirement outside MS-011/012/013 was touched.
+
+### Baseline (before any code change)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 200.0s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+01:02 +441: All tests passed!
+```
+
+### Traced current behaviour (quoted from the working tree, not from B5)
+
+`lib/widgets/find_replace_dialog.dart` was re-read in full before anything was
+written. The three methods as they stood at the start of Cycle 5:
+
+`_performFind` (lines 36-54):
+
+```dart
+  void _performFind() {
+    final text = widget.controller.document.toPlainText();
+    final findText = _findController.text;
+    if (findText.isEmpty) return;
+
+    final pattern = _caseSensitive ? findText : findText.toLowerCase();
+    final searchText = _caseSensitive ? text : text.toLowerCase();
+
+    final index = searchText.indexOf(pattern);
+    if (index != -1) {
+      widget.controller.updateSelection(
+        TextSelection(baseOffset: index, extentOffset: index + findText.length),
+        ChangeSource.local,
+      );
+```
+
+`_performReplace` (lines 56-83), the relevant call:
+
+```dart
+      if (matches) {
+        widget.controller.replaceText(
+          selection.start,
+          selection.end - selection.start,
+          replaceText,
+          null,
+        );
+```
+
+`_replaceAll` (lines 85-111):
+
+```dart
+    final text = widget.controller.document.toPlainText();
+    final pattern = _caseSensitive ? findText : findText.toLowerCase();
+    final searchText = _caseSensitive ? text : text.toLowerCase();
+
+    int startIndex = 0;
+    while (true) {
+      final index = searchText.indexOf(pattern, startIndex);
+      if (index == -1) break;
+
+      // Select the text to replace
+      widget.controller.updateSelection(
+        TextSelection(baseOffset: index, extentOffset: index + findText.length),
+        ChangeSource.local,
+      );
+
+      // Replace the selected text
+      widget.controller.replaceText(index, findText.length, replaceText, null);
+
+      // Move start index forward
+      startIndex = index + replaceText.length;
+    }
+```
+
+**There were no tests for this file at cycle start.** `find_replace*` matched
+exactly one file in the repo - the dialog itself.
+
+### Claims from the audit, confirmed or corrected
+
+Each of the four claims was checked against the running code rather than
+against the B5 text, by driving the current logic verbatim in a throwaway
+probe and printing the resulting Delta.
+
+| Claim | Verdict |
+| --- | --- |
+| (a) replace requires the selection to already equal the find string | **Confirmed** |
+| (b) `replaceText` with a null attribute argument strips formatting / `ref:` links | **WRONG - corrected** |
+| (c) replace-all iterates a stale snapshot so offsets drift | **Confirmed, and worse than stated** |
+| (d) find has no next/previous/wrap and no result count | **Confirmed** |
+
+**(a) confirmed.** Selecting `"cat"` and asking to replace `"dog"` left the text
+untouched; the guard is the `selectedText == findText` comparison and there is
+no feedback when it fails. `"the cat sat\n"` with the selection on `cat` and
+find `dog` -> `"the cat sat\n"`.
+
+**(b) is wrong, and the real mechanism is the inverse.** In
+flutter_quill 11.5.1 the fourth positional argument of `replaceText` is
+`TextSelection? textSelection` - it positions the cursor after the edit. It is
+*not* an attribute argument, so `null` cannot strip anything:
+
+```dart
+  void replaceText(
+    int index,
+    int len,
+    Object? data,
+    TextSelection? textSelection, {
+```
+
+B5 D3's claim that `replaceText(..., null)` "applies null as the TextSelection
+... causing the Delta to insert plain text with no attributes" misreads the
+parameter. What actually happens is that `Document.insert` applies its
+heuristic rules with `replaceLength`, and the inserted characters inherit the
+attributes of the character at the **start index**. Observed:
+
+```
+seed:                     {"insert": "Eryll", "attributes": {link: ref:Character:7}}
+                          {"insert": " walked home\n",}
+after "walked"->"ran":    {"insert": "Eryll", "attributes": {link: ref:Character:7}}
+                          {"insert": " ran home\n",}
+```
+
+The mention is untouched - which is what the requirement asked for. So the
+B5-claimed bug does not exist in the form described. **But the actual bug is
+worse, because inheritance is not aware of the match's extent.** A match that
+*straddles* a formatting boundary picks up the leading run's attributes:
+
+```
+range (3,6) = "ll wa", spanning the mention and the plain run
+Q8 collectStyle(3,6) -> {}
+Q8 after replace(3,6,"X"):
+  {"insert": "EryX", "attributes": {link: ref:Character:7}}
+  {"insert": "ked home\n",}
+```
+
+The `X` silently became part of the mention - a `ref:Character:7` reference the
+author never wrote, which is also a live row in the reference index that
+MS-014/MS-016 are about. The same happens with any inline attribute, not just
+`link` (`bold` leaks identically). So the defect is **attributes leaking onto
+text that was not in the matched span**, not attributes being dropped. The fix
+had to be written against that.
+
+**(c) confirmed, and there is a hang the audit did not record.**
+
+```
+PROBE-c "a cat and a dog" find="a" replace="bbb" -> "bbbbbbbbbabbb and a dog\n"
+```
+
+against the required `"bbb cbbbt bbbnd bbb dog"`. Two further cases were worse
+than "drift":
+
+- **A shorter replacement corrupted the text.** `"cat cat cat"`, `cat`->`x`,
+  produced `"x caxat\n"`.
+- **An empty replacement hung the app.** `startIndex = index + replaceText.length`
+  with an empty replacement never advances, so `searchText.indexOf(pattern,
+  startIndex)` returns the same index forever. Driving this through the dialog's
+  button **did not fail the test - it hung it**, and the run had to be killed
+  at 900s. An empty "Replace with" plus Replace All froze the editor.
+
+**(d) confirmed.** `indexOf(pattern)` is called with no start offset, so every
+press returned the first match:
+
+```
+PROBE-d Find #0 -> base=0 extent=3
+PROBE-d Find #1 -> base=0 extent=3
+PROBE-d Find #2 -> base=0 extent=3
+PROBE-d Find #3 -> base=0 extent=3
+PROBE-d contains "Next": false
+PROBE-d contains a count like "1 of 3": false
+```
+
+The dialog's only affordances were `Find`, `Replace`, `Replace All`, `Close`.
+
+### MS-011 - replace preserves attributes on the replaced span
+
+**The decision, and why it is not just "inherit".** The requirement says the
+replaced text's attributes must be reapplied rather than dropped, and that
+whatever attribute set was actually on the span is what counts - not just
+`link`. Implemented as: capture the attributes applying across the *whole*
+matched range, replace, then make the replacement's attribute set exactly that.
+
+`Document.collectStyle(index, len)` reports the **intersection** of the
+attributes over a range, which is exactly the right primitive - it is
+non-empty only when the range is uniformly attributed:
+
+```
+Q6 collectStyle(0, 5)  "the whole linked run" -> {link: ref:Character:7}
+Q6 collectStyle(5, 7)  "" walked" (plain)     -> {}
+Q6 collectStyle(2, 3)  "yll" (inside link)    -> {link: ref:Character:7}
+Q6 collectStyle(0, 12) "the entire line"      -> {}
+```
+
+So a mixed range captures nothing, and the replacement is made plain - which
+closes the leak. What landed on the replacement is then cleared with
+`Attribute.clone(attribute, null)`, and the captured set is re-applied. The
+outcome no longer depends on Quill's insert heuristic at all.
+
+Block-scope attributes (header, list, blockquote) are **not** carried:
+`collectStyle` can return them (`{header: 1}` was observed), and applying one
+to a sub-range is invalid - they belong to whole lines. An edit inside a
+heading is still in the heading.
+
+**The partial-overlap judgment call, stated explicitly.** Replacing a strict
+sub-span of an attributed run *keeps* the attribute, because the matched range
+was uniformly attributed and MS-011 says to preserve exactly that set. So
+replacing `"yll"` with `"z"` inside a mention yields `"Erz"`, still a mention.
+The reasoning: a user editing the middle of a mention name is still referring
+to that entity, and the alternative (dropping the link) would silently destroy
+a reference. Both behaviours are tested:
+
+- sub-span of a mention -> attribute preserved
+- match straddling a boundary -> attribute NOT inherited
+
+**Red** (with `_replaceRange` temporarily reverted to the bare
+`replaceText(..., null)` so the specific assertions could be seen failing, not
+merely the method being absent):
+
+```
+00:01 +4 -1: MS-011 - replacing part of an attributed span a match that straddles a formatting boundary does NOT inherit the leading run attributes
+Expected: empty
+  Actual: {'link': 'ref:Character:7'}
+the matched range was not uniformly attributed, so the replacement must be plain rather than inherit
+
+00:02 +4 -2: MS-011 - a run that is not a mention is treated the same way straddling a bold boundary does not inherit bold
+Expected: empty
+  Actual: {'bold': true}
+the matched range was mixed, so bold must not leak
+
+00:02 +4 -2: Some tests failed.
+```
+
+**Two test faults of mine, recorded because both would have produced a false
+pass.** The first straddling test queried `"ll wa"` while selecting
+`[3, 6)` - five characters, not six - and asserted the resulting text for the
+six-character span, so it failed on a mismatch I had authored rather than on the
+bug. And a stray helper read `collectStyle` over a whole line, which reports
+the intersection and so returns `{}` for any line containing more than one
+format - it would have made a leak assertion pass for the wrong reason. Both
+were replaced with a one-character `collectStyle(offset, 1)`, which is an exact
+"what is this character formatted with" query.
+
+`flutter analyze`: `No issues found! (ran in 2.0s)`
+`flutter test --concurrency=1`: `00:47 +447: All tests passed!`
+
+### MS-012 - replace-all uses live coordinates
+
+**Descending offset order, computed once.** The match list is taken from
+`FindReplaceEngine.replaceAllPlan` and applied highest offset first, so every
+range still sits at its original offset at the moment it is edited. The result
+no longer depends on the relative lengths of query and replacement, and an
+empty replacement becomes an ordinary zero-length insert rather than a
+non-advancing loop.
+
+**Red** (`flutter test test/widgets/find_replace_all_test.dart`):
+
+```
+00:00 +0 -1: MS-012 - replace-all does not drift the drift case: replacement longer than the query
+Expected: 'bbb cbbbt bbbnd bbb dog\n'
+  Actual: 'bbbbbbbbbabbb and a dog\n'
+   Which: is different.
+
+00:01 +0 -2: MS-012 - replace-all does not drift replacement shorter than the query, multiple matches
+Expected: 'x x x\n'
+  Actual: 'x caxat\n'
+   Which: is different.
+
+00:01 +0 -3: MS-012 - replace-all does not drift an empty replacement is a pure deletion and does not crash
+Expected: '   \n'
+  Actual: ''
+```
+
+and then the run stopped reporting entirely on the final attribute test - the
+empty-replacement infinite loop described above.
+
+**Five of my own expectations were wrong** and are corrected in the tests:
+`"the cat the dog the bird"` has its third `"the"` at offset **16**, not the
+17 stated in the MS-013 acceptance text; case-sensitive `"the"` matches nothing
+in `"The Cat THE cat"`; `"a cat"` contains *two* `"a"`s; deleting all three
+`"cat"`s from `"cat cat cat"` leaves two spaces, not three; and deleting every
+`"d"` from `"Aiden walked home"` also removes the `d` in `walked`. Each was
+checked against the document rather than adjusted to make a test pass.
+
+**Green:** `flutter analyze` `No issues found! (ran in 2.2s)`;
+`flutter test --concurrency=1`: `00:54 +474: All tests passed!`
+
+### MS-013 - Find navigation, wrap, and a count
+
+**The match offsets are 0, 8 and 16, not 0, 8 and 17.** The acceptance text in
+B7 and the cycle brief both say 17; the third `"the"` in `"the cat the dog the
+bird"` starts at 16. The test asserts what the document actually contains.
+
+**Navigation is a pure value, so all of it is unit-tested without a widget.**
+`FindSession` holds the text snapshot, the query, the case flag and the
+selected index, and is rebuilt from the live document on every step - a cached
+match list would point at offsets that no longer mean what they meant. `next()`
+and `previous()` are cyclic: with three matches, three Find presses land back on
+the first; Previous from the first wraps to the last. With nothing selected,
+Next selects the first and Previous selects the last, so neither control is
+useless on its first press.
+
+**`Find` was kept and made advancing, rather than renamed to `Next`.** Two
+identical buttons would be worse UI, and `Find`-that-advances is the common
+convention. `Previous` is new. The choice is recorded here because the
+alternative reading of the requirement was "relabel it".
+
+**Case sensitivity follows the existing checkbox.** The dialog has had a "Case
+sensitive" toggle defaulting to off since before this cycle, so matching is
+case-folded by default and case-exact when the box is ticked. Tested both ways.
+
+**The count is not allowed to go stale.** After a Replace or Replace All the
+document has changed under the match list, so the selected index is dropped and
+the label reverts to `"N results"`. Otherwise the dialog would keep claiming
+`"3 of 3"` after one of the three matches had been rewritten. Both paths are
+tested.
+
+**Red:**
+
+```
+Expected: <8>
+  Actual: <0>
+Expected: exactly one matching candidate
+  Actual: _TextWidgetFinder:<Found 0 widgets with text "3 results": []>
+Expected: <16>
+  Actual: <0>
+```
+
+**Green:** `flutter analyze` `No issues found! (ran in 2.0s)`;
+`flutter test --concurrency=1`: `00:57 +497: All tests passed!`
+
+### Pure-Dart extraction
+
+The matching, the offset arithmetic, the plan ordering and the entire
+navigation model live in `lib/services/manuscript_find_replace.dart` -
+`FindMatch`, `FindReplaceEngine`, `FindSession` - with no Flutter, Quill, Hive
+or `dart:io` import, following `HistorySnapshotPolicy` /
+`ManuscriptTextStats`. It is registered in the MS-005 guard list in
+`manuscript_topology_test.dart`, so the constraint is enforced by a test rather
+than by good intentions.
+
+The dialog keeps only what genuinely needs Quill: reading
+`Document.collectStyle`, calling `replaceText`/`formatText`, and driving the
+`TextSelection`.
+
+### Whole-word trace corrected
+
+`docs/audit2/B7_manuscript_requirements.md` §4 carried an MS-012 acceptance
+row reading `"a cat and a dog" -> "bbb cat and bbb dog"`, which implies a
+whole-word rule and contradicted both the same document's MS-012 prose and the
+decided substring semantics. Corrected to `"bbb cbbbt bbbnd bbb dog"`, with a
+note added to the MS-012 section stating the substring rule explicitly and
+naming the implementing class. That was the only whole-word trace left in
+`docs/`; a sweep for `whole.?word` now matches only the new note.
+
+### Commits
+
+| Commit | Requirement |
+| --- | --- |
+| `87835ad` | MS-011 - attribute-preserving replacement |
+| `ce0e89a` | MS-012 - descending-offset replace-all |
+| `b36a09e` | MS-013 - navigation, wrap, count |
+
+### Tests added
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `test/services/manuscript_find_replace_test.dart` | 29 | substring matching, non-overlap, case sensitivity, descending plan, all navigation/wrap cases, count labels |
+| `test/widgets/find_replace_all_test.dart` | 10 | the drift case, same/short/empty replacements, repeated runs, empty query, attribute preservation on every occurrence |
+| `test/widgets/find_replace_navigation_test.dart` | 11 | Find/Previous through the dialog, count at each step, no-match, query edit, case toggle, post-edit truthfulness |
+| `test/widgets/find_replace_attributes_test.dart` | 6 | mention adjacent to a plain word, replacing a mention, multiple attributes, sub-span of a span, both straddle cases |
+
+| | Before | After |
+| --- | --- | --- |
+| Count | 441 | **497** (+56) |
+
+No existing test was modified or deleted.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `lib/services/manuscript_find_replace.dart` | new - `FindMatch`, `FindReplaceEngine`, `FindSession` (pure Dart) |
+| `lib/widgets/find_replace_dialog.dart` | `_replaceRange`, `replaceAll` on the plan, navigation + count + Previous |
+| `test/widgets/manuscript_topology_test.dart` | new file added to the MS-005 guard list |
+| `docs/audit2/B7_manuscript_requirements.md` | whole-word trace corrected |
+| 4 new test files | see above |
+
+No build_runner, no dependencies, no adapters, no schema. No listed public API
+was changed.
+
+### Verification (final)
+
+`flutter analyze`:
+
+```
+Analyzing lore_keeper...
+No issues found! (ran in 2.0s)
+```
+
+`flutter test --concurrency=1` (last line):
+
+```
+00:57 +497: All tests passed!
+```
+
+### Deferred / not done
+
+- **Replacing a mention's text keeps the mention.** Find `"Eryll"`, replace
+  with `"the stranger"`, and the replacement is still a `ref:Character:7`
+  mention. That follows directly from MS-011's "preserve whatever attribute set
+  was actually there", and it is what the current tests lock in - but it is
+  arguably surprising, since a user retyping an entity name usually means
+  *un*linking it. Changing it would contradict the requirement as written, so
+  it is recorded as a UX decision rather than silently made. It is a one-line
+  change in `_replaceRange` if the decision goes the other way.
+- **No regex or whole-word mode.** Matching is literal substring only, per the
+  decided semantics. Whether either is wanted is a product question.
+- **`_performReplace` still needs the selection to already equal the find
+  string** (claim (a), left as-is because the cycle did not ask to change it).
+  The practical consequence is unchanged: with nothing selected, Replace is a
+  silent no-op, and the user gets no indication. A "replace the match under the
+  caret" behaviour would be a small follow-up.
+- **Replace and Replace All do not chain.** After replacing, the selection is
+  collapsed and no match is auto-selected, so a user working through a document
+  one hit at a time still has to press Find again. VS Code and most editors
+  advance. Deliberately conservative here to avoid changing behaviour the
+  requirements did not ask about.
+- **The count lives in the find field's `helperText`,** so it is below the
+  field rather than beside the navigation buttons, and it disappears when the
+  dialog is short. `helperText` was chosen because it is the only slot in an
+  `InputDecoration` that survives being empty - a conditional trailing icon
+  would have reserved vertical space permanently.
+- **Every match is recomputed on every navigation step and on every rebuild.**
+  One `indexOf` scan per rebuild, so O(document) per keystroke in the find
+  field. Negligible for manuscript-sized documents, but it is not incremental.
+- **MS-013's `Previous` is a new button**, so the dialog's action row is now
+  five controls wide (`Close`, `Find`, `Previous`, `Replace`, `Replace All`).
+  Whether that needs a second row or an overflow menu is untested on the
+  narrowest supported window.
