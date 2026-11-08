@@ -12,7 +12,7 @@ Subordinate to docs/SOURCE_OF_TRUTH.md; that doc wins on conflict.
 
 This specification is subordinate to `docs/SOURCE_OF_TRUTH.md`, which wins on any conflict. It remains the reference for the Manuscript Module's architecture and behavior and is reconciled at the start of Phase 2.
 
-The repository is the source of truth for what currently exists. This document is the source of truth for what the architecture and behavior are intended to be.
+The repository is the source of truth for what currently exists. This specification describes the intended architecture and behavior, subject to `docs/SOURCE_OF_TRUTH.md`.
 
 Every implementation cycle must therefore answer two separate questions:
 
