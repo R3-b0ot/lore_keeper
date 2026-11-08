@@ -1,6 +1,7 @@
+Subordinate to docs/SOURCE_OF_TRUTH.md; that doc wins on conflict.
 # LORE KEEPER — MANUSCRIPT MODULE MASTER SPECIFICATION
 
-**Document status:** Canonical / Normative  
+**Document status:** Subordinate to docs/SOURCE_OF_TRUTH.md; that doc wins on conflict.  
 **Scope:** Manuscript Module and its Project Editor integration  
 **Platform:** Flutter / Dart / Windows desktop first  
 **Last re-baselined:** 2026-09-05
@@ -9,9 +10,7 @@
 
 ## 0. PURPOSE AND AUTHORITY
 
-This document is the **single canonical specification** for the Lore Keeper Manuscript Module.
-
-It replaces all earlier Manuscript Module specifications, migration notes, implementation prompts, and informal descriptions of the Manuscript workspace. Earlier documents may contain useful historical context, but they are **not implementation authority** when they conflict with this document.
+This specification is subordinate to `docs/SOURCE_OF_TRUTH.md`, which wins on any conflict. It remains the reference for the Manuscript Module's architecture and behavior and is reconciled at the start of Phase 2.
 
 The repository is the source of truth for what currently exists. This document is the source of truth for what the architecture and behavior are intended to be.
 

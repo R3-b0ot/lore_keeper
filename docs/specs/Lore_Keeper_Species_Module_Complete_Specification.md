@@ -1,3 +1,4 @@
+Subordinate to docs/SOURCE_OF_TRUTH.md; that doc wins on conflict.
 # Lore Keeper — Species Module
 ## Complete Functional Specification, Architecture & Individual User Flows
 
