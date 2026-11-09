@@ -94,6 +94,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   ReferenceEngine? _referenceEngine;
   String _selectedManuscriptDocumentId = '';
 
+  /// Bumped on a manuscript history revert so the editor re-syncs with the
+  /// document that was just overwritten in place (Cycle 3b-3).
+  int _manuscriptRevertSignal = 0;
+
   // New navigation structure: Overview | Manuscripts | Characters | World Building | Lore Map
   // Internal index mapping:
   //   0 = Overview (NEW default landing)
@@ -441,6 +445,16 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
     _characterModuleKey.currentState?.reload();
   }
 
+  /// A manuscript revert overwrote the open document in place (Cycle 3b-3).
+  ///
+  /// Bumping the signal is what tells the editor to re-read the document and
+  /// re-base its autosave baselines; without it the editor keeps displaying the
+  /// pre-revert prose and the author's next edit overwrites the revert.
+  void _handleManuscriptRevert() {
+    if (!mounted) return;
+    setState(() => _manuscriptRevertSignal++);
+  }
+
   Future<void> _onCharacterCreated() async {
     final newName = await showCreateCharacterDialog(context);
 
@@ -596,6 +610,7 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         sharedReferenceEngine: _referenceEngine,
         selectedDocumentId: _selectedManuscriptDocumentId,
         onDocumentSelected: _onManuscriptDocumentSelected,
+        revertSignal: _manuscriptRevertSignal,
       );
     } else if (_moduleIndex == 2) {
       // Characters
@@ -673,16 +688,19 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
   Widget? _buildHistoryPanel() {
     // History supported for Manuscripts (index 1) and Characters (index 2)
     if (_moduleIndex == 1) {
-      final targetKey = _selectedChapterKey.startsWith('front_matter_')
-          ? _selectedChapterKey
-          : int.tryParse(_selectedChapterKey);
-      if (targetKey == null) return null;
+      // Manuscripts are snapshotted by ManuscriptEditor._saveContent with
+      // targetType 'ManuscriptDocument' and the CANONICAL DOCUMENT ID as the
+      // key (lib/modules/manuscript_module.dart). Querying the legacy
+      // 'Chapter' + int chapter key here matched nothing, so the panel always
+      // reported "No history found" for manuscripts (MS-006).
+      if (_selectedManuscriptDocumentId.isEmpty) return null;
 
       return HistoryPanel(
-        targetKey: targetKey,
-        targetType: 'Chapter',
+        targetKey: _selectedManuscriptDocumentId,
+        targetType: 'ManuscriptDocument',
+        binderProvider: _manuscriptBinderProvider,
         onClose: _toggleHistoryPanel,
-        onReverted: _handleRevert,
+        onReverted: _handleManuscriptRevert,
       );
     }
     if (_moduleIndex == 2) {

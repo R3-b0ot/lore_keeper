@@ -2,13 +2,13 @@
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:lore_keeper/utils/debug_logger.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/reference_integrity_service.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 class ManuscriptBinderService {
   final int projectId;
@@ -179,11 +179,8 @@ class ManuscriptBinderService {
       ..isExpanded = true
       ..createdAt = now
       ..modifiedAt = now
-      ..wordCount = _countWords(
-        richTextJson ?? ManuscriptModule.emptyRichTextJson,
-      )
-      ..characterCount =
-          (richTextJson ?? ManuscriptModule.emptyRichTextJson).length;
+      ..wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson)
+      ..characterCount = ManuscriptTextStats.characterCountOfJson(richTextJson);
 
     await _documentBox.put(id, doc);
 
@@ -243,8 +240,8 @@ class ManuscriptBinderService {
 
     doc.richTextJson = richTextJson;
     doc.modifiedAt = DateTime.now();
-    doc.wordCount = _countWords(richTextJson);
-    doc.characterCount = richTextJson.length;
+    doc.wordCount = ManuscriptTextStats.wordCountOfJson(richTextJson);
+    doc.characterCount = ManuscriptTextStats.characterCountOfJson(richTextJson);
     await doc.save();
     _updateProjectModifiedTime();
   }
@@ -430,6 +427,83 @@ class ManuscriptBinderService {
   }
 
   // ========================================================================
+  // DUPLICATE
+  // ========================================================================
+
+  /// Deep-copy a document (and its whole subtree) as its next sibling (MS-018).
+  ///
+  /// **Why the subtree is copied.** A chapter's scenes are part of what "this
+  /// chapter" means to a writer. Duplicating the chapter and leaving it empty
+  /// would produce a document that looks copied but has silently lost its
+  /// contents, which is the worse failure. Copying recursively is also
+  /// self-consistent: every fresh id maps to fresh child ids, so the result is
+  /// a clean subtree rather than a set of documents that half-reference ids
+  /// that no longer mean what they did.
+  ///
+  /// The copy is placed immediately after the original via `orderIndex`, which
+  /// `createDocument` makes room for with `_shiftSiblings` - the same
+  /// contiguous-integer convention `reorderDocument` maintains.
+  ///
+  /// Returns null when [sourceId] is unknown, so a stale context menu click
+  /// cannot throw.
+  Future<ManuscriptDocument?> duplicateDocument(String sourceId) async {
+    final source = getDocumentForProject(sourceId);
+    if (source == null) return null;
+    if (source.documentType == ManuscriptDocumentType.manuscript) {
+      // The manuscript root is structural: a second root would make
+      // `getManuscriptRoot()` ambiguous and orphan every sibling list.
+      return null;
+    }
+
+    final parentId = source.parentId;
+    if (parentId == null) return null;
+
+    // The copy is created with the "next slot" order index, so
+    // `createDocument`'s `_shiftSiblings` pushes the original's later siblings
+    // down and leaves the copy directly after the original.
+    final copy = await _copyNode(source, parentId, source.orderIndex + 1, ' (copy)');
+
+    _updateProjectModifiedTime();
+    return copy;
+  }
+
+  /// Recursive worker for [duplicateDocument].
+  ///
+  /// [titleSuffix] is applied to the document passed in and to nothing else:
+  /// descendants keep their own titles, because the whole branch they sit on has
+  /// been duplicated anyway and "Scene One (copy)" would just add noise.
+  Future<ManuscriptDocument> _copyNode(
+    ManuscriptDocument original,
+    String newParentId,
+    int orderIndex,
+    String titleSuffix,
+  ) async {
+    final created = await createDocument(
+      title: '${original.title}$titleSuffix',
+      type: original.documentType,
+      parentId: newParentId,
+      orderIndex: orderIndex,
+      richTextJson: original.richTextJson,
+      status: original.status,
+      summary: original.summary,
+      povCharacterId: original.povCharacterId,
+      locationId: original.locationId,
+      timelineEventId: original.timelineEventId,
+      plotline: original.plotline,
+      characterIds: original.characterIds,
+      tagIds: original.tagIds,
+      purpose: original.purpose,
+    );
+
+    final children = getChildren(original.id);
+    for (var i = 0; i < children.length; i++) {
+      await _copyNode(children[i], created.id, i, '');
+    }
+
+    return created;
+  }
+
+  // ========================================================================
   // DELETE
   // ========================================================================
 
@@ -521,11 +595,15 @@ class ManuscriptBinderService {
 
     final allowed = validChildren[parentType] ?? [];
     if (!allowed.contains(childType)) {
-      LkLog.warning(
-        'ManuscriptBinder',
-        'Unusual hierarchy: $parentType -> $childType',
+      // MS-029: this used to log and continue, which let a Scene be parented
+      // to a Manuscript and a Note to a Part. Every reader of the tree then had
+      // to defend against a shape the schema forbids. Reject instead, with the
+      // same StateError the circular-reference check throws.
+      throw StateError(
+        'Invalid manuscript hierarchy: $parentType cannot contain $childType. '
+        'Allowed children of $parentType: '
+        '${allowed.isEmpty ? '(none)' : allowed.join(', ')}',
       );
-      // Allow but warn - don't throw to maintain flexibility
     }
   }
 
@@ -548,16 +626,6 @@ class ManuscriptBinderService {
     if (project != null) {
       project.lastModified = DateTime.now();
       project.save();
-    }
-  }
-
-  int _countWords(String json) {
-    if (json.isEmpty) return 0;
-    try {
-      final text = json.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ');
-      return text.trim().isEmpty ? 0 : text.trim().split(RegExp(r'\s+')).length;
-    } catch (_) {
-      return 0;
     }
   }
 }

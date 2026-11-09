@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:lore_keeper/widgets/project_editor/project_editor_module_item.dart';
 
+/// Stable key for the project editor's Column 1 ([ModuleSidebar]).
+///
+/// Canonical key per spec §5.2 — the runtime topology regression tests (MS-001)
+/// count exactly one visible sidebar per shell instance.
+const Key kProjectEditorColumn1Key = Key('project-editor-column-1');
+
 /// Keeps project editor navigation cohesive while isolating layout concerns
 /// from the main screen implementation.
 class ModuleSidebar extends StatelessWidget {
@@ -31,6 +37,7 @@ class ModuleSidebar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
+      key: kProjectEditorColumn1Key,
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),

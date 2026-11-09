@@ -320,23 +320,130 @@ void main() {
       expect(engine.index, isEmpty);
     });
 
-    test('unsupported types (no data source) are treated as stale', () async {
+    // Before the fix, this test's expectation was the opposite — it asserted
+    // that unsupported types ARE purged as stale. That assertion encoded the
+    // bug, so it was replaced rather than left to fail. RED proof that the
+    // location entry really did survive-before/purge-after is in the log: the
+    // pre-fix run of this same test fails on `expected: isEmpty, actual: has
+    // length 1`.
+    test('MS-016: a Location ref survives the purge (no canonical source)',
+        () async {
+      await docBox.put('doc_1', _doc('doc_1', _projA));
       final engine = ReferenceEngine();
       engine.addEntry(
         _entry(
           _ref('doc_1', EntityType.manuscriptDocument, _projA),
-          _ref('org_1', EntityType.organization, _projA),
+          _ref('loc_1', EntityType.location, _projA),
         ),
+      );
+
+      final removed = resolverA.purgeStale(engine);
+
+      // Location has no box, so entityExists reports false. Treating that as
+      // "deleted" silently discarded every Location/Item/Organization mention
+      // on the first purge after any entity deletion.
+      expect(removed, isEmpty);
+      expect(
+        engine.backlinksTo(_ref('loc_1', EntityType.location, _projA)),
+        hasLength(1),
+        reason: 'a type with no canonical source must never be purged (MS-016)',
+      );
+    });
+
+    test('MS-016: every sourceless type survives, not just Location', () async {
+      await docBox.put('doc_1', _doc('doc_1', _projA));
+      final engine = ReferenceEngine();
+      const sourceless = [
+        EntityType.location,
+        EntityType.item,
+        EntityType.organization,
+        EntityType.faction,
+        EntityType.customTrait,
+        EntityType.calendarNode,
+        EntityType.mapData,
+        EntityType.mapLayer,
+      ];
+      for (final type in sourceless) {
+        engine.addEntry(
+          _entry(
+            _ref('doc_1', EntityType.manuscriptDocument, _projA),
+            _ref('x_1', type, _projA),
+          ),
+        );
+      }
+
+      final removed = resolverA.purgeStale(engine);
+
+      expect(removed, isEmpty);
+      expect(
+        engine.length,
+        sourceless.length,
+        reason: 'no sourceless type may be purged (MS-016)',
+      );
+    });
+
+    test('MS-016: a genuinely deleted Character is still purged', () async {
+      final charKey = await charBox.add(
+        Character(name: 'Doomed', parentProjectId: 1),
+      );
+      await docBox.put('doc_1', _doc('doc_1', _projA));
+      await docBox.put('doc_2', _doc('doc_2', _projA));
+
+      final engine = ReferenceEngine();
+      final deletedRef = _ref('$charKey', EntityType.character, _projA);
+      final survivorRef = _ref('sp_1', EntityType.species, _projA);
+      await speciesBox.add(_speciesNode('sp_1', _projA, 'Dragon'));
+      engine.addEntry(
+        _entry(_ref('doc_1', EntityType.manuscriptDocument, _projA), deletedRef),
+      );
+      engine.addEntry(
+        _entry(_ref('doc_2', EntityType.manuscriptDocument, _projA), deletedRef),
       );
       engine.addEntry(
         _entry(
           _ref('doc_1', EntityType.manuscriptDocument, _projA),
-          _ref('item_1', EntityType.item, _projA),
+          survivorRef,
         ),
       );
+
+      await charBox.get(charKey)!.delete();
+
       final removed = resolverA.purgeStale(engine);
+
+      // MS-016 must not regress real deletion: a type that HAS a canonical
+      // source and is gone from it is still removed.
       expect(removed, hasLength(2));
-      expect(engine.index, isEmpty);
+      expect(engine.backlinksTo(deletedRef), isEmpty);
+      expect(engine.backlinksTo(survivorRef), hasLength(1));
+    });
+
+    test('MS-016: entityIsDefinitelyGone is false without a source, true after '
+        'deletion', () async {
+      final charKey = await charBox.add(
+        Character(name: 'Temporary', parentProjectId: 1),
+      );
+      final charRef = _ref('$charKey', EntityType.character, _projA);
+
+      // No canonical source yet -> not *definitely* gone.
+      expect(
+        resolverA.entityIsDefinitelyGone(
+          _ref('loc_1', EntityType.location, _projA),
+        ),
+        isFalse,
+      );
+      expect(
+        resolverA.entityIsDefinitelyGone(
+          _ref('item_1', EntityType.item, _projA),
+        ),
+        isFalse,
+      );
+      // Live character -> not gone.
+      expect(resolverA.entityIsDefinitelyGone(charRef), isFalse);
+
+      await charBox.get(charKey)!.delete();
+
+      // Deleted from a box that exists -> definitely gone.
+      expect(resolverA.entityIsDefinitelyGone(charRef), isTrue);
     });
   });
 }

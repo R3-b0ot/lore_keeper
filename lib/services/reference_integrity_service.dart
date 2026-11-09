@@ -59,9 +59,31 @@ class ReferenceIntegrityService {
   ///
   /// Return `true` if the entity exists; `false` if it has been deleted or
   /// was never created.
+  ///
+  /// This is the *resolution* predicate and is still what reporting paths
+  /// ([findStaleEntries], [groupByUnresolved], [unresolvedCount]) use, so an
+  /// unresolvable-but-valid mention is still surfaced to the author.
   final bool Function(EntityRef) entityExists;
 
-  ReferenceIntegrityService({required this.engine, required this.entityExists});
+  /// Resolves whether an entity is *known* to have been deleted, as opposed to
+  /// merely being unresolvable (MS-016).
+  ///
+  /// Defaults to [entityExists], which preserves the original purge behaviour
+  /// for any existing caller. Supply [ReferenceNameResolver.entityIsDefinitelyGone]
+  /// to stop types with no canonical data source from being purged as if they
+  /// had been deleted.
+  final bool Function(EntityRef) entityIsDefinitelyGone;
+
+  ReferenceIntegrityService({
+    required this.engine,
+    required this.entityExists,
+    bool Function(EntityRef)? entityIsDefinitelyGone,
+  }) : // Polarity note: this predicate answers "was it deleted?", so the
+      // fallback has to *negate* the resolution predicate. Defaulting to
+      // `entityExists` itself would mean "exists" and purge every entry whose
+      // source or target resolves — the exact inverse of the old behaviour.
+        entityIsDefinitelyGone =
+            entityIsDefinitelyGone ?? ((ref) => !entityExists(ref));
 
   // ── Deletion Planning ─────────────────────────────────────────────────
 
@@ -144,15 +166,30 @@ class ReferenceIntegrityService {
         .toList();
   }
 
-  /// Remove all stale entries from the index.
+  /// Remove all entries whose source or target is *known to have been deleted*
+  /// from the index.
+  ///
+  /// MS-016: this is a removal decision, so it uses
+  /// [entityIsDefinitelyGone] rather than [entityExists]. An entity type with
+  /// no canonical data source resolves to false under [entityExists] simply
+  /// because nothing can be looked up, and purging on that basis would
+  /// irreversibly discard valid mentions of every not-yet-implemented type.
+  ///
+  /// Reporting is deliberately left on [entityExists] via [findStaleEntries], so
+  /// unresolved mentions are still surfaced — they are just no longer deleted.
   ///
   /// Returns the removed entries for logging / undo purposes.
   List<ReferenceIndexEntry> purgeStaleEntries() {
-    final stale = findStaleEntries();
+    final gone = engine.index
+        .where(
+          (e) => entityIsDefinitelyGone(e.source) || entityIsDefinitelyGone(e.target),
+        )
+        .toList();
     engine.removeWhere(
-      (e) => !entityExists(e.source) || !entityExists(e.target),
+      (e) =>
+          entityIsDefinitelyGone(e.source) || entityIsDefinitelyGone(e.target),
     );
-    return stale;
+    return gone;
   }
 
   // ── Purge / Reset ────────────────────────────────────────────────────

@@ -344,21 +344,9 @@ class _ManuscriptCorkboardState extends State<ManuscriptCorkboard> {
   }
 
   void _duplicateCard(ManuscriptDocument card) async {
-    final copy = await widget.provider.createChild(
-      parentId: widget.containerDocumentId,
-      title: '${card.title} (Copy)',
-      type: card.documentType,
-      orderIndex: _cards.indexOf(card) + 1,
-      richTextJson: card.richTextJson,
-      status: card.status,
-      summary: card.summary,
-      povCharacterId: card.povCharacterId,
-      locationId: card.locationId,
-      timelineEventId: card.timelineEventId,
-      plotline: card.plotline,
-      characterIds: card.characterIds,
-      tagIds: card.tagIds,
-    );
+    final copy = await widget.provider.duplicateDocument(card.id);
+    if (copy == null) return;
+
     _loadCards();
     widget.onDocumentSelected(copy.id);
   }

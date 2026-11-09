@@ -22,18 +22,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:lore_keeper/database/database_manager.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/providers/character_list_provider.dart';
 import 'package:lore_keeper/providers/chapter_list_provider.dart';
 import 'package:lore_keeper/providers/manuscript_binder_provider.dart';
 import 'package:lore_keeper/modules/manuscript_module.dart';
+import 'package:lore_keeper/screens/project_editor_screen.dart';
+import 'package:lore_keeper/settings/global_settings_controller.dart';
 import 'package:lore_keeper/widgets/manuscript_binder.dart';
 import 'package:lore_keeper/widgets/manuscript_collections.dart';
 import 'package:lore_keeper/widgets/manuscript_corkboard.dart';
 import 'package:lore_keeper/widgets/manuscript_inspector.dart';
 import 'package:lore_keeper/widgets/manuscript_list_pane.dart';
 import 'package:lore_keeper/widgets/manuscript_outliner.dart';
+import 'package:lore_keeper/widgets/project_editor/module_sidebar.dart';
+import 'package:lore_keeper/widgets/project_editor/specific_functions_bar.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/services/manuscript_reference_service.dart';
+import 'package:provider/provider.dart';
 
 // ---------------------------------------------------------------------------
 // Shared setup helpers
@@ -50,6 +57,54 @@ Future<void> _waitFor({
   expect(isReady(), isTrue, reason: '$label did not initialize');
 }
 
+/// Pumps the REAL [ProjectEditorScreen] with the Manuscripts module open.
+///
+/// The shell builds its OWN Hive-backed providers in initState, whose
+/// bootstrap completes on the real-async event loop. The whole mount +
+/// bootstrap therefore runs inside [WidgetTester.runAsync] so pending real
+/// async work finishes before the fake-clock render; stranding it in the
+/// FakeAsync zone hangs the framework's post-test teardown.
+Future<void> _pumpProjectEditorShell(
+  WidgetTester tester,
+  Project project, {
+  String initialChapterKey = '',
+}) async {
+  await tester.binding.setSurfaceSize(const Size(1700, 1250));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  final settings = GlobalSettingsController();
+  await tester.runAsync(() async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<GlobalSettingsController>.value(
+        value: settings,
+        child: MaterialApp(
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            FlutterQuillLocalizations.delegate,
+          ],
+          home: ProjectEditorScreen(
+            project: project,
+            // Legacy deep-link remap quirk (§_normalizeModuleIndex):
+            // passing legacy index 0 opens the Manuscripts module.
+            initialModuleIndex: 0,
+            initialChapterKey: initialChapterKey.isEmpty
+                ? null
+                : initialChapterKey,
+          ),
+        ),
+      ),
+    );
+    // Let the shell providers + binder bootstrap finish on the real event
+    // loop (Hive reads/writes, entity index rebuilds).
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+  });
+
+  // Render the (now bootstrapped) tree under the fake clock.
+  await tester.pump();
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -58,6 +113,31 @@ void main() {
   // ── Static architecture contract ──────────────────────────────────────────
 
   group('static topology contract', () {
+    test('manuscript logic services stay Flutter-free '
+        '(MS-005)', () {
+      const logicFiles = [
+        'lib/services/manuscript_binder_service.dart',
+        'lib/services/manuscript_collections_service.dart',
+        'lib/services/manuscript_reference_service.dart',
+        'lib/services/history_service.dart',
+        'lib/services/reference_name_resolver.dart',
+        'lib/services/reference_integrity_service.dart',
+        'lib/services/history_snapshot_policy.dart',
+        'lib/services/manuscript_find_replace.dart',
+      ];
+
+      for (final file in logicFiles) {
+        final source = File(file).readAsStringSync();
+        expect(
+          source,
+          isNot(contains('package:flutter/')),
+          reason:
+              '$file must stay pure Dart (no Flutter UI imports) — '
+              'business logic belongs in the service layer, widgets above it',
+        );
+      }
+    });
+
     test('ManuscriptModule/ManuscriptEditor no longer defines the legacy left '
         'panel architecture', () {
       final source = File(
@@ -190,7 +270,7 @@ void main() {
 
     // ── Cycle 0.6: Stable keys ───────────────────────────────────────────
 
-    test('all four stable key constants are declared', () {
+    test('all five stable key constants are declared', () {
       expect(
         File('lib/widgets/manuscript_inspector.dart').readAsStringSync(),
         contains("Key('manuscript-inspector')"),
@@ -208,6 +288,13 @@ void main() {
           'lib/widgets/project_editor/specific_functions_bar.dart',
         ).readAsStringSync(),
         contains("Key('specific-functions-bar')"),
+      );
+      // Column 1 (ModuleSidebar) canonical key — MS-002: was missing, now added.
+      expect(
+        File(
+          'lib/widgets/project_editor/module_sidebar.dart',
+        ).readAsStringSync(),
+        contains("Key('project-editor-column-1')"),
       );
     });
   });
@@ -253,6 +340,24 @@ void main() {
       await _waitFor(
         label: 'character provider',
         isReady: () => characterProvider.isInitialized,
+      );
+
+      // Seed a real chapter document so the shell has something to open.
+      // Seeding in setUp (outside the testWidgets FakeAsync zone) lets Hive's
+      // real-async I/O complete before the fake-clock pumps begin.
+      final chapterDoc = ManuscriptDocument()
+        ..id = 'chapter_1'
+        ..projectId = project.key!
+        ..title = 'Chapter One'
+        ..documentType = ManuscriptDocumentType.chapter
+        ..parentId = binderProvider.manuscriptRoot!.id
+        ..orderIndex = 0
+        ..status = ManuscriptDocumentStatus.draft
+        ..createdAt = DateTime.now()
+        ..modifiedAt = DateTime.now();
+      await DatabaseManager.instance.manuscriptDocuments.put(
+        chapterDoc.id,
+        chapterDoc,
       );
     });
 
@@ -369,6 +474,195 @@ void main() {
 
         // ── Status bar from editor ────────────────────────────────────────
         expect(find.text('Words: 0'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'ProjectEditorScreen shell renders exactly one of each canonical column '
+      '(MS-001)',
+      (tester) async {
+        // The shell owns its binder provider + shared ReferenceEngine, threaded
+        // to all four columns. GlobalSettingsController is required by the
+        // shell initState.
+        await _pumpProjectEditorShell(tester, project, initialChapterKey: '1');
+
+        // ── Canonical columns present exactly once (spec §1.3 / §5.2) ────
+        expect(find.byKey(kProjectEditorColumn1Key), findsOneWidget);
+        expect(find.byKey(kManuscriptListPaneKey), findsOneWidget);
+        expect(find.byKey(kManuscriptEditorKey), findsOneWidget);
+        expect(find.byKey(kManuscriptInspectorKey), findsOneWidget);
+        expect(find.byKey(kSpecificFunctionsBarKey), findsOneWidget);
+
+        // The Binder is hosted by Column 2 only — one instance, no duplicates.
+        expect(find.byType(ManuscriptBinder), findsOneWidget);
+
+        // The seeded chapter was opened (inspector leaves its empty state).
+        expect(find.text('Select a document'), findsNothing);
+
+        // Unmount the shell inside the FakeAsync zone so every dispose() runs
+        // before the framework's post-test teardown.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'ProjectEditorScreen threads ONE ManuscriptBinderProvider to Columns '
+      '2/3/4 (MS-003)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final listPane = tester.widget<ManuscriptListPane>(
+          find.byKey(kManuscriptListPaneKey),
+        );
+        final editor = tester.widget<ManuscriptEditor>(
+          find.byKey(kManuscriptEditorKey),
+        );
+        // The inspector key lives on its inner body Container, so resolve the
+        // widget by type instead.
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        // Column 2 (list pane) and Column 3 (editor) share the shell binder.
+        expect(
+          identical(listPane.provider, editor.binderProvider),
+          isTrue,
+          reason:
+              'Column 2 and Column 3 must observe the same ManuscriptBinderProvider',
+        );
+        // Column 4 (inspector) observes the same binder as the editor.
+        expect(
+          identical(editor.binderProvider, inspector.binderProvider),
+          isTrue,
+          reason:
+              'Column 4 inspector must observe the same ManuscriptBinderProvider',
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'ProjectEditorScreen shares ONE ReferenceEngine across the manuscript '
+      'pipeline (MS-004)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final listPane = tester.widget<ManuscriptListPane>(
+          find.byKey(kManuscriptListPaneKey),
+        );
+        final editor = tester.widget<ManuscriptEditor>(
+          find.byKey(kManuscriptEditorKey),
+        );
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        expect(inspector.referenceService, isNotNull);
+
+        // The binder (Columns 2/3) derives from the shell engine.
+        expect(
+          identical(
+            listPane.provider.referenceEngine,
+            editor.binderProvider!.referenceEngine,
+          ),
+          isTrue,
+          reason: 'Column 2 and Column 3 share one ReferenceEngine',
+        );
+
+        // The module's reference service (Column 4 backlinks/outgoing refs)
+        // is built on the same shell engine — never a private duplicate.
+        expect(
+          identical(
+            editor.binderProvider!.referenceEngine,
+            inspector.referenceService!.referenceEngine,
+          ),
+          isTrue,
+          reason:
+              'reference service must observe the shell-single ReferenceEngine',
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'ONE ManuscriptReferenceService instance serves the module and the '
+      'editor (MS-015)',
+      (tester) async {
+        await _pumpProjectEditorShell(tester, project);
+
+        final inspector = tester.widget<ManuscriptInspector>(
+          find.byType(ManuscriptInspector),
+        );
+
+        final inspectorService = inspector.referenceService;
+        // Read the editor's *State* field, not the widget's constructor field.
+        // The widget field is whatever the module handed down, so asserting on
+        // it only proves the module passed an argument — it cannot see a
+        // second service the editor might have built for itself in its State.
+        // _ManuscriptEditorState is private, so the getter is reached
+        // dynamically.
+        final editorState =
+            tester.state(find.byKey(kManuscriptEditorKey)) as dynamic;
+        final editorService =
+            editorState.referenceService as ManuscriptReferenceService?;
+        expect(
+          inspectorService,
+          isNotNull,
+          reason: 'the module must have built its reference service',
+        );
+        expect(
+          editorService,
+          isNotNull,
+          reason: 'the editor must have adopted the module service',
+        );
+
+        // Identity, not merely a shared engine: two services over one engine
+        // would still pass an engine-level check, and that is exactly the state
+        // MS-015 rejects.
+        expect(
+          identical(editorService, inspectorService),
+          isTrue,
+          reason:
+              'the editor must hold the module\'s own service instance, not a '
+              'second service over the same engine (MS-015)',
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+
+    testWidgets(
+      'Editor status bar shows a live "Chars: N" beside "Words: N" (MS-026)',
+      (tester) async {
+        // Give the seeded chapter known content so both live counts are
+        // deterministic: "Hello world\n" is 2 words and 11 characters
+        // (MS-010 decision: the structural trailing newline is excluded).
+        // Hive writes are real-async I/O, so seed inside runAsync.
+        await tester.runAsync(() async {
+          final doc = DatabaseManager.instance.manuscriptDocuments.get(
+            'chapter_1',
+          )!;
+          doc.richTextJson = '{"ops":[{"insert":"Hello world\\n"}]}';
+          await DatabaseManager.instance.manuscriptDocuments.put(doc.id, doc);
+        });
+
+        await _pumpProjectEditorShell(tester, project, initialChapterKey: '1');
+
+        // The status bar must render a character count (MS-026)...
+        expect(find.textContaining(RegExp(r'Chars: \d+')), findsOneWidget);
+        // ...and it must be the canonical count, not the raw Delta JSON
+        // length (36) and not the newline-inclusive length (12).
+        expect(find.text('Chars: 11'), findsOneWidget);
+        expect(find.text('Words: 2'), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
       },
     );
 

@@ -12,7 +12,10 @@ import 'package:hive/hive.dart';
 import 'package:lore_keeper/models/manuscript_document.dart';
 import 'package:lore_keeper/models/project.dart';
 import 'package:lore_keeper/services/manuscript_binder_service.dart';
+import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
+import 'package:lore_keeper/database/reference_engine/reference_index.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 
 void main() {
   late Directory dir;
@@ -21,6 +24,7 @@ void main() {
   late ManuscriptBinderService service;
   late Project project;
   late ReferenceEngine referenceEngine;
+  late ManuscriptDocument chapterUnderRoot;
 
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('hive_purpose_');
@@ -46,6 +50,13 @@ void main() {
       referenceEngine: referenceEngine,
     );
     await service.createManuscriptRoot(project);
+    // Scenes may only live under a Chapter (MS-029 enforces the hierarchy), so
+    // the fixture parents its scenes to this one rather than to the root.
+    chapterUnderRoot = await service.createDocument(
+      title: 'Chapter One',
+      type: ManuscriptDocumentType.chapter,
+      parentId: 'manuscript_${project.key!}',
+    );
   });
 
   tearDown(() async {
@@ -68,7 +79,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene One',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -83,7 +94,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene Two',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -99,7 +110,7 @@ void main() {
       final sceneDoc = await service.createDocument(
         title: 'Scene Three',
         type: ManuscriptDocumentType.scene,
-        parentId: 'manuscript_${project.key!}',
+        parentId: chapterUnderRoot.id,
         orderIndex: 0,
       );
 
@@ -126,7 +137,7 @@ void main() {
     final sceneDoc = await service.createDocument(
       title: 'Scene Four',
       type: ManuscriptDocumentType.scene,
-      parentId: 'manuscript_${project.key!}',
+      parentId: chapterUnderRoot.id,
       orderIndex: 0,
     );
 
@@ -166,5 +177,185 @@ void main() {
     expect(restored.calendarDateSystemKey, 3);
     expect(restored.calendarDateYear, 500);
     expect(restored.calendarDateDayOfYear, 120);
+  });
+
+  // ── MS-009: canonical word count through updateContent ──────────────────
+
+  group('word count is canonical (MS-009)', () {
+    test('updateContent stores wordCount == 2 for "Hello world\\n"', () async {
+      final doc = await service.createDocument(
+        title: 'Scene',
+        type: ManuscriptDocumentType.scene,
+        parentId: chapterUnderRoot.id,
+        orderIndex: 0,
+      );
+
+      await service.updateContent(
+        doc.id,
+        '{"ops":[{"insert":"Hello world\\n"}]}',
+      );
+
+      final reloaded = docBox.get(doc.id)!;
+      // The stored count must match ManuscriptTextStats.wordCount exactly.
+      expect(reloaded.wordCount, 2);
+      expect(
+        reloaded.wordCount,
+        ManuscriptTextStats.wordCount('Hello world\n'),
+      );
+      // MS-010: characterCount is plain-text length with the single
+      // structural trailing "\n" excluded -> 11 (not 12, not the JSON's 36).
+      expect(reloaded.characterCount, 11);
+      expect(
+        reloaded.characterCount,
+        ManuscriptTextStats.characterCount('Hello world\n'),
+      );
+    });
+
+    test('updateContent stores 0 words for an empty document', () async {
+      final doc = await service.createDocument(
+        title: 'Empty',
+        type: ManuscriptDocumentType.scene,
+        parentId: chapterUnderRoot.id,
+        orderIndex: 0,
+      );
+
+      await service.updateContent(doc.id, '{"ops":[{"insert":"\\n"}]}');
+
+      expect(docBox.get(doc.id)!.wordCount, 0);
+      expect(docBox.get(doc.id)!.characterCount, 0);
+    });
+
+    test('createDocument with content counts the same words', () async {
+      final doc = await service.createDocument(
+        title: 'Seeded',
+        type: ManuscriptDocumentType.scene,
+        parentId: chapterUnderRoot.id,
+        orderIndex: 0,
+        richTextJson: '{"ops":[{"insert":"Hello world\\n"}]}',
+      );
+
+      expect(doc.wordCount, 2);
+      // MS-010: 11 = plain-text length minus the structural trailing "\n".
+      expect(doc.characterCount, 11);
+    });
+
+    test('createDocument with no content counts 0 words', () async {
+      final doc = await service.createDocument(
+        title: 'Blank',
+        type: ManuscriptDocumentType.scene,
+        parentId: chapterUnderRoot.id,
+        orderIndex: 0,
+      );
+
+      // Previously the empty document reported 25 "characters" — the length
+      // of the emptyRichTextJson envelope itself.
+      expect(doc.wordCount, 0);
+      expect(doc.characterCount, 0);
+    });
+  });
+
+  group('Cycle 4b — structural changes still purge correctly', () {
+    // Non-regression guard for the incremental re-index. A scoped rebuild only
+    // helps the "this document's body changed" case; delete/move/rename must
+    // still leave a correct index, and those paths never go through the
+    // autosave's scoped call.
+
+    EntityRef docRef(String id, int projectId) => EntityRef(
+      id: id,
+      entityType: EntityType.manuscriptDocument,
+      projectId: '$projectId',
+    );
+
+    EntityRef locRef(String id, int projectId) => EntityRef(
+      id: id,
+      entityType: EntityType.location,
+      projectId: '$projectId',
+    );
+
+    /// An outbound entry: [sourceId] mentions a Location called [targetId].
+    ReferenceIndexEntry mention(
+      String sourceId,
+      String targetId,
+      int projectId,
+    ) => ReferenceIndexEntry(
+      source: docRef(sourceId, projectId),
+      target: locRef(targetId, projectId),
+      kind: 'mentions',
+      containerEntity: docRef(sourceId, projectId),
+      computedAt: DateTime(2026),
+    );
+
+    /// An inbound entry: [sourceId] mentions the *document* [targetId].
+    ///
+    /// Separate from [mention] because the target must be typed
+    /// `manuscriptDocument` — a Location ref carrying a document's id would
+    /// not be matched by `removeTarget(docRef(...))`, and the test would fail
+    /// for a reason unrelated to the behaviour under test.
+    ReferenceIndexEntry mentionDocument(
+      String sourceId,
+      String targetId,
+      int projectId,
+    ) => ReferenceIndexEntry(
+      source: docRef(sourceId, projectId),
+      target: docRef(targetId, projectId),
+      kind: 'mentions',
+      containerEntity: docRef(sourceId, projectId),
+      computedAt: DateTime(2026),
+    );
+
+    test('deleting a document removes its outbound and inbound entries',
+        () async {
+      final keeper = await service.createDocument(
+        title: 'Keeper',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+      final doomed = await service.createDocument(
+        title: 'Doomed',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 1,
+      );
+      final pid = project.key!;
+
+      referenceEngine.addEntry(mention(doomed.id, 'loc_a', pid));
+      referenceEngine.addEntry(mention(keeper.id, 'loc_b', pid));
+      // Inbound backlinks: documents pointing AT the doomed one, and the
+      // doomed one pointing at the keeper.
+      referenceEngine.addEntry(mentionDocument(keeper.id, doomed.id, pid));
+      referenceEngine.addEntry(mentionDocument(doomed.id, keeper.id, pid));
+      expect(referenceEngine.length, 4);
+
+      await service.deleteDocument(doomed.id);
+
+      // No entry may still name the deleted document as source or target.
+      expect(
+        referenceEngine.index.where(
+          (e) => e.source.id == doomed.id || e.target.id == doomed.id,
+        ),
+        isEmpty,
+        reason: 'a deleted document must leave no stale entries (Cycle 4b)',
+      );
+      // The surviving document's own outbound ref is untouched.
+      expect(
+        referenceEngine.referencesFrom(docRef(keeper.id, pid)).map(
+          (e) => e.target.id,
+        ),
+        contains('loc_b'),
+      );
+    });
+
+    test('deleting a document is correct even with no index entries at all',
+        () async {
+      final doc = await service.createDocument(
+        title: 'Empty',
+        type: ManuscriptDocumentType.chapter,
+        parentId: 'manuscript_${project.key!}',
+        orderIndex: 0,
+      );
+      await service.deleteDocument(doc.id);
+      expect(docBox.get(doc.id), isNull);
+    });
   });
 }

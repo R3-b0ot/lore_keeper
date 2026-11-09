@@ -114,11 +114,13 @@ class ReferenceNameResolver {
   /// Report whether the entity referenced by [ref] still exists in its box,
   /// scoped to the project the reference belongs to.
   ///
-  /// This is the single source of truth used by [ReferenceIntegrityService] to
-  /// detect stale backlinks: a target whose owning entity was deleted must
-  /// resolve to false so the manuscript index can purge the dangling entry.
-  /// Like [resolveById], types without a canonical box (Location, Item,
-  /// Organization, Faction, Research) resolve to false.
+  /// This answers "can I see it in a canonical box?" — and for a type that has
+  /// no box yet, the honest answer is *no*, because nothing can be looked up.
+  /// That makes it the wrong question for a *removal* decision: see
+  /// [entityIsDefinitelyGone], which is what the purge uses.
+  ///
+  /// Behaviour and signature are unchanged; callers that rely on the bool
+  /// (autocomplete resolution, the Inspector) are unaffected.
   bool entityExists(EntityRef ref) {
     final targetProjectId = int.tryParse(ref.projectId) ?? -1;
     switch (ref.entityType) {
@@ -151,6 +153,37 @@ class ReferenceNameResolver {
     );
   }
 
+  /// Whether [ref] is *known* to be deleted, as opposed to merely unresolvable.
+  ///
+  /// MS-016. [entityExists] conflates two different situations:
+  ///
+  /// 1. The type has a canonical box and the entity is not in it — deleted.
+  /// 2. The type has no box in this release (Location, Item, Organization,
+  ///    Faction, Research, CalendarDate, Map) — nothing *can* be found, so
+  ///    every such ref reports false.
+  ///
+  /// Using that single bool as a removal test means the first purge after any
+  /// entity deletion discards every mention of every not-yet-implemented type,
+  /// silently and irreversibly, on the grounds that they "no longer exist".
+  /// The mention was always valid; the app just cannot resolve it yet.
+  ///
+  /// So: true only when a canonical source exists *and* the entity is absent
+  /// from it. Unknown types are never "definitely gone" — they are unresolved.
+  /// This is the predicate [ReferenceIntegrityService.purgeStaleEntries] uses.
+  bool entityIsDefinitelyGone(EntityRef ref) {
+    switch (ref.entityType) {
+      // These four have a box, so [entityExists] is authoritative for them.
+      case EntityType.character:
+      case EntityType.species:
+      case EntityType.timelineEvent:
+      case EntityType.manuscriptDocument:
+        return !entityExists(ref);
+      default:
+        // No canonical data source yet. Absence proves nothing.
+        return false;
+    }
+  }
+
   /// Remove dangling entries from [engine] whose source or target no longer
   /// resolves, using this resolver's canonical project-scoped existence check.
   ///
@@ -164,6 +197,8 @@ class ReferenceNameResolver {
     final service = ReferenceIntegrityService(
       engine: engine,
       entityExists: entityExists,
+      // MS-016: purge on "known deleted", not on "unresolvable".
+      entityIsDefinitelyGone: entityIsDefinitelyGone,
     );
     return service.purgeStaleEntries();
   }

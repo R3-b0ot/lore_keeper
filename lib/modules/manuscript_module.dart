@@ -31,6 +31,7 @@ import 'package:lore_keeper/widgets/find_replace_dialog.dart';
 import 'package:language_tool/language_tool.dart';
 
 import 'package:lore_keeper/services/history_service.dart';
+import 'package:lore_keeper/services/history_snapshot_policy.dart';
 import 'package:lore_keeper/widgets/index_page_widget.dart';
 import 'package:lore_keeper/widgets/cover_page_form.dart';
 import 'package:lore_keeper/widgets/about_author_form.dart';
@@ -46,6 +47,7 @@ import 'package:lore_keeper/services/reference_attribute.dart';
 import 'package:lore_keeper/services/manuscript_reference_service.dart';
 import 'package:lore_keeper/services/entity_reference_entries.dart';
 import 'package:lore_keeper/services/reference_name_resolver.dart';
+import 'package:lore_keeper/utils/manuscript_text_stats.dart';
 import 'package:lore_keeper/database/reference_engine/reference_engine.dart';
 import 'package:lore_keeper/database/entity_ref.dart';
 import 'package:lore_keeper/database/database_manager.dart';
@@ -87,6 +89,15 @@ class ManuscriptModule extends StatefulWidget {
   /// ProjectEditorScreen so the Binder and editor stay in sync (spec §12).
   final ValueChanged<String>? onDocumentSelected;
 
+  /// Bumped by the shell whenever a history revert overwrites the open
+  /// document (Cycle 3b-3).
+  ///
+  /// The editor cannot detect the overwrite on its own: the revert mutates the
+  /// document in place, so no widget property it observes actually changes.
+  /// A monotonic token is the smallest honest signal, and a no-op bump is
+  /// harmless.
+  final int revertSignal;
+
   const ManuscriptModule({
     super.key,
     required this.projectId,
@@ -96,6 +107,7 @@ class ManuscriptModule extends StatefulWidget {
     required this.onChapterSelected,
     required this.onControllerReady,
     required this.onGrammarCheckReady,
+    this.revertSignal = 0,
     this.onReferenceNavigate,
     this.binderProvider,
     this.calendarProvider,
@@ -122,6 +134,14 @@ class _ManuscriptModuleState extends State<ManuscriptModule> {
     _nameResolver = ReferenceNameResolver.fromDatabase(widget.projectId);
     _initReferenceService();
   }
+
+  /// The one [ManuscriptReferenceService] for this module session (MS-015).
+  ///
+  /// Exposed so the editor and the topology test can assert identity rather
+  /// than infer it. Previously the editor built a second service of its own, so
+  /// the module and the editor held two services over one engine — each
+  /// running its own `rebuildIndex()` on the shared index.
+  ManuscriptReferenceService? get referenceService => _referenceService;
 
   Future<void> _initReferenceService() async {
     final engine =
@@ -177,8 +197,10 @@ class _ManuscriptModuleState extends State<ManuscriptModule> {
             timelineProvider: widget.timelineProvider,
             sharedReferenceEngine: widget.sharedReferenceEngine,
             selectedDocumentId: widget.selectedDocumentId,
+            referenceService: _referenceService,
             onDocumentSelected: widget.onDocumentSelected,
             onSelectedDocumentChanged: _onEditorDocumentChanged,
+            revertSignal: widget.revertSignal,
           ),
         ),
         VerticalDivider(width: 1, thickness: 1, color: cs.outlineVariant),
@@ -219,6 +241,16 @@ class ManuscriptEditor extends StatefulWidget {
   final ReferenceEngine? sharedReferenceEngine;
   final String selectedDocumentId;
 
+  /// The module's single [ManuscriptReferenceService] (MS-015).
+  ///
+  /// The editor must use *this* instance, never one it constructs itself:
+  /// a second service over the shared engine means a second `rebuildIndex()`
+  /// and no single owner of the index. It is null on the first build, before
+  /// the module's async init completes; the editor falls back to a
+  /// [ManuscriptBinderProvider]-derived engine until it arrives and re-reads
+  /// it in [didUpdateWidget].
+  final ManuscriptReferenceService? referenceService;
+
   /// Shell-level callback — updates the canonical selection in
   /// ProjectEditorScreen so Binder and Inspector stay in sync (spec §12).
   final ValueChanged<String>? onDocumentSelected;
@@ -226,6 +258,10 @@ class ManuscriptEditor extends StatefulWidget {
   /// Notifies the owning ManuscriptModule whenever the active document changes
   /// so the Inspector can be updated (Column 3 → Column 4 communication).
   final ValueChanged<ManuscriptDocument?>? onSelectedDocumentChanged;
+
+  /// Bumped when a history revert overwrites the open document (Cycle 3b-3);
+  /// see [ManuscriptModule.revertSignal].
+  final int revertSignal;
 
   const ManuscriptEditor({
     super.key,
@@ -243,8 +279,10 @@ class ManuscriptEditor extends StatefulWidget {
     this.timelineProvider,
     this.sharedReferenceEngine,
     this.selectedDocumentId = '',
+    this.referenceService,
     this.onDocumentSelected,
     this.onSelectedDocumentChanged,
+    this.revertSignal = 0,
   });
 
   @override
@@ -263,8 +301,45 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   Timer? _titleAutosaveTimer;
   Timer? _autosaveTimer;
   Timer? _grammarDebounce;
+
+  /// S-34 (spec 11.3): the content autosave debounce target is ~2s.
+  ///
+  /// Snapshot *pacing* is a separate concern, handled by
+  /// `HistorySnapshotPolicy`; this value only controls how quickly content
+  /// reaches storage.
   final Duration _autosaveDelay = const Duration(seconds: 2);
   final Duration _grammarDelay = const Duration(milliseconds: 600);
+
+  /// The exact rich-text payload last persisted for the selected document.
+  ///
+  /// MS-008: Quill notifies its listeners for cursor moves, selection changes
+  /// and undo bookkeeping, so the autosave debounce can fire repeatedly for one
+  /// edit. Comparing against the last *persisted* payload — rather than
+  /// counting keystrokes — is what makes the guard correct: any real edit
+  /// produces different Delta JSON and is saved, and only a byte-identical
+  /// re-save is dropped, so the history panel never fills with duplicates.
+  ///
+  /// Seeded on every load (see [_loadContent]) so the first save after opening
+  /// a document is not mistaken for a no-op.
+  String? _lastSavedContent;
+
+  /// The content carried by the most recent history snapshot, if any.
+  ///
+  /// Deliberately *not* the same field as [_lastSavedContent]: content is
+  /// written on every autosave, snapshots are paced by
+  /// [HistorySnapshotPolicy.autosaveSnapshotInterval]. Sharing one baseline
+  /// would make a close/switch believe an edit had already been snapshotted
+  /// (content was just written) and silently drop it.
+  ///
+  /// Seeded on load (see [_loadContent]) so the first save after opening a
+  /// document is recognised as unchanged rather than stored as a new revision.
+  String? _lastSnapshottedContent;
+
+  /// When [_lastSnapshottedContent] was captured, or null if there is none.
+  DateTime? _lastSnapshotAt;
+
+  /// The single authority on snapshot pacing and change detection.
+  static const HistorySnapshotPolicy _snapshotPolicy = HistorySnapshotPolicy();
 
   final HistoryService _historyService = HistoryService();
 
@@ -272,6 +347,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   bool _isSaving = false;
   bool _isSwitchingChapter = false;
   int _wordCount = 0;
+  int _characterCount = 0;
   double _zoomFactor = 1.0;
   bool _isCheckingGrammar = false;
   int _grammarIssueCount = 0;
@@ -284,7 +360,17 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   ManuscriptBinderProvider? _binderProvider;
   ManuscriptDocument? _selectedDocument;
+
+  /// The module's single [ManuscriptReferenceService] (MS-015).
+  ///
+  /// Never constructed here — see [_adoptReferenceService].
   ManuscriptReferenceService? _referenceService;
+
+  /// The service the editor is currently using.
+  ///
+  /// Exposed so MS-015's identity test can assert the module and the editor
+  /// hold one instance rather than two services over one engine.
+  ManuscriptReferenceService? get referenceService => _referenceService;
 
   // @mention autocomplete
   late final ReferenceAutocompleteController _autocompleteController;
@@ -309,7 +395,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
     _loadProject();
     _initBinderProvider();
-    _initReferenceService();
+    // MS-015: adopt the module's service instead of building a second one. On
+    // the first build it is still null (the module inits asynchronously), so
+    // the editor has no service until the module's first rebuild hands it
+    // over; didUpdateWidget then adopts the canonical instance.
+    _referenceService = widget.referenceService;
     _loadContent();
 
     _titleController.addListener(_onTitleChanged);
@@ -340,14 +430,17 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _initReferenceService() async {
-    final db = DatabaseManager.instance;
-    _referenceService = ManuscriptReferenceService(
-      projectId: widget.projectId,
-      referenceEngine: _resolveSharedEngine(),
-      documentBox: db.manuscriptDocuments,
-    );
-    await _referenceService!.rebuildIndex();
+  /// Adopt the module's [ManuscriptReferenceService] when it becomes available.
+  ///
+  /// MS-015: the editor must not construct its own. The module builds its
+  /// service asynchronously, so on the very first build there is nothing to
+  /// adopt; until it arrives [_referenceService] is null and the editor simply
+  /// has no service. The next build picks up the canonical instance. The engine
+  /// was never at risk of duplication here — only the service was.
+  void _adoptReferenceService() {
+    final shared = widget.referenceService;
+    if (shared == null || identical(shared, _referenceService)) return;
+    _referenceService = shared;
   }
 
   Map<String, EntityProvider> _buildEntityProviders() {
@@ -445,6 +538,18 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   @override
   void didUpdateWidget(covariant ManuscriptEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // MS-015: the module's service arrives asynchronously; adopt it as soon as
+    // it does so the editor stops holding its own instance.
+    _adoptReferenceService();
+
+    // A history revert overwrote the document in place, so this is the only
+    // observable change. Re-sync before any chapter switch so the editor never
+    // displays text that storage no longer holds (Cycle 3b-3).
+    if (widget.revertSignal != oldWidget.revertSignal) {
+      _applyExternalRevert();
+    }
+
     if (widget.selectedChapterKey.isEmpty) return;
     if (widget.selectedChapterKey != oldWidget.selectedChapterKey) {
       _isSwitchingChapter = true;
@@ -467,6 +572,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     if (_project != null) setState(() {});
   }
 
+  /// The exact encoding [_saveContent] persists, so the MS-008 comparison is
+  /// between like and like.
+  String _currentContentJson() =>
+      jsonEncode(_controller.document.toDelta().toJson());
+
   void _loadContent() {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -482,6 +592,26 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       Delta()..insert('${doc.title}\n', {'header': 1}),
     );
 
+    _applyDocumentContent(doc);
+    _resyncBaselines();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isSwitchingChapter = false;
+        _updateCounts();
+        _updateDocumentWordCount();
+      });
+    }
+  }
+
+  /// Decodes a document's persisted rich text into the editor.
+  ///
+  /// Shared by [_loadContent] and [_applyExternalRevert] so a document loaded
+  /// normally and a document reloaded after a revert go through one decode
+  /// path — a divergent copy is how a revert ends up rendering differently
+  /// from the same content opened fresh.
+  void _applyDocumentContent(ManuscriptDocument doc) {
     if (doc.richTextJson != null && doc.richTextJson!.isNotEmpty) {
       try {
         final jsonDoc = jsonDecode(doc.richTextJson!);
@@ -495,12 +625,50 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     } else {
       _controller.document = Document();
     }
+  }
+
+  /// Re-bases both "unchanged" baselines on what the editor now displays.
+  ///
+  /// The snapshot baseline is reset rather than carried over: a freshly opened
+  /// or freshly reverted document has no snapshot *of its own* yet, so the
+  /// author's next real edit is a revision.
+  void _resyncBaselines() {
+    _lastSavedContent = _currentContentJson();
+    _lastSnapshottedContent = _lastSavedContent;
+    _lastSnapshotAt = null;
+  }
+
+  /// Re-syncs the editor with a document that was overwritten outside it
+  /// (Cycle 3b-3 — a history revert).
+  ///
+  /// Without this the editor keeps displaying the pre-revert prose while
+  /// storage holds the historical text. Worse, its stale content baseline says
+  /// "nothing changed", so the next autosave ignores the revert entirely and
+  /// the author's next keystroke — the fix they type because the revert appears
+  /// not to have worked — overwrites it.
+  ///
+  /// Pending timers are cancelled first: a debounce armed before the revert
+  /// carries the *old* text and would write it back.
+  void _applyExternalRevert() {
+    _autosaveTimer?.cancel();
+    _grammarDebounce?.cancel();
+    if (_isLoading || _isSwitchingChapter) return;
+
+    final doc = _selectedDocument;
+    if (doc == null) return;
+
+    // Re-read the canonical document rather than trusting the reference this
+    // state already holds: the revert wrote through the binder provider, and
+    // the editor's own baseline is exactly what cannot be trusted here.
+    final fresh = _binderProvider?.getDocument(doc.id) ?? doc;
+    _selectedDocument = fresh;
+
+    _applyDocumentContent(fresh);
+    _resyncBaselines();
 
     if (mounted) {
       setState(() {
-        _isLoading = false;
-        _isSwitchingChapter = false;
-        _updateWordCount();
+        _updateCounts();
         _updateDocumentWordCount();
       });
     }
@@ -509,11 +677,14 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _loadEmptyContent() {
     _titleController.document = Document();
     _controller.document = Document();
+    _resyncBaselines();
+
     if (mounted) {
       setState(() {
         _isLoading = false;
         _isSwitchingChapter = false;
         _wordCount = 0;
+        _characterCount = 0;
       });
     }
   }
@@ -521,9 +692,9 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
   void _updateDocumentWordCount() {
     if (_selectedDocument != null) {
       _selectedDocument!.wordCount = _wordCount;
-      _selectedDocument!.characterCount = _controller.document
-          .toPlainText()
-          .length;
+      _selectedDocument!.characterCount = ManuscriptTextStats.characterCount(
+        _controller.document.toPlainText(),
+      );
     }
   }
 
@@ -544,7 +715,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
 
   void _onTextChanged() {
     if (_isLoading || _isSwitchingChapter) return;
-    _updateWordCount();
+    _updateCounts();
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer(_autosaveDelay, _saveContent);
 
@@ -562,14 +733,16 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     }
   }
 
-  void _updateWordCount() {
-    final plainText = _controller.document.toPlainText().trim();
+  /// Computes both live counts from a single `toPlainText()` call so the
+  /// status bar can never show a word count and character count that were
+  /// measured from different snapshots of the document (MS-026).
+  void _updateCounts() {
+    final plainText = _controller.document.toPlainText();
     if (mounted) {
-      setState(
-        () => _wordCount = plainText.isEmpty
-            ? 0
-            : plainText.split(RegExp(r'\s+')).length,
-      );
+      setState(() {
+        _wordCount = ManuscriptTextStats.wordCount(plainText);
+        _characterCount = ManuscriptTextStats.characterCount(plainText);
+      });
     }
   }
 
@@ -613,20 +786,48 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
     String? chapterKeyToSave,
   }) async {
     if (_selectedDocument == null) return;
+    final content = _currentContentJson();
+    // MS-008: nothing on disk changed, so do not write — and above all do not
+    // add another HistoryEntry, which is what filled the history panel with
+    // identical snapshots. Checked before [_isSaving] so a no-op save never
+    // flashes the saving indicator either.
+    if (_lastSavedContent == content) return;
     if (!isChangingChapter && mounted) setState(() => _isSaving = true);
-    final content = jsonEncode(_controller.document.toDelta().toJson());
     await _binderProvider?.updateContent(_selectedDocument!.id, content);
+    _lastSavedContent = content;
     _selectedDocument!.richTextJson = content;
     _updateDocumentWordCount();
 
-    await _historyService.addHistoryEntry(
-      targetKey: _selectedDocument!.id,
-      targetType: 'ManuscriptDocument',
-      objectToSave: _selectedDocument!,
-      projectId: widget.projectId,
+    // 3b-2: whether this save becomes a history snapshot is the policy's call,
+    // not the editor's. Content is always persisted above (S-34); the snapshot
+    // is a revision record, so it is change-gated and paced, and leaving the
+    // document always records the pending change.
+    final decision = _snapshotPolicy.evaluate(
+      newRichTextJson: content,
+      lastSnapshottedRichTextJson: _lastSnapshottedContent,
+      sinceLastSnapshot: _lastSnapshotAt == null
+          ? null
+          : DateTime.now().difference(_lastSnapshotAt!),
+      trigger: isChangingChapter
+          ? HistorySnapshotTrigger.documentClose
+          : HistorySnapshotTrigger.autosave,
     );
 
-    await _referenceService?.rebuildIndex();
+    if (decision.shouldSnapshot) {
+      await _historyService.addHistoryEntry(
+        targetKey: _selectedDocument!.id,
+        targetType: 'ManuscriptDocument',
+        objectToSave: _selectedDocument!,
+        projectId: widget.projectId,
+      );
+      _lastSnapshottedContent = content;
+      _lastSnapshotAt = DateTime.now();
+    }
+
+    // Cycle 4b: only this document's body changed, so re-index just it. The
+    // full rebuildIndex() stays for module-session init and for structural
+    // operations (see ManuscriptReferenceService.rebuildIndexFor's scope note).
+    await _referenceService?.rebuildIndexFor(_selectedDocument!.id);
 
     if (_project != null) {
       _project!.lastModified = DateTime.now();
@@ -747,6 +948,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
               children: [
                 Text(
                   'Words: $_wordCount',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Chars: $_characterCount',
                   style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                 ),
                 const Spacer(),
@@ -945,9 +1151,13 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       final kp = int.tryParse(widget.selectedChapterKey.split('_').last);
       if (kp == -1) return CoverPageForm(project: _project!);
       if (kp == -2) {
+        final binder = widget.binderProvider;
+        if (binder == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         return IndexPageWidget(
-          chapterProvider: widget.chapterProvider,
-          onChapterSelected: widget.onChapterSelected,
+          binderProvider: binder,
+          onDocumentSelected: widget.onDocumentSelected ?? (_) {},
         );
       }
       if (kp == -3) return AboutAuthorForm(project: _project!);
@@ -994,6 +1204,11 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       leading: [
         Text(
           'Words: $_wordCount',
+          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Chars: $_characterCount',
           style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
         ),
         const SizedBox(width: 8),
@@ -1151,7 +1366,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
       if (!mounted) return;
       setState(() {
         _grammarIssueCount = 0;
-        _updateWordCount();
+        _updateCounts();
         _issues.clear();
         _showGrammarPanel = false;
       });
@@ -1214,7 +1429,7 @@ class _ManuscriptEditorState extends State<ManuscriptEditor> {
         issue.replacement!,
         null,
       );
-      _updateWordCount();
+      _updateCounts();
     }
     _removeIssue(issue.id);
   }
