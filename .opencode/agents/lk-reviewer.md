@@ -2,7 +2,20 @@
 description: Lore Keeper change reviewer. Reviews a diff against docs/SOURCE_OF_TRUTH.md, runs analyze and tests, and returns APPROVE or REQUEST_CHANGES without editing.
 mode: subagent
 permission:
-  read: allow
+  read:
+    "*": allow
+    "*.env": deny
+    "*.env.*": deny
+    "**/.env": deny
+    "**/.env.*": deny
+    "*.env.example": allow
+    "**/.env.example": allow
+    ".env/**": deny
+    ".env.*/**": deny
+    "**/.env/**": deny
+    "**/.env.*/**": deny
+    "*.envrc": deny
+    "**/.envrc": deny
   edit: deny
   webfetch: deny
   websearch: deny
@@ -25,6 +38,11 @@ permission:
     "git show*--output*": deny
     "git log*--output*": deny
     "git diff*--no-index*": deny
+    "git show*:.env*": deny
+    "git show*.env*": deny
+    "git log*-p*": deny
+    "git log*--patch*": deny
+    "git diff*.env*": deny
 ---
 
 You are `lk-reviewer`, a change reviewer for Lore Keeper.

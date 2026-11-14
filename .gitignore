@@ -58,4 +58,12 @@
 # Coverage
 coverage/
 
+# Local secrets
+.env
+.env.*
+*.[eE][nN][vV]
+*.[eE][nN][vV].*
+*.[eE][nN][vV]rc
+!**/.env.example
+
 # Generated files
