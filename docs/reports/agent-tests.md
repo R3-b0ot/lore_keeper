@@ -61,7 +61,7 @@ A clean-control branch was created from `5bbeb07`. Its first review returned `RE
 
 The final review on `865e5f7` returned `APPROVE` with four LOW/NIT findings plus an untested grep path: the `git diff*-- .env*` deny was over-broad, `.gitignore` was narrower than the read deny, the temporary harness was not recorded, and `flutter --version` was missing from Configuration. The follow-up commit removes the over-broad deny, broadens `.gitignore`, records the harness, adds `flutter --version`, and records the grep probe below.
 
-The over-broad rule was not the cause of the denied path-scoped dotfile diff. The permission matcher's glob does not match a command that ends in a dot path, so `git diff <range> -- .gitignore` is still denied after the rule is removed. `git diff <range>` without a path is allowed and shows the same change, so review coverage is not lost. The temporary harness copy is removed before the final commit, and the grep secret-path probe is recorded below.
+The over-broad rule was not the cause of the denied path-scoped dotfile diff. The permission matcher's glob does not match a command that ends in a dot path, so `git diff <range> -- .gitignore` is still denied after the rule is removed. `git diff <range>` without a path is allowed and shows the same change, so review coverage is not lost. The temporary harness copy was deleted after the test run and is not part of the committed tree; the grep secret-path probe is recorded below.
 
 ## Test 7 — grep secret path
 
