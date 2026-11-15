@@ -4,8 +4,8 @@ part of 'manuscript_collection.dart';
 
 // Hand-written Hive adapter for [ManuscriptCollection].
 //
-// Normally produced by build_runner + hive_generator, but this project
-// hand-writes adapters (see DatabaseMetadataAdapter).
+// This adapter is committed and maintained by hand. Do not run
+// build_runner; it deletes the committed .g.dart adapters.
 
 class ManuscriptCollectionAdapter extends TypeAdapter<ManuscriptCollection> {
   @override
